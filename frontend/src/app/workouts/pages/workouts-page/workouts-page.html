@@ -1,0 +1,11 @@
+<h1>Workouts</h1>
+
+@if (errorMessage) {
+  <p>{{ errorMessage }}</p>
+}
+
+<ul>
+  @for (workout of workouts; track workout.id) {
+    <li>{{ workout.date }} - {{ workout.note }}</li>
+  }
+</ul>
