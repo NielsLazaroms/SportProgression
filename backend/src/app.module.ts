@@ -22,14 +22,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
           password: config.get<string>('DB_PASS'),
           database: config.get<string>('DB_NAME'),
 
-          // Handig voor debugging:
           logging: true,
-
-          // Voor nu ok:
+          // TODO look into this if it is needed
           autoLoadEntities: true,
-          synchronize: false, // voor "werkt verbinding?" hoeft dit niet
-
-          // SSL (alleen als nodig):
+          synchronize: false,
           ssl: sslEnabled ? { rejectUnauthorized: true } : undefined,
         };
       },
