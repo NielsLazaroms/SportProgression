@@ -1,12 +1,12 @@
 import {Injectable} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {Workout} from './workouts.entity';
+import {Repository} from 'typeorm';
 
 @Injectable()
 export class WorkoutsService {
+  constructor(@InjectRepository(Workout) private workoutRepository: Repository<Workout>) {}
   findAll() {
-    return [
-      { id: 1, date: '2025-03-18', note: 'Leg day' },
-      { id: 2, date: '2025-03-20', note: 'Push workout' },
-      { id: 3, date: '2025-03-22', note: 'Pull workout' }
-    ];
+    return this.workoutRepository.find({order: {date: 'DESC'}});
    }
 }
