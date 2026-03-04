@@ -1,11 +1,13 @@
 import {ChangeDetectorRef, Component, OnInit} from '@angular/core';
-import {Workout} from '../../models/workout.model';
+import {Workout, CreateWorkout} from '../../models/workout.model';
 import {WorkoutService} from '../../data-access/workout.service';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-workouts-page',
   standalone: true,
-  imports: [],
+  imports: [FormsModule, CommonModule],
   templateUrl: './workouts-page.html',
 })
 export class WorkoutsPage implements OnInit {
@@ -14,14 +16,84 @@ export class WorkoutsPage implements OnInit {
   workouts: Workout[] = [];
   errorMessage = '';
 
+  newWorkout: CreateWorkout = {
+    date: new Date().toISOString().split('T')[0],
+    note: ''
+  };
+
   ngOnInit(): void {
+    this.loadWorkouts();
+  }
+
+  loadWorkouts(): void {
     this.workoutService.getWorkouts().subscribe({
       next: (data) => {
         this.workouts = data;
+        this.errorMessage = '';
         this.cdr.detectChanges();
       },
       error: () => {
         this.errorMessage = 'Kon workouts niet ophalen';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  getWorkout(id: number): void {
+    this.workoutService.getWorkout(id).subscribe({
+      next: (workout) => {
+        alert(`Workout Details:\nDatum: ${workout.date}\nOpmerking: ${workout.note}`);
+      },
+      error: () => {
+        this.errorMessage = `Kon workout met ID ${id} niet vinden`;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  addWorkout(): void {
+    if (!this.newWorkout.date || !this.newWorkout.note) return;
+
+    this.workoutService.createWorkout(this.newWorkout).subscribe({
+      next: () => {
+        this.loadWorkouts();
+        this.newWorkout.note = '';
+        this.errorMessage = '';
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.errorMessage = 'Kon workout niet toevoegen';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  deleteWorkout(id: number): void {
+    this.workoutService.deleteWorkout(id).subscribe({
+      next: () => {
+        this.loadWorkouts();
+        this.errorMessage = '';
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.errorMessage = 'Kon workout niet verwijderen';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  updateWorkout(workout: Workout): void {
+    const updatedNote = prompt('Bewerk opmerking:', workout.note);
+    if (updatedNote === null || updatedNote === workout.note) return;
+
+    this.workoutService.updateWorkout(workout.id, { note: updatedNote }).subscribe({
+      next: () => {
+        this.loadWorkouts();
+        this.errorMessage = '';
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.errorMessage = 'Kon workout niet bijwerken';
         this.cdr.detectChanges();
       }
     });

@@ -1,14 +1,30 @@
 import { Injectable } from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {Workout} from '../models/workout.model'
+import {Workout, CreateWorkout} from '../models/workout.model'
 
 @Injectable({ providedIn: 'root' })
 export class WorkoutService {
-  private readonly baseUrl = 'http://localhost:3000';
+  private readonly baseUrl = 'http://localhost:3000/workouts';
   constructor(private http: HttpClient) {}
 
   getWorkouts(): Observable<Workout[]> {
-    return this.http.get<Workout[]>(`${this.baseUrl}/workouts`);
+    return this.http.get<Workout[]>(`${this.baseUrl}`);
+  }
+
+  getWorkout(id: number): Observable<Workout> {
+    return this.http.get<Workout>(`${this.baseUrl}/${id}`);
+  }
+
+  createWorkout(workout: CreateWorkout): Observable<Workout> {
+    return this.http.post<Workout>(`${this.baseUrl}`, workout);
+  }
+
+  updateWorkout(id: number, workout: Partial<Workout>): Observable<Workout> {
+    return this.http.patch<Workout>(`${this.baseUrl}/${id}`, workout);
+  }
+
+  deleteWorkout(id: number): Observable<{ deleted: boolean }> {
+    return this.http.delete<{ deleted: boolean }>(`${this.baseUrl}/${id}`);
   }
 }

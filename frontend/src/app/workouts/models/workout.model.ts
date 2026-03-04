@@ -3,3 +3,5 @@ export interface Workout {
   date: string;
   note: string;
 }
+
+export type CreateWorkout = Omit<Workout, 'id'>;
