@@ -1,3 +1,9 @@
-export declare class AppService {
+import { OnModuleInit } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+export declare class AppService implements OnModuleInit {
+    private readonly dataSource;
+    private readonly logger;
+    constructor(dataSource: DataSource);
     getHello(): string;
+    onModuleInit(): Promise<void>;
 }
