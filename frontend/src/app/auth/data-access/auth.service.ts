@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly TOKEN_KEY = 'access_token';
-  private readonly BACKEND_URL = 'http://localhost:3000';
+  private readonly BACKEND_URL = environment.backendUrl;
 
   constructor(private router: Router) {}
 

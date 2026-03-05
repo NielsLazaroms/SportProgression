@@ -2,10 +2,11 @@ import { Injectable } from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
 import {Workout, CreateWorkout} from '../models/workout.model'
+import {environment} from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class WorkoutService {
-  private readonly baseUrl = 'http://localhost:3000/workouts';
+  private readonly baseUrl = `${environment.backendUrl}/workouts`;
   constructor(private http: HttpClient) {}
 
   getWorkouts(): Observable<Workout[]> {
