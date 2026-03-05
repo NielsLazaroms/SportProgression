@@ -13,8 +13,10 @@ export class AppService implements OnModuleInit {
 
   async onModuleInit() {
     try {
-      const result = await this.dataSource.query('SELECT 1 AS ok');
-      this.logger.log(`DB connected. Test query result: ${JSON.stringify(result)}`);
+      const result: unknown[] = await this.dataSource.query('SELECT 1 AS ok');
+      this.logger.log(
+        `DB connected. Test query result: ${JSON.stringify(result)}`,
+      );
     } catch (err) {
       this.logger.error('DB connection failed:', err);
     }

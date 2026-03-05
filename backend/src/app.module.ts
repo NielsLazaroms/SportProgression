@@ -3,8 +3,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthModule } from './health/health.module';
 import { WorkoutsModule } from './workouts/workouts.module';
+import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { EnvKey } from '../envKey';
 
 @Module({
   imports: [
@@ -12,15 +14,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const sslEnabled = (config.get<string>('DB_SSL') ?? 'false') === 'true';
+        const sslEnabled =
+          (config.get<string>(EnvKey.DB_SSL) ?? 'false') === 'true';
 
         return {
           type: 'mysql',
-          host: config.get<string>('DB_HOST'),
-          port: config.get<number>('DB_PORT', 3306),
-          username: config.get<string>('DB_USER'),
-          password: config.get<string>('DB_PASS'),
-          database: config.get<string>('DB_NAME'),
+          host: config.get<string>(EnvKey.DB_HOST),
+          port: config.get<number>(EnvKey.DB_PORT, 3306),
+          username: config.get<string>(EnvKey.DB_USER),
+          password: config.get<string>(EnvKey.DB_PASS),
+          database: config.get<string>(EnvKey.DB_NAME),
 
           logging: true,
           // TODO look into this if it is needed
@@ -32,6 +35,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     }),
     HealthModule,
     WorkoutsModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

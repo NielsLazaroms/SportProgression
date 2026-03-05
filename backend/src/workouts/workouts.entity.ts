@@ -3,6 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 @Entity()
 export class Workout {
+  // TODO Id moet uuid worden
   @ApiProperty({ example: 1 })
   @PrimaryGeneratedColumn()
   id: number;
