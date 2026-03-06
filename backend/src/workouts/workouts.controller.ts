@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { WorkoutsService } from './workouts.service';
@@ -32,8 +33,8 @@ export class WorkoutsController {
   @ApiOperation({ summary: 'Get all workouts' })
   @ApiOkResponse({ type: [Workout] })
   @Get()
-  findAll() {
-    return this.workoutsService.findAll();
+  findAll(@Req() req) {
+    return this.workoutsService.findAll(req.user.userId);
   }
 
   @ApiOperation({ summary: 'Get a specific workout by ID' })
@@ -41,15 +42,15 @@ export class WorkoutsController {
   @ApiOkResponse({ type: Workout })
   @ApiNotFoundResponse({ description: 'Workout not found' })
   @Get(':id')
-  findOne(@Param('id') id: number) {
-    return this.workoutsService.findOne(id);
+  findOne(@Param('id') id: string, @Req() req) {
+    return this.workoutsService.findOne(id, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Create a new workout' })
   @ApiOkResponse({ type: Workout })
   @Post()
-  create(@Body() dto: CreateWorkoutDto) {
-    return this.workoutsService.create(dto);
+  create(@Body() dto: CreateWorkoutDto, @Req() req) {
+    return this.workoutsService.create(dto, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Update an existing workout' })
@@ -57,8 +58,8 @@ export class WorkoutsController {
   @ApiOkResponse({ type: Workout })
   @ApiNotFoundResponse({ description: 'Workout not found' })
   @Patch(':id')
-  update(@Param('id') id: number, @Body() dto: UpdateWorkoutDto) {
-    return this.workoutsService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateWorkoutDto, @Req() req) {
+    return this.workoutsService.update(id, dto, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Delete a workout' })
@@ -66,7 +67,7 @@ export class WorkoutsController {
   @ApiOkResponse({ description: 'The workout has been successfully deleted' })
   @ApiNotFoundResponse({ description: 'Workout not found' })
   @Delete(':id')
-  remove(@Param('id') id: number) {
-    return this.workoutsService.remove(id);
+  remove(@Param('id') id: string, @Req() req) {
+    return this.workoutsService.remove(id, req.user.userId);
   }
 }

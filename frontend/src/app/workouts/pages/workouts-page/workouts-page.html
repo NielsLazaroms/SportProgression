@@ -1,4 +1,7 @@
-<h1>Workouts</h1>
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <h1>Workouts</h1>
+  <button (click)="logout()" style="height: fit-content;">Uitloggen</button>
+</div>
 
 <div *ngIf="errorMessage" style="color: red; margin-bottom: 1rem;">
   {{ errorMessage }}

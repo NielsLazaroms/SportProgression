@@ -10,29 +10,32 @@ export class WorkoutsService {
   constructor(
     @InjectRepository(Workout) private workoutRepository: Repository<Workout>,
   ) {}
-  findAll() {
-    return this.workoutRepository.find({ order: { date: 'DESC' } });
+  findAll(userId: string) {
+    return this.workoutRepository.find({
+      where: { userId },
+      order: { date: 'DESC' },
+    });
   }
-  async findOne(id: number) {
-    const workout = await this.workoutRepository.findOneBy({ id });
+  async findOne(id: string, userId: string) {
+    const workout = await this.workoutRepository.findOneBy({ id, userId });
     if (!workout) {
       throw new NotFoundException(`Workout with ID ${id} not found`);
     }
     return workout;
   }
-  create(dto: CreateWorkoutDto) {
-    const workout = this.workoutRepository.create(dto);
+  create(dto: CreateWorkoutDto, userId: string) {
+    const workout = this.workoutRepository.create({ ...dto, userId });
     return this.workoutRepository.save(workout);
   }
-  async update(id: number, dto: UpdateWorkoutDto) {
-    const result = await this.workoutRepository.update(id, dto);
+  async update(id: string, dto: UpdateWorkoutDto, userId: string) {
+    const result = await this.workoutRepository.update({ id, userId }, dto);
     if (result.affected === 0) {
       throw new NotFoundException(`Workout with ID ${id} not found`);
     }
-    return this.findOne(id);
+    return this.findOne(id, userId);
   }
-  async remove(id: number) {
-    const result = await this.workoutRepository.delete(id);
+  async remove(id: string, userId: string) {
+    const result = await this.workoutRepository.delete({ id, userId });
     if (result.affected === 0) {
       throw new NotFoundException(`Workout with ID ${id} not found`);
     }

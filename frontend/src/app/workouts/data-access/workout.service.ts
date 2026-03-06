@@ -13,7 +13,7 @@ export class WorkoutService {
     return this.http.get<Workout[]>(`${this.baseUrl}`);
   }
 
-  getWorkout(id: number): Observable<Workout> {
+  getWorkout(id: string): Observable<Workout> {
     return this.http.get<Workout>(`${this.baseUrl}/${id}`);
   }
 
@@ -21,11 +21,11 @@ export class WorkoutService {
     return this.http.post<Workout>(`${this.baseUrl}`, workout);
   }
 
-  updateWorkout(id: number, workout: Partial<Workout>): Observable<Workout> {
+  updateWorkout(id: string, workout: Partial<Workout>): Observable<Workout> {
     return this.http.patch<Workout>(`${this.baseUrl}/${id}`, workout);
   }
 
-  deleteWorkout(id: number): Observable<{ deleted: boolean }> {
+  deleteWorkout(id: string): Observable<{ deleted: boolean }> {
     return this.http.delete<{ deleted: boolean }>(`${this.baseUrl}/${id}`);
   }
 }

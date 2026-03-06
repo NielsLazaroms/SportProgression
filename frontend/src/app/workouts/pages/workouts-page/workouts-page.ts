@@ -1,6 +1,7 @@
 import {ChangeDetectorRef, Component, OnInit} from '@angular/core';
 import {Workout, CreateWorkout} from '../../models/workout.model';
 import {WorkoutService} from '../../data-access/workout.service';
+import {AuthService} from '../../../auth/data-access/auth.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -11,7 +12,7 @@ import { CommonModule } from '@angular/common';
   templateUrl: './workouts-page.html',
 })
 export class WorkoutsPage implements OnInit {
-  constructor(private workoutService: WorkoutService, private cdr: ChangeDetectorRef) {}
+  constructor(private workoutService: WorkoutService, private authService: AuthService, private cdr: ChangeDetectorRef) {}
 
   workouts: Workout[] = [];
   errorMessage = '';
@@ -39,7 +40,7 @@ export class WorkoutsPage implements OnInit {
     });
   }
 
-  getWorkout(id: number): void {
+  getWorkout(id: string): void {
     this.workoutService.getWorkout(id).subscribe({
       next: (workout) => {
         alert(`Workout Details:\nDatum: ${workout.date}\nOpmerking: ${workout.note}`);
@@ -68,7 +69,7 @@ export class WorkoutsPage implements OnInit {
     });
   }
 
-  deleteWorkout(id: number): void {
+  deleteWorkout(id: string): void {
     this.workoutService.deleteWorkout(id).subscribe({
       next: () => {
         this.loadWorkouts();
@@ -80,6 +81,10 @@ export class WorkoutsPage implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  logout(): void {
+    this.authService.logout();
   }
 
   updateWorkout(workout: Workout): void {
