@@ -1,9 +1,11 @@
 import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -31,6 +33,7 @@ export class AuthController {
   }
 
   // TODO remove test
+  @ApiBearerAuth()
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
   me(@Req() req: any) {

@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { WorkoutsService } from './workouts.service';
 import { CreateWorkoutDto } from './dto/create-workout.dto';
@@ -16,10 +17,14 @@ import {
   ApiOperation,
   ApiParam,
   ApiTags,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Workout } from './workouts.entity';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Workouts')
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'))
 @Controller('workouts')
 export class WorkoutsController {
   constructor(private readonly workoutsService: WorkoutsService) {}
