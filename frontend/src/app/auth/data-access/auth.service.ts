@@ -1,33 +1,78 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { BehaviorSubject, catchError, map, Observable, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+
+interface User {
+  userId: string;
+  email: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly TOKEN_KEY = 'access_token';
   private readonly BACKEND_URL = environment.backendUrl;
+  private loggedIn$ = new BehaviorSubject<boolean>(false);
 
-  constructor(private router: Router) {}
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+  ) {}
 
   loginWithGoogle(): void {
     window.location.href = `${this.BACKEND_URL}/auth/google`;
   }
 
-  handleCallback(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
-    this.router.navigate(['/workouts']);
+  /**
+   * Check auth status by calling /auth/me.
+   * Cookies are sent automatically with withCredentials.
+   */
+  checkAuth(): Observable<boolean> {
+    return this.http
+      .get<User>(`${this.BACKEND_URL}/auth/me`, { withCredentials: true })
+      .pipe(
+        tap(() => this.loggedIn$.next(true)),
+        map(() => true),
+        catchError(() => {
+          this.loggedIn$.next(false);
+          return of(false);
+        }),
+      );
   }
 
-  getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
+  isLoggedIn(): Observable<boolean> {
+    return this.checkAuth();
   }
 
-  isLoggedIn(): boolean {
-    return !!this.getToken();
+  isLoggedInSync(): boolean {
+    return this.loggedIn$.value;
+  }
+
+  refresh(): Observable<boolean> {
+    return this.http
+      .post(`${this.BACKEND_URL}/auth/refresh`, {}, { withCredentials: true })
+      .pipe(
+        tap(() => this.loggedIn$.next(true)),
+        map(() => true),
+        catchError(() => {
+          this.loggedIn$.next(false);
+          return of(false);
+        }),
+      );
   }
 
   logout(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
-    this.router.navigate(['/login']);
+    this.http
+      .post(`${this.BACKEND_URL}/auth/logout`, {}, { withCredentials: true })
+      .subscribe({
+        next: () => {
+          this.loggedIn$.next(false);
+          this.router.navigate(['/login']);
+        },
+        error: () => {
+          this.loggedIn$.next(false);
+          this.router.navigate(['/login']);
+        },
+      });
   }
 }

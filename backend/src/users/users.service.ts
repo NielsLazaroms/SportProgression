@@ -11,6 +11,11 @@ export class UsersService {
   findByGoogleId(googleId: string) {
     return this.userRepository.findOneBy({ googleId });
   }
+
+  async findById(id: string) {
+    return this.userRepository.findOneBy({ id });
+  }
+
   async findOrCreateFromGoogle(profile: {
     googleId: string;
     email: string;
@@ -25,4 +30,5 @@ export class UsersService {
     const newUser = this.userRepository.create(profile);
     return this.userRepository.save(newUser);
   }
+
 }

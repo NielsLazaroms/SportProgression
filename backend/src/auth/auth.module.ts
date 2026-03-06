@@ -3,11 +3,14 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleStrategy } from './google.strategy';
 import { JwtStrategy } from './jwt.strategy';
+import { RefreshToken } from './refresh-token.entity';
+import { TokenCleanupService } from './token-cleanup.service';
 import { EnvKey } from '../../envKey';
 
 @Module({
@@ -15,6 +18,7 @@ import { EnvKey } from '../../envKey';
     UsersModule,
     PassportModule,
     ConfigModule,
+    TypeOrmModule.forFeature([RefreshToken]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       // TODO remove as any
@@ -27,6 +31,6 @@ import { EnvKey } from '../../envKey';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, GoogleStrategy, JwtStrategy],
+  providers: [AuthService, GoogleStrategy, JwtStrategy, TokenCleanupService],
 })
 export class AuthModule {}
