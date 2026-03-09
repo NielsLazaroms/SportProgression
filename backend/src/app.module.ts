@@ -37,10 +37,12 @@ import { EnvKey } from '../envKey';
       },
     }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 30,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 30,
+      },
+    ]),
     HealthModule,
     WorkoutsModule,
     AuthModule,
