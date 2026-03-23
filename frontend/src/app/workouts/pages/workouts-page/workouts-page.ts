@@ -1,4 +1,5 @@
 import {ChangeDetectorRef, Component, OnInit} from '@angular/core';
+import {Router} from '@angular/router';
 import {Workout, CreateWorkout} from '../../models/workout.model';
 import {WorkoutService} from '../../data-access/workout.service';
 import {AuthService} from '../../../auth/data-access/auth.service';
@@ -12,14 +13,15 @@ import { CommonModule } from '@angular/common';
   templateUrl: './workouts-page.html',
 })
 export class WorkoutsPage implements OnInit {
-  constructor(private workoutService: WorkoutService, private authService: AuthService, private cdr: ChangeDetectorRef) {}
+  constructor(private workoutService: WorkoutService, private authService: AuthService, private cdr: ChangeDetectorRef, private router: Router) {}
 
   workouts: Workout[] = [];
   errorMessage = '';
 
   newWorkout: CreateWorkout = {
     date: new Date().toISOString().split('T')[0],
-    note: ''
+    name: '',
+    description: ''
   };
 
   ngOnInit(): void {
@@ -40,25 +42,18 @@ export class WorkoutsPage implements OnInit {
     });
   }
 
-  getWorkout(id: string): void {
-    this.workoutService.getWorkout(id).subscribe({
-      next: (workout) => {
-        alert(`Workout Details:\nDatum: ${workout.date}\nOpmerking: ${workout.note}`);
-      },
-      error: () => {
-        this.errorMessage = `Kon workout met ID ${id} niet vinden`;
-        this.cdr.detectChanges();
-      }
-    });
+  openWorkout(id: string): void {
+    this.router.navigate(['/workouts', id]);
   }
 
   addWorkout(): void {
-    if (!this.newWorkout.date || !this.newWorkout.note) return;
+    if (!this.newWorkout.date || !this.newWorkout.name) return;
 
     this.workoutService.createWorkout(this.newWorkout).subscribe({
       next: () => {
         this.loadWorkouts();
-        this.newWorkout.note = '';
+        this.newWorkout.name = '';
+        this.newWorkout.description = '';
         this.errorMessage = '';
         this.cdr.detectChanges();
       },
@@ -88,10 +83,10 @@ export class WorkoutsPage implements OnInit {
   }
 
   updateWorkout(workout: Workout): void {
-    const updatedNote = prompt('Bewerk opmerking:', workout.note);
-    if (updatedNote === null || updatedNote === workout.note) return;
+    const updatedName = prompt('Bewerk naam:', workout.name);
+    if (updatedName === null || updatedName === workout.name) return;
 
-    this.workoutService.updateWorkout(workout.id, { note: updatedNote }).subscribe({
+    this.workoutService.updateWorkout(workout.id, { name: updatedName }).subscribe({
       next: () => {
         this.loadWorkouts();
         this.errorMessage = '';

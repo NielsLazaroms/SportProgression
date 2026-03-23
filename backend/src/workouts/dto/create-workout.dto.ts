@@ -1,4 +1,4 @@
-import { IsDateString, IsString } from 'class-validator';
+import { IsDateString, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateWorkoutDto {
@@ -7,6 +7,11 @@ export class CreateWorkoutDto {
   date: string;
 
   @IsString()
-  @ApiProperty({ example: 'Some note' })
-  note: string;
+  @ApiProperty({ example: 'Push Day' })
+  name: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ example: 'Upper body focus', required: false })
+  description?: string;
 }

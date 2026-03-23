@@ -14,8 +14,12 @@
     <input type="date" [(ngModel)]="newWorkout.date">
   </div>
   <div style="margin-bottom: 0.5rem;">
-    <label>Opmerking:</label><br>
-    <textarea [(ngModel)]="newWorkout.note" placeholder="Wat heb je gedaan?"></textarea>
+    <label>Naam:</label><br>
+    <input type="text" [(ngModel)]="newWorkout.name" placeholder="Bijv. Push Day">
+  </div>
+  <div style="margin-bottom: 0.5rem;">
+    <label>Beschrijving:</label><br>
+    <textarea [(ngModel)]="newWorkout.description" placeholder="Optionele beschrijving"></textarea>
   </div>
   <button (click)="addWorkout()">Toevoegen</button>
 </section>
@@ -24,9 +28,10 @@
   <h3>Workout Lijst</h3>
   <ul style="list-style: none; padding: 0;">
     <li *ngFor="let workout of workouts" style="margin-bottom: 1rem; padding: 0.5rem; border-bottom: 1px solid #eee;">
-      <strong>{{ workout.date }}</strong> - {{ workout.note }}
+      <strong>{{ workout.date }}</strong> - {{ workout.name }}
+      <span *ngIf="workout.description"> ({{ workout.description }})</span>
       <div style="margin-top: 0.3rem;">
-        <button (click)="getWorkout(workout.id)" style="margin-right: 0.5rem;">Details</button>
+        <button (click)="openWorkout(workout.id)" style="margin-right: 0.5rem;">Oefeningen</button>
         <button (click)="updateWorkout(workout)" style="margin-right: 0.5rem;">Bewerken</button>
         <button (click)="deleteWorkout(workout.id)" style="color: red;">Verwijderen</button>
       </div>

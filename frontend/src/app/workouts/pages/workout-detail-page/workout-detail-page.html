@@ -1,0 +1,56 @@
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <h1>Workout Details</h1>
+  <button (click)="goBack()">← Terug naar overzicht</button>
+</div>
+
+<div *ngIf="errorMessage" style="color: red; margin-bottom: 1rem;">
+  {{ errorMessage }}
+</div>
+
+<div *ngIf="workout" style="margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc;">
+  <p><strong>Datum:</strong> {{ workout.date }}</p>
+  <p><strong>Naam:</strong> {{ workout.name }}</p>
+  <p *ngIf="workout.description"><strong>Beschrijving:</strong> {{ workout.description }}</p>
+</div>
+
+<section style="margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc;">
+  <h3>Oefening Toevoegen</h3>
+  <div style="margin-bottom: 0.5rem;">
+    <label>Naam:</label><br>
+    <input type="text" [(ngModel)]="newExercise.name" placeholder="Bijv. Bench Press">
+  </div>
+  <div style="margin-bottom: 0.5rem;">
+    <label>Type:</label><br>
+    <select [(ngModel)]="newExercise.type">
+      <option *ngFor="let t of exerciseTypes" [value]="t.value">{{ t.label }}</option>
+    </select>
+  </div>
+  <div style="margin-bottom: 0.5rem;">
+    <label>Volgorde:</label><br>
+    <input type="number" [(ngModel)]="newExercise.orderInWorkout" min="1">
+  </div>
+  <div *ngIf="newExercise.type === 'StrengthExercise'" style="margin-bottom: 0.5rem;">
+    <label>Spiergroep:</label><br>
+    <input type="text" [(ngModel)]="newExercise.muscleGroup" placeholder="Bijv. Chest">
+  </div>
+  <div style="margin-bottom: 0.5rem;">
+    <label>Notities:</label><br>
+    <textarea [(ngModel)]="newExercise.notes" placeholder="Optionele notities"></textarea>
+  </div>
+  <button (click)="addExercise()">Toevoegen</button>
+</section>
+
+<section>
+  <h3>Oefeningen</h3>
+  <ul style="list-style: none; padding: 0;">
+    <li *ngFor="let exercise of exercises" style="margin-bottom: 1rem; padding: 0.5rem; border-bottom: 1px solid #eee;">
+      <strong>{{ exercise.orderInWorkout }}.</strong> {{ exercise.name }}
+      <span style="color: #666; margin-left: 0.5rem;">({{ exercise.type }})</span>
+      <span *ngIf="exercise.notes" style="color: #888; margin-left: 0.5rem;">- {{ exercise.notes }}</span>
+      <div style="margin-top: 0.3rem;">
+        <button (click)="deleteExercise(exercise.exerciseId)" style="color: red;">Verwijderen</button>
+      </div>
+    </li>
+  </ul>
+  <p *ngIf="exercises.length === 0 && !errorMessage">Nog geen oefeningen toegevoegd.</p>
+</section>
