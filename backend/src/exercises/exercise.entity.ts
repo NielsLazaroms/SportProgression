@@ -1,22 +1,35 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Workout } from '../workouts/workouts.entity';
+import { StrengthExercise } from './strength-exercise.entity';
 
-@Entity()
+export enum ExerciseType {
+  STRENGTH = 'StrengthExercise',
+  RUN = 'RunExercise',
+  CYCLING = 'CyclingExercise',
+  BODYWEIGHT = 'BodyweightExercise',
+}
+
+@Index(['workoutId', 'orderInWorkout'])
+@Entity('exercises')
 export class Exercise {
   @ApiProperty({ example: 1 })
   @PrimaryGeneratedColumn()
   exerciseId: number;
 
-  @ManyToOne(() => Workout, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Workout, (workout) => workout.exercises, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'workoutId' })
   workout: Workout;
 
@@ -24,17 +37,12 @@ export class Exercise {
   @Column()
   workoutId: string;
 
-  @ApiProperty({
-    example: 'StrengthExercise',
-    enum: [
-      'StrengthExercise',
-      'RunExercise',
-      'CyclingExercise',
-      'BodyweightExercise',
-    ],
+  @ApiProperty({ example: ExerciseType.STRENGTH, enum: ExerciseType })
+  @Column({
+    type: 'enum',
+    enum: ExerciseType,
   })
-  @Column({ unique: false })
-  type: string;
+  type: ExerciseType;
 
   @ApiProperty({ example: 'Bench Press' })
   @Column()
@@ -44,13 +52,18 @@ export class Exercise {
   @Column()
   orderInWorkout: number;
 
-  @ApiProperty({ example: 'Stoel staat op 4', required: false })
+  @ApiProperty({ example: 'Went heavy today', required: false })
   @Column({ nullable: true })
-  notes: string;
+  notes?: string;
 
+  @OneToOne(() => StrengthExercise, (strength) => strength.exercise)
+  strengthExercise?: StrengthExercise;
+
+  @ApiProperty({ example: '2026-03-23T10:00:00.000Z' })
   @CreateDateColumn()
   createdAt: Date;
 
+  @ApiProperty({ example: '2026-03-23T10:00:00.000Z' })
   @UpdateDateColumn()
   updatedAt: Date;
 }

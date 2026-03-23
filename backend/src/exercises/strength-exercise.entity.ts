@@ -8,15 +8,17 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exercise } from './exercise.entity';
-import { Set } from './set.entity';
+import { ExerciseSet } from '../sets/set.entity';
 
-@Entity()
+@Entity('strength_exercises')
 export class StrengthExercise {
   @ApiProperty({ example: 1 })
   @PrimaryColumn()
   exerciseId: number;
 
-  @OneToOne(() => Exercise, { onDelete: 'CASCADE' })
+  @OneToOne(() => Exercise, (exercise) => exercise.strengthExercise, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'exerciseId' })
   exercise: Exercise;
 
@@ -24,6 +26,8 @@ export class StrengthExercise {
   @Column()
   muscleGroup: string;
 
-  @OneToMany(() => Set, (set) => set.strengthExercise)
-  sets: Set[];
+  @OneToMany(() => ExerciseSet, (set) => set.strengthExercise, {
+    cascade: true,
+  })
+  sets: ExerciseSet[];
 }

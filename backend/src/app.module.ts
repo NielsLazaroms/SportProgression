@@ -10,6 +10,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EnvKey } from '../envKey';
+import { ExercisesModule } from './exercises/exercises.module';
+import { SetsModule } from './sets/sets.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { EnvKey } from '../envKey';
     ]),
     HealthModule,
     WorkoutsModule,
+    ExercisesModule,
+    SetsModule,
     AuthModule,
   ],
   controllers: [AppController],

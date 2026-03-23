@@ -4,28 +4,50 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../users/user.entity';
+import { Exercise } from '../exercises/exercise.entity';
 
-@Entity()
+@Index(['userId', 'date'])
+@Entity('workouts')
 export class Workout {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ApiProperty({ example: '2024-01-01' })
+  @ApiProperty({ example: '2026-03-23' })
   @Column({ type: 'date' })
   date: string;
 
-  @ApiProperty({ example: 'Some note' })
+  @ApiProperty({ example: 'Push Day' })
   @Column()
-  note: string;
+  name: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ApiProperty({ example: 'Upper body focus', required: false })
+  @Column({ nullable: true })
+  description?: string;
+
+  @ManyToOne(() => User, (user) => user.workouts, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;
 
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
   @Column()
   userId: string;
+
+  @OneToMany(() => Exercise, (exercise) => exercise.workout)
+  exercises: Exercise[];
+
+  @ApiProperty({ example: '2026-03-23T10:00:00.000Z' })
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @ApiProperty({ example: '2026-03-23T10:00:00.000Z' })
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

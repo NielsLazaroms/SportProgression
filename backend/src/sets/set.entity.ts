@@ -5,12 +5,14 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { StrengthExercise } from './strength-exercise.entity';
+import { StrengthExercise } from '../exercises/strength-exercise.entity';
 
-@Entity()
-export class Set {
+@Index(['exerciseId', 'setOrder'])
+@Entity('sets')
+export class ExerciseSet {
   @ApiProperty({ example: 1 })
   @PrimaryGeneratedColumn()
   setId: number;
@@ -39,6 +41,7 @@ export class Set {
   @Column({ nullable: true })
   notes: string;
 
+  @ApiProperty({ example: '2026-03-23T10:00:00.000Z' })
   @CreateDateColumn()
   createdAt: Date;
 }

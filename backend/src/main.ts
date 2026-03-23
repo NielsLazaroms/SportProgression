@@ -8,13 +8,15 @@ import helmet from 'helmet';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
-  app.use(helmet({
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true,
-    },
-  }));
+  app.use(
+    helmet({
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+    }),
+  );
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:4200',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
