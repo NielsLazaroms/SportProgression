@@ -12,36 +12,49 @@ export class SetsService {
     private setRepository: Repository<ExerciseSet>,
   ) {}
 
-  findAll(exerciseId: number) {
+  findAll(workoutExerciseId: number) {
     return this.setRepository.find({
-      where: { exerciseId },
+      where: { workoutExerciseId },
       order: { setOrder: 'ASC' },
     });
   }
 
-  async findOne(setId: number, exerciseId: number) {
-    const set = await this.setRepository.findOneBy({ setId, exerciseId });
+  async findOne(setId: number, workoutExerciseId: number) {
+    const set = await this.setRepository.findOneBy({
+      setId,
+      workoutExerciseId,
+    });
     if (!set) {
       throw new NotFoundException(`Set with ID ${setId} not found`);
     }
     return set;
   }
 
-  create(dto: CreateSetDto, exerciseId: number) {
-    const set = this.setRepository.create({ ...dto, exerciseId });
+  create(dto: CreateSetDto, workoutExerciseId: number) {
+    const set = this.setRepository.create({ ...dto, workoutExerciseId });
     return this.setRepository.save(set);
   }
 
-  async update(setId: number, dto: UpdateSetDto, exerciseId: number) {
-    const result = await this.setRepository.update({ setId, exerciseId }, dto);
+  async update(
+    setId: number,
+    dto: UpdateSetDto,
+    workoutExerciseId: number,
+  ) {
+    const result = await this.setRepository.update(
+      { setId, workoutExerciseId },
+      dto,
+    );
     if (result.affected === 0) {
       throw new NotFoundException(`Set with ID ${setId} not found`);
     }
-    return this.findOne(setId, exerciseId);
+    return this.findOne(setId, workoutExerciseId);
   }
 
-  async remove(setId: number, exerciseId: number) {
-    const result = await this.setRepository.delete({ setId, exerciseId });
+  async remove(setId: number, workoutExerciseId: number) {
+    const result = await this.setRepository.delete({
+      setId,
+      workoutExerciseId,
+    });
     if (result.affected === 0) {
       throw new NotFoundException(`Set with ID ${setId} not found`);
     }

@@ -11,7 +11,7 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../users/user.entity';
-import { Exercise } from '../exercises/exercise.entity';
+import { WorkoutExercise } from '../exercises/workout-exercise.entity';
 
 @Index(['userId', 'date'])
 @Entity('workouts')
@@ -40,8 +40,8 @@ export class Workout {
   @Column()
   userId: string;
 
-  @OneToMany(() => Exercise, (exercise) => exercise.workout)
-  exercises: Exercise[];
+  @OneToMany(() => WorkoutExercise, (exercise) => exercise.workout)
+  exercises: WorkoutExercise[];
 
   @ApiProperty({ example: '2026-03-23T10:00:00.000Z' })
   @CreateDateColumn()

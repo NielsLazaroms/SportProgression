@@ -8,22 +8,22 @@ import {
   Index,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { StrengthExercise } from '../exercises/strength-exercise.entity';
+import { WorkoutExercise } from '../exercises/workout-exercise.entity';
 
-@Index(['exerciseId', 'setOrder'])
+@Index(['workoutExerciseId', 'setOrder'])
 @Entity('sets')
 export class ExerciseSet {
   @ApiProperty({ example: 1 })
   @PrimaryGeneratedColumn()
   setId: number;
 
-  @ManyToOne(() => StrengthExercise, (se) => se.sets, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'exerciseId' })
-  strengthExercise: StrengthExercise;
+  @ManyToOne(() => WorkoutExercise, (we) => we.sets, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'workoutExerciseId' })
+  workoutExercise: WorkoutExercise;
 
   @ApiProperty({ example: 1 })
   @Column()
-  exerciseId: number;
+  workoutExerciseId: number;
 
   @ApiProperty({ example: 1 })
   @Column()

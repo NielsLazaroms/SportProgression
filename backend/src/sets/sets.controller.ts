@@ -33,7 +33,7 @@ export class SetsController {
   @ApiOperation({ summary: 'Get all sets for an exercise' })
   @ApiParam({
     name: 'exerciseId',
-    description: 'The unique identifier of the exercise',
+    description: 'The unique identifier of the workout exercise',
   })
   @ApiOkResponse({ type: [ExerciseSet] })
   @Get()
@@ -44,7 +44,7 @@ export class SetsController {
   @ApiOperation({ summary: 'Get a specific set by ID' })
   @ApiParam({
     name: 'exerciseId',
-    description: 'The unique identifier of the exercise',
+    description: 'The unique identifier of the workout exercise',
   })
   @ApiParam({ name: 'id', description: 'The unique identifier of the set' })
   @ApiOkResponse({ type: ExerciseSet })
@@ -60,7 +60,7 @@ export class SetsController {
   @ApiOperation({ summary: 'Create a new set for an exercise' })
   @ApiParam({
     name: 'exerciseId',
-    description: 'The unique identifier of the exercise',
+    description: 'The unique identifier of the workout exercise',
   })
   @ApiOkResponse({ type: ExerciseSet })
   @Post()
@@ -74,7 +74,7 @@ export class SetsController {
   @ApiOperation({ summary: 'Update an existing set' })
   @ApiParam({
     name: 'exerciseId',
-    description: 'The unique identifier of the exercise',
+    description: 'The unique identifier of the workout exercise',
   })
   @ApiParam({ name: 'id', description: 'The unique identifier of the set' })
   @ApiOkResponse({ type: ExerciseSet })
@@ -91,7 +91,7 @@ export class SetsController {
   @ApiOperation({ summary: 'Delete a set' })
   @ApiParam({
     name: 'exerciseId',
-    description: 'The unique identifier of the exercise',
+    description: 'The unique identifier of the workout exercise',
   })
   @ApiParam({ name: 'id', description: 'The unique identifier of the set' })
   @ApiOkResponse({ description: 'The set has been successfully deleted' })

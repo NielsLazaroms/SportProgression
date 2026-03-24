@@ -82,6 +82,9 @@ export class WorkoutsPage implements OnInit {
     this.authService.logout();
   }
 
+  openCatalog(): void {
+    this.router.navigate(['/exercise-definitions']);
+  }
   updateWorkout(workout: Workout): void {
     const updatedName = prompt('Bewerk naam:', workout.name);
     if (updatedName === null || updatedName === workout.name) return;

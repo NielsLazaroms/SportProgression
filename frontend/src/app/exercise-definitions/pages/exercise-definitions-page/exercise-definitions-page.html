@@ -1,0 +1,40 @@
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <h1>Oefeningen Catalogus</h1>
+  <button (click)="goBack()">← Terug naar workouts</button>
+</div>
+
+<div *ngIf="errorMessage" style="color: red; margin-bottom: 1rem;">
+  {{ errorMessage }}
+</div>
+
+<section style="margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc;">
+  <h3>Nieuwe Oefening Aanmaken</h3>
+  <div style="margin-bottom: 0.5rem;">
+    <label>Naam:</label><br>
+    <input type="text" [(ngModel)]="newDefinition.name" placeholder="Bijv. Bench Press">
+  </div>
+  <div style="margin-bottom: 0.5rem;">
+    <label>Type:</label><br>
+    <select [(ngModel)]="newDefinition.type">
+      <option *ngFor="let t of exerciseTypes" [value]="t.value">{{ t.label }}</option>
+    </select>
+  </div>
+  <div style="margin-bottom: 0.5rem;">
+    <label>Spiergroep (optioneel):</label><br>
+    <input type="text" [(ngModel)]="newDefinition.muscleGroup" placeholder="Bijv. Chest">
+  </div>
+  <button (click)="addDefinition()">Toevoegen</button>
+</section>
+
+<section>
+  <h3>Beschikbare Oefeningen</h3>
+  <ul style="list-style: none; padding: 0;">
+    <li *ngFor="let def of definitions" style="margin-bottom: 0.75rem; padding: 0.5rem; border-bottom: 1px solid #eee;">
+      <strong>{{ def.name }}</strong>
+      <span style="color: #666; margin-left: 0.5rem;">({{ def.type }})</span>
+      <span *ngIf="def.muscleGroup" style="color: #888; margin-left: 0.5rem;">- {{ def.muscleGroup }}</span>
+      <button (click)="deleteDefinition(def.id)" style="color: red; margin-left: 1rem;">Verwijderen</button>
+    </li>
+  </ul>
+  <p *ngIf="definitions.length === 0 && !errorMessage">Nog geen oefeningen in de catalogus.</p>
+</section>

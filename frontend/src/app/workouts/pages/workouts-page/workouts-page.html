@@ -1,6 +1,9 @@
 <div style="display: flex; justify-content: space-between; align-items: center;">
   <h1>Workouts</h1>
-  <button (click)="logout()" style="height: fit-content;">Uitloggen</button>
+  <div>
+    <button (click)="openCatalog()" style="margin-right: 0.5rem;">Oefeningen Catalogus</button>
+    <button (click)="logout()" style="height: fit-content;">Uitloggen</button>
+  </div>
 </div>
 
 <div *ngIf="errorMessage" style="color: red; margin-bottom: 1rem;">

@@ -1,4 +1,15 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateExerciseDto } from './create-exercise.dto';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
-export class UpdateExerciseDto extends PartialType(CreateExerciseDto) {}
+export class UpdateWorkoutExerciseDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @ApiProperty({ example: 1, required: false })
+  orderInWorkout?: number;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ example: 'Go heavy today', required: false })
+  notes?: string;
+}

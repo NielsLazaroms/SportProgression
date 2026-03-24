@@ -11,6 +11,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EnvKey } from '../envKey';
 import { ExercisesModule } from './exercises/exercises.module';
+import { ExerciseDefinitionsModule } from './exercise-definitions/exercise-definitions.module';
 import { SetsModule } from './sets/sets.module';
 
 @Module({
@@ -48,6 +49,7 @@ import { SetsModule } from './sets/sets.module';
     HealthModule,
     WorkoutsModule,
     ExercisesModule,
+    ExerciseDefinitionsModule,
     SetsModule,
     AuthModule,
   ],

@@ -13,44 +13,88 @@
   <p *ngIf="workout.description"><strong>Beschrijving:</strong> {{ workout.description }}</p>
 </div>
 
+<!-- Add exercise from catalog -->
 <section style="margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc;">
-  <h3>Oefening Toevoegen</h3>
-  <div style="margin-bottom: 0.5rem;">
-    <label>Naam:</label><br>
-    <input type="text" [(ngModel)]="newExercise.name" placeholder="Bijv. Bench Press">
+  <h3>Oefening Toevoegen (uit catalogus)</h3>
+  <div *ngIf="definitions.length === 0" style="color: #888;">
+    Geen oefeningen in de catalogus. <a routerLink="/exercise-definitions">Maak er eerst een aan.</a>
   </div>
-  <div style="margin-bottom: 0.5rem;">
-    <label>Type:</label><br>
-    <select [(ngModel)]="newExercise.type">
-      <option *ngFor="let t of exerciseTypes" [value]="t.value">{{ t.label }}</option>
-    </select>
+  <div *ngIf="definitions.length > 0">
+    <div style="margin-bottom: 0.5rem;">
+      <label>Oefening:</label><br>
+      <select [(ngModel)]="selectedDefinitionId">
+        <option *ngFor="let def of definitions" [ngValue]="def.id">
+          {{ def.name }} ({{ def.type }}<span *ngIf="def.muscleGroup"> - {{ def.muscleGroup }}</span>)
+        </option>
+      </select>
+    </div>
+    <div style="margin-bottom: 0.5rem;">
+      <label>Notities (optioneel):</label><br>
+      <textarea [(ngModel)]="newNotes" placeholder="Optionele notities"></textarea>
+    </div>
+    <button (click)="addExercise()">Toevoegen</button>
   </div>
-  <div style="margin-bottom: 0.5rem;">
-    <label>Volgorde:</label><br>
-    <input type="number" [(ngModel)]="newExercise.orderInWorkout" min="1">
-  </div>
-  <div *ngIf="newExercise.type === 'StrengthExercise'" style="margin-bottom: 0.5rem;">
-    <label>Spiergroep:</label><br>
-    <input type="text" [(ngModel)]="newExercise.muscleGroup" placeholder="Bijv. Chest">
-  </div>
-  <div style="margin-bottom: 0.5rem;">
-    <label>Notities:</label><br>
-    <textarea [(ngModel)]="newExercise.notes" placeholder="Optionele notities"></textarea>
-  </div>
-  <button (click)="addExercise()">Toevoegen</button>
 </section>
 
+<!-- Exercise list with inline sets -->
 <section>
   <h3>Oefeningen</h3>
-  <ul style="list-style: none; padding: 0;">
-    <li *ngFor="let exercise of exercises" style="margin-bottom: 1rem; padding: 0.5rem; border-bottom: 1px solid #eee;">
-      <strong>{{ exercise.orderInWorkout }}.</strong> {{ exercise.name }}
-      <span style="color: #666; margin-left: 0.5rem;">({{ exercise.type }})</span>
-      <span *ngIf="exercise.notes" style="color: #888; margin-left: 0.5rem;">- {{ exercise.notes }}</span>
-      <div style="margin-top: 0.3rem;">
-        <button (click)="deleteExercise(exercise.exerciseId)" style="color: red;">Verwijderen</button>
+  <div *ngFor="let exercise of exercises" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <strong>{{ exercise.orderInWorkout }}.</strong> {{ exercise.name }}
+        <span style="color: #666; margin-left: 0.5rem;">({{ exercise.type }})</span>
+        <span *ngIf="exercise.muscleGroup" style="color: #888; margin-left: 0.5rem;">- {{ exercise.muscleGroup }}</span>
       </div>
-    </li>
-  </ul>
+      <button (click)="deleteExercise(exercise.id)" style="color: red;">Verwijderen</button>
+    </div>
+    <div *ngIf="exercise.notes" style="color: #888; margin-top: 0.25rem; font-style: italic;">
+      {{ exercise.notes }}
+    </div>
+
+    <!-- Sets table -->
+    <div style="margin-top: 0.75rem; margin-left: 1rem;">
+      <table *ngIf="exercise.sets && exercise.sets.length > 0" style="border-collapse: collapse; width: 100%; margin-bottom: 0.5rem;">
+        <thead>
+          <tr style="border-bottom: 2px solid #ccc; text-align: left;">
+            <th style="padding: 0.25rem 0.5rem;">Set</th>
+            <th style="padding: 0.25rem 0.5rem;">Reps</th>
+            <th style="padding: 0.25rem 0.5rem;">Gewicht (kg)</th>
+            <th style="padding: 0.25rem 0.5rem;">Notities</th>
+            <th style="padding: 0.25rem 0.5rem;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let set of exercise.sets" style="border-bottom: 1px solid #eee;">
+            <td style="padding: 0.25rem 0.5rem;">{{ set.setOrder }}</td>
+            <td style="padding: 0.25rem 0.5rem;">{{ set.repsAmount }}</td>
+            <td style="padding: 0.25rem 0.5rem;">{{ set.weightKg }}</td>
+            <td style="padding: 0.25rem 0.5rem;">{{ set.notes || '-' }}</td>
+            <td style="padding: 0.25rem 0.5rem;">
+              <button (click)="deleteSet(exercise.id, set.setId)" style="color: red; font-size: 0.8rem;">✕</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p *ngIf="!exercise.sets || exercise.sets.length === 0" style="color: #aaa; font-size: 0.9rem;">Nog geen sets.</p>
+
+      <!-- Add set form -->
+      <div *ngIf="newSets[exercise.id]" style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; margin-top: 0.5rem;">
+        <div>
+          <label style="font-size: 0.8rem;">Reps</label><br>
+          <input type="number" [(ngModel)]="newSets[exercise.id].repsAmount" min="0" style="width: 60px;">
+        </div>
+        <div>
+          <label style="font-size: 0.8rem;">Gewicht (kg)</label><br>
+          <input type="number" [(ngModel)]="newSets[exercise.id].weightKg" min="0" step="0.5" style="width: 80px;">
+        </div>
+        <div>
+          <label style="font-size: 0.8rem;">Notities</label><br>
+          <input type="text" [(ngModel)]="newSets[exercise.id].notes" placeholder="Optioneel" style="width: 120px;">
+        </div>
+        <button (click)="addSet(exercise.id)">+ Set</button>
+      </div>
+    </div>
+  </div>
   <p *ngIf="exercises.length === 0 && !errorMessage">Nog geen oefeningen toegevoegd.</p>
 </section>

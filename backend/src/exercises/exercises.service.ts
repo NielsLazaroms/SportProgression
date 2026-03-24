@@ -1,86 +1,75 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Exercise, ExerciseType } from './exercise.entity';
-import { StrengthExercise } from './strength-exercise.entity';
-import { CreateExerciseDto } from './dto/create-exercise.dto';
-import { UpdateExerciseDto } from './dto/update-exercise.dto';
+import { WorkoutExercise } from './workout-exercise.entity';
+import { ExerciseDefinitionsService } from '../exercise-definitions/exercise-definitions.service';
+import { CreateWorkoutExerciseDto } from './dto/create-exercise.dto';
+import { UpdateWorkoutExerciseDto } from './dto/update-exercise.dto';
 
 @Injectable()
 export class ExercisesService {
   constructor(
-    @InjectRepository(Exercise)
-    private exerciseRepository: Repository<Exercise>,
-    @InjectRepository(StrengthExercise)
-    private strengthExerciseRepository: Repository<StrengthExercise>,
+    @InjectRepository(WorkoutExercise)
+    private workoutExerciseRepository: Repository<WorkoutExercise>,
+    private exerciseDefinitionsService: ExerciseDefinitionsService,
   ) {}
 
   findAll(workoutId: string) {
-    return this.exerciseRepository.find({
+    return this.workoutExerciseRepository.find({
       where: { workoutId },
       order: { orderInWorkout: 'ASC' },
-      relations: ['strengthExercise'],
+      relations: ['sets'],
     });
   }
 
-  async findOne(exerciseId: number, workoutId: string) {
-    const exercise = await this.exerciseRepository.findOne({
-      where: { exerciseId, workoutId },
-      relations: ['strengthExercise'],
+  async findOne(id: number, workoutId: string) {
+    const exercise = await this.workoutExerciseRepository.findOne({
+      where: { id, workoutId },
+      relations: ['sets'],
     });
     if (!exercise) {
-      throw new NotFoundException(`Exercise with ID ${exerciseId} not found`);
+      throw new NotFoundException(`Workout exercise with ID ${id} not found`);
     }
     return exercise;
   }
 
-  async create(dto: CreateExerciseDto, workoutId: string) {
-    const { muscleGroup, ...exerciseData } = dto;
-    const exercise = this.exerciseRepository.create({
-      ...exerciseData,
+  async create(dto: CreateWorkoutExerciseDto, workoutId: string) {
+    const definition = await this.exerciseDefinitionsService.findOne(
+      dto.exerciseDefinitionId,
+    );
+
+    const exercise = this.workoutExerciseRepository.create({
       workoutId,
+      exerciseDefinitionId: definition.id,
+      name: definition.name,
+      type: definition.type,
+      muscleGroup: definition.muscleGroup,
+      orderInWorkout: dto.orderInWorkout,
+      notes: dto.notes,
     });
-    const saved = await this.exerciseRepository.save(exercise);
 
-    if (dto.type === ExerciseType.STRENGTH && muscleGroup) {
-      const strength = this.strengthExerciseRepository.create({
-        exerciseId: saved.exerciseId,
-        muscleGroup,
-      });
-      await this.strengthExerciseRepository.save(strength);
-    }
-
-    return this.findOne(saved.exerciseId, workoutId);
+    const saved = await this.workoutExerciseRepository.save(exercise);
+    return this.findOne(saved.id, workoutId);
   }
 
-  async update(exerciseId: number, dto: UpdateExerciseDto, workoutId: string) {
-    const { muscleGroup, ...exerciseData } = dto;
-
-    const result = await this.exerciseRepository.update(
-      { exerciseId, workoutId },
-      exerciseData,
+  async update(id: number, dto: UpdateWorkoutExerciseDto, workoutId: string) {
+    const result = await this.workoutExerciseRepository.update(
+      { id, workoutId },
+      dto,
     );
     if (result.affected === 0) {
-      throw new NotFoundException(`Exercise with ID ${exerciseId} not found`);
+      throw new NotFoundException(`Workout exercise with ID ${id} not found`);
     }
-
-    if (muscleGroup !== undefined) {
-      await this.strengthExerciseRepository.update(
-        { exerciseId },
-        { muscleGroup },
-      );
-    }
-
-    return this.findOne(exerciseId, workoutId);
+    return this.findOne(id, workoutId);
   }
 
-  async remove(exerciseId: number, workoutId: string) {
-    const result = await this.exerciseRepository.delete({
-      exerciseId,
+  async remove(id: number, workoutId: string) {
+    const result = await this.workoutExerciseRepository.delete({
+      id,
       workoutId,
     });
     if (result.affected === 0) {
-      throw new NotFoundException(`Exercise with ID ${exerciseId} not found`);
+      throw new NotFoundException(`Workout exercise with ID ${id} not found`);
     }
     return { deleted: true };
   }

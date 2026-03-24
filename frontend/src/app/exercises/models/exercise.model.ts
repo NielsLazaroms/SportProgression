@@ -5,21 +5,55 @@ export enum ExerciseType {
   BODYWEIGHT = 'BodyweightExercise',
 }
 
-export interface Exercise {
-  exerciseId: number;
-  workoutId: string;
-  type: ExerciseType;
+export interface ExerciseDefinition {
+  id: number;
   name: string;
-  orderInWorkout: number;
-  notes?: string;
+  type: ExerciseType;
+  muscleGroup?: string;
+  createdByUserId?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CreateExercise {
-  type: ExerciseType;
+export interface CreateExerciseDefinition {
   name: string;
+  type: ExerciseType;
+  muscleGroup?: string;
+}
+
+export interface WorkoutExercise {
+  id: number;
+  workoutId: string;
+  exerciseDefinitionId?: number;
+  name: string;
+  type: ExerciseType;
+  muscleGroup?: string;
   orderInWorkout: number;
   notes?: string;
-  muscleGroup?: string;
+  sets: ExerciseSet[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExerciseSet {
+  setId: number;
+  workoutExerciseId: number;
+  setOrder: number;
+  repsAmount: number;
+  weightKg: number;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface CreateSet {
+  setOrder: number;
+  repsAmount: number;
+  weightKg: number;
+  notes?: string;
+}
+
+export interface CreateWorkoutExercise {
+  exerciseDefinitionId: number;
+  orderInWorkout: number;
+  notes?: string;
 }

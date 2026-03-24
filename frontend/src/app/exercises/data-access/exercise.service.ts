@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Exercise, CreateExercise } from '../models/exercise.model';
+import { WorkoutExercise, CreateWorkoutExercise } from '../models/exercise.model';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -12,12 +12,12 @@ export class ExerciseService {
     return `${environment.backendUrl}/workouts/${workoutId}/exercises`;
   }
 
-  getExercises(workoutId: string): Observable<Exercise[]> {
-    return this.http.get<Exercise[]>(this.baseUrl(workoutId));
+  getExercises(workoutId: string): Observable<WorkoutExercise[]> {
+    return this.http.get<WorkoutExercise[]>(this.baseUrl(workoutId));
   }
 
-  createExercise(workoutId: string, exercise: CreateExercise): Observable<Exercise> {
-    return this.http.post<Exercise>(this.baseUrl(workoutId), exercise);
+  createExercise(workoutId: string, exercise: CreateWorkoutExercise): Observable<WorkoutExercise> {
+    return this.http.post<WorkoutExercise>(this.baseUrl(workoutId), exercise);
   }
 
   deleteExercise(workoutId: string, exerciseId: number): Observable<{ deleted: boolean }> {
