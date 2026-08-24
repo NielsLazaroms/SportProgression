@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ExerciseDefinitionsService } from './exercise-definitions.service';
@@ -52,8 +53,8 @@ export class ExerciseDefinitionsController {
   @ApiOperation({ summary: 'Create a new exercise definition' })
   @ApiOkResponse({ type: ExerciseDefinition })
   @Post()
-  create(@Body() dto: CreateExerciseDefinitionDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateExerciseDefinitionDto, @Req() req) {
+    return this.service.create(dto, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Update an exercise definition' })
@@ -67,8 +68,9 @@ export class ExerciseDefinitionsController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateExerciseDefinitionDto,
+    @Req() req,
   ) {
-    return this.service.update(id, dto);
+    return this.service.update(id, dto, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Delete an exercise definition' })
@@ -81,7 +83,7 @@ export class ExerciseDefinitionsController {
   })
   @ApiNotFoundResponse({ description: 'Exercise definition not found' })
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    return this.service.remove(id, req.user.userId);
   }
 }

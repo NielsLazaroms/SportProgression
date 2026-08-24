@@ -43,6 +43,15 @@ export class Workout {
   @OneToMany(() => WorkoutExercise, (exercise) => exercise.workout)
   exercises: WorkoutExercise[];
 
+  @ApiProperty({
+    example: '2026-03-23T10:00:00.000Z',
+    required: false,
+    nullable: true,
+    description: 'When the workout was finished. Null while still in progress.',
+  })
+  @Column({ type: 'datetime', nullable: true })
+  completedAt?: Date | null;
+
   @ApiProperty({ example: '2026-03-23T10:00:00.000Z' })
   @CreateDateColumn()
   createdAt: Date;

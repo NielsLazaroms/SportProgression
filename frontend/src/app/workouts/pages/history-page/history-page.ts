@@ -1,13 +1,10 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
-  MnButton,
-  MnInputField,
-  MnBottomSheet,
-  MnSkeleton,
   MnAlertService,
   MnLanguageService,
+  MnSkeleton,
   MnTranslatePipe,
 } from 'mn-angular-lib';
 import { AppIcon } from '../../../shared/app-icon';
@@ -21,22 +18,12 @@ import {
 import { compactKg, relativeDay, timeOfDay } from '../../../shared/format';
 
 @Component({
-  selector: 'app-workouts-page',
+  selector: 'app-history-page',
   standalone: true,
-  imports: [
-    AppHeader,
-    RouterLink,
-    FormsModule,
-    AppIcon,
-    MnButton,
-    MnInputField,
-    MnBottomSheet,
-    MnSkeleton,
-    MnTranslatePipe,
-  ],
-  templateUrl: './workouts-page.html',
+  imports: [AppHeader, FormsModule, AppIcon, MnSkeleton, MnTranslatePipe],
+  templateUrl: './history-page.html',
 })
-export class WorkoutsPage implements OnInit {
+export class HistoryPage implements OnInit {
   private readonly workoutService = inject(WorkoutService);
   private readonly router = inject(Router);
   private readonly alerts = inject(MnAlertService);
@@ -44,16 +31,17 @@ export class WorkoutsPage implements OnInit {
 
   readonly workouts = signal<Workout[]>([]);
   readonly loading = signal(true);
-  readonly recent = computed(() => this.workouts().slice(0, 6));
+  readonly query = signal('');
+  readonly rerunningId = signal<string | null>(null);
 
-  // New-workout dialog
-  readonly showNew = signal(false);
-  readonly saving = signal(false);
-  name = '';
-  date = new Date().toISOString().slice(0, 10);
-  description = '';
+  readonly filtered = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    if (!q) return this.workouts();
+    return this.workouts().filter((w) =>
+      (w.name + ' ' + (w.description ?? '')).toLowerCase().includes(q),
+    );
+  });
 
-  // template helpers
   readonly volume = workoutVolumeKg;
   readonly setCount = workoutSetCount;
   readonly compactKg = compactKg;
@@ -62,11 +50,6 @@ export class WorkoutsPage implements OnInit {
     relativeDay(d, (k, p) => this.lang.t(k, p), this.lang.locale);
 
   ngOnInit(): void {
-    this.load();
-  }
-
-  private load(): void {
-    this.loading.set(true);
     this.workoutService.getWorkouts().subscribe({
       next: (data) => {
         this.workouts.set(data);
@@ -76,7 +59,7 @@ export class WorkoutsPage implements OnInit {
         this.loading.set(false);
         this.alerts.error(
           this.lang.t('toast.load.err.title'),
-          this.lang.t('toast.load.err.body'),
+          this.lang.t('toast.retry'),
         );
       },
     });
@@ -86,58 +69,30 @@ export class WorkoutsPage implements OnInit {
     return w.exercises?.length ?? 0;
   }
 
-  openNew(): void {
-    this.name = '';
-    this.date = new Date().toISOString().slice(0, 10);
-    this.description = '';
-    this.showNew.set(true);
-  }
-
-  createWorkout(): void {
-    if (!this.name.trim() || this.saving()) return;
-    this.saving.set(true);
-    this.workoutService
-      .createWorkout({
-        name: this.name.trim(),
-        date: this.date,
-        description: this.description.trim() || undefined,
-      })
-      .subscribe({
-        next: (created) => {
-          this.saving.set(false);
-          this.showNew.set(false);
-          this.router.navigate(['/workouts', created.id]);
-        },
-        error: () => {
-          this.saving.set(false);
-          this.alerts.error(
-            this.lang.t('toast.create.workout.err'),
-            this.lang.t('toast.retry'),
-          );
-        },
-      });
+  open(w: Workout): void {
+    this.router.navigate(['/workouts', w.id]);
   }
 
   reRun(w: Workout, event: Event): void {
     event.stopPropagation();
-    this.alerts.info(this.lang.t('toast.rerun.start'), w.name);
+    if (this.rerunningId()) return;
+    this.rerunningId.set(w.id);
     this.workoutService.duplicateWorkout(w.id).subscribe({
       next: (copy) => {
+        this.rerunningId.set(null);
         this.alerts.success(
           this.lang.t('toast.rerun.done.title'),
           this.lang.t('toast.rerun.done.body', { name: w.name }),
         );
         this.router.navigate(['/workouts', copy.id]);
       },
-      error: () =>
+      error: () => {
+        this.rerunningId.set(null);
         this.alerts.error(
           this.lang.t('toast.rerun.err'),
           this.lang.t('toast.retry'),
-        ),
+        );
+      },
     });
-  }
-
-  open(w: Workout): void {
-    this.router.navigate(['/workouts', w.id]);
   }
 }

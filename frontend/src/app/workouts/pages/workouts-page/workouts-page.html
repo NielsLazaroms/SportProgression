@@ -1,44 +1,210 @@
-<div style="display: flex; justify-content: space-between; align-items: center;">
-  <h1>Workouts</h1>
-  <div>
-    <button (click)="openCatalog()" style="margin-right: 0.5rem;">Oefeningen Catalogus</button>
-    <button (click)="logout()" style="height: fit-content;">Uitloggen</button>
-  </div>
-</div>
+<app-header>
+  <a
+    routerLink="/profile"
+    aria-label="Profile"
+    class="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant/50"
+  >
+    <app-icon [data]="{ name: 'circle-user-round', size: 26 }" />
+  </a>
+</app-header>
 
-<div *ngIf="errorMessage" style="color: red; margin-bottom: 1rem;">
-  {{ errorMessage }}
-</div>
+<main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
+  <!-- Primary CTA -->
+  <section class="mb-8">
+    <button
+      type="button"
+      (click)="openNew()"
+      class="active-glow flex h-16 w-full items-center justify-center gap-3 rounded-xl bg-primary font-display text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+    >
+      <app-icon [data]="{ name: 'plus-circle', size: 24 }" />
+      {{ 'home.start' | mnTranslate }}
+    </button>
+  </section>
 
-<section style="margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc;">
-  <h3>Nieuwe Workout Toevoegen</h3>
-  <div style="margin-bottom: 0.5rem;">
-    <label>Datum:</label><br>
-    <input type="date" [(ngModel)]="newWorkout.date">
-  </div>
-  <div style="margin-bottom: 0.5rem;">
-    <label>Naam:</label><br>
-    <input type="text" [(ngModel)]="newWorkout.name" placeholder="Bijv. Push Day">
-  </div>
-  <div style="margin-bottom: 0.5rem;">
-    <label>Beschrijving:</label><br>
-    <textarea [(ngModel)]="newWorkout.description" placeholder="Optionele beschrijving"></textarea>
-  </div>
-  <button (click)="addWorkout()">Toevoegen</button>
-</section>
-
-<section>
-  <h3>Workout Lijst</h3>
-  <ul style="list-style: none; padding: 0;">
-    <li *ngFor="let workout of workouts" style="margin-bottom: 1rem; padding: 0.5rem; border-bottom: 1px solid #eee;">
-      <strong>{{ workout.date }}</strong> - {{ workout.name }}
-      <span *ngIf="workout.description"> ({{ workout.description }})</span>
-      <div style="margin-top: 0.3rem;">
-        <button (click)="openWorkout(workout.id)" style="margin-right: 0.5rem;">Oefeningen</button>
-        <button (click)="updateWorkout(workout)" style="margin-right: 0.5rem;">Bewerken</button>
-        <button (click)="deleteWorkout(workout.id)" style="color: red;">Verwijderen</button>
+  <!-- Re-run Recent -->
+  @if (recent().length) {
+    <section class="mb-8">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+          {{ 'home.rerun' | mnTranslate }}
+        </h2>
+        <a routerLink="/history" class="text-xs font-semibold uppercase tracking-wide text-primary">
+          {{ 'home.seeAll' | mnTranslate }}
+        </a>
       </div>
-    </li>
-  </ul>
-  <p *ngIf="workouts.length === 0 && !errorMessage">Geen workouts om weer te geven.</p>
-</section>
+
+      <div class="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
+        @for (w of recent(); track w.id) {
+          <button
+            type="button"
+            (click)="open(w)"
+            class="group w-60 shrink-0 snap-start overflow-hidden rounded-xl text-left transition-transform active:scale-[0.97] glass-card"
+          >
+            <div
+              class="relative flex h-24 items-center justify-center overflow-hidden bg-gradient-to-br from-primary-container/25 via-surface-container-high to-surface-container"
+            >
+              <span class="text-outline-variant/50">
+                <app-icon [data]="{ name: 'dumbbell', size: 56 }" />
+              </span>
+              <span
+                class="absolute bottom-2 left-3 rounded bg-primary/90 px-2 py-0.5 text-[10px] font-bold uppercase text-on-primary-container"
+              >
+                {{ rel(w.date) }}
+              </span>
+              <span
+                (click)="reRun(w, $event)"
+                class="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary-container text-white shadow-lg transition-transform hover:scale-105"
+                aria-label="Re-run workout"
+              >
+                <app-icon [data]="{ name: 'play', size: 18 }" />
+              </span>
+            </div>
+            <div class="p-4">
+              <h3 class="truncate font-bold text-on-surface">{{ w.name }}</h3>
+              <div class="mt-1 flex items-center gap-3 text-on-surface-variant">
+                <span class="flex items-center gap-1 text-xs font-semibold">
+                  <app-icon [data]="{ name: 'dumbbell', size: 14 }" />
+                  {{ exerciseCount(w) }} {{ 'unit.ex' | mnTranslate }}
+                </span>
+                <span class="tnum flex items-center gap-1 text-xs font-semibold">
+                  <app-icon [data]="{ name: 'layers', size: 14 }" />
+                  {{ setCount(w) }} {{ 'unit.sets' | mnTranslate }}
+                </span>
+              </div>
+            </div>
+          </button>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- Recent History -->
+  <section>
+    <h2 class="mb-4 font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+      {{ 'home.recent' | mnTranslate }}
+    </h2>
+
+    @if (loading()) {
+      <div class="space-y-3">
+        @for (i of [1, 2, 3]; track i) {
+          <mn-skeleton [data]="{ shape: 'rectangle', height: '80px' }" class="rounded-xl" />
+        }
+      </div>
+    } @else if (!workouts().length) {
+      <div class="glass-card flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center">
+        <span class="text-outline"><app-icon [data]="{ name: 'dumbbell', size: 40 }" /></span>
+        <p class="font-bold text-on-surface">{{ 'home.empty.title' | mnTranslate }}</p>
+        <p class="max-w-xs text-sm text-on-surface-variant">
+          {{ 'home.empty.hint' | mnTranslate }}
+        </p>
+      </div>
+    } @else {
+      <div class="space-y-3">
+        @for (w of workouts(); track w.id) {
+          <button
+            type="button"
+            (click)="open(w)"
+            class="glass-card flex w-full items-center justify-between rounded-xl p-4 text-left transition-colors active:bg-surface-variant/30"
+          >
+            <div class="flex min-w-0 items-center gap-4">
+              <div
+                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-outline-variant/40 bg-surface-container-high text-primary"
+              >
+                <app-icon [data]="{ name: 'calendar', size: 22 }" />
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <h3 class="truncate font-bold text-on-surface">{{ w.name }}</h3>
+                  @if (w.completedAt) {
+                    <span class="shrink-0 text-success" [attr.aria-label]="'badge.finished' | mnTranslate">
+                      <app-icon [data]="{ name: 'check', size: 16 }" />
+                    </span>
+                  }
+                </div>
+                <p class="text-sm text-on-surface-variant">
+                  {{ rel(w.date) }}
+                  @if (timeOfDay(w.createdAt)) {
+                    <span> • {{ timeOfDay(w.createdAt) }}</span>
+                  }
+                </p>
+              </div>
+            </div>
+            <div class="pl-3 text-right">
+              <p class="tnum font-bold text-primary">{{ compactKg(volume(w)) }} {{ 'unit.kg' | mnTranslate }}</p>
+              <p class="text-sm text-on-surface-variant">{{ setCount(w) }} {{ 'unit.sets' | mnTranslate }}</p>
+            </div>
+          </button>
+        }
+      </div>
+    }
+  </section>
+</main>
+
+<!-- New workout bottom sheet -->
+@if (showNew()) {
+  <mn-bottom-sheet
+    [maxHeightVh]="90"
+    [ariaLabel]="'dialog.newWorkout' | mnTranslate"
+    (dismiss)="showNew.set(false)"
+  >
+    <div class="px-5 pb-6 pt-2">
+      <div class="mb-5 flex items-center justify-between">
+        <h2 class="font-display text-xl font-bold text-on-surface">{{ 'dialog.newWorkout' | mnTranslate }}</h2>
+        <button
+          type="button"
+          (click)="showNew.set(false)"
+          aria-label="Close"
+          class="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/50"
+        >
+          <app-icon [data]="{ name: 'x', size: 22 }" />
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <mn-lib-input-field
+          [props]="{ id: 'wname', type: 'text', label: ('form.name' | mnTranslate), placeholder: ('form.name.ph' | mnTranslate), fullWidth: true }"
+          [(ngModel)]="name"
+          [ngModelOptions]="{ standalone: true }"
+        />
+        <mn-lib-input-field
+          [props]="{ id: 'wdate', type: 'date', label: ('form.date' | mnTranslate), fullWidth: true }"
+          [(ngModel)]="date"
+          [ngModelOptions]="{ standalone: true }"
+        />
+        <div>
+          <label for="wdesc" class="mb-1 block text-sm font-semibold text-on-surface-variant">
+            {{ 'form.workoutNotes' | mnTranslate }}
+            <span class="font-normal opacity-60">({{ 'action.optional' | mnTranslate }})</span>
+          </label>
+          <textarea
+            id="wdesc"
+            [(ngModel)]="description"
+            [ngModelOptions]="{ standalone: true }"
+            rows="2"
+            [placeholder]="'form.workoutNotes.ph' | mnTranslate"
+            class="w-full rounded-lg border border-base-300 bg-base-100 p-3 text-sm text-base-content outline-none transition-colors focus:ring-1 focus:ring-primary"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="mt-6 flex gap-3">
+        <button
+          mnButton
+          [data]="{ color: 'gray', size: 'lg', wrap: true }"
+          class="flex-1"
+          (click)="showNew.set(false)"
+        >
+          {{ 'action.cancel' | mnTranslate }}
+        </button>
+        <button
+          mnButton
+          [data]="{ color: 'primary', size: 'lg', wrap: true, disabled: !name.trim() || saving() }"
+          class="flex-1"
+          (click)="createWorkout()"
+        >
+          {{ (saving() ? 'action.creating' : 'action.create') | mnTranslate }}
+        </button>
+      </div>
+    </div>
+  </mn-bottom-sheet>
+}

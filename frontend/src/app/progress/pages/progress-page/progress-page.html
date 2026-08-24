@@ -1,0 +1,64 @@
+<app-header [title]="'progress.title' | mnTranslate" [showBack]="false" />
+
+<main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
+  <p class="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+    {{ 'progress.insights' | mnTranslate }}
+  </p>
+  <h2 class="mb-6 font-display text-2xl font-extrabold tracking-tight text-on-surface">
+    {{ 'progress.lifetime' | mnTranslate }}
+  </h2>
+
+  <!-- Real aggregates computed from logged sets -->
+  <div class="mb-8 grid grid-cols-3 gap-3">
+    <div class="glass-card rounded-xl p-4 text-center">
+      <p class="tnum font-display text-2xl font-extrabold text-primary">
+        {{ loading() ? '—' : totalWorkouts() }}
+      </p>
+      <p class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+        {{ 'progress.workouts' | mnTranslate }}
+      </p>
+    </div>
+    <div class="glass-card rounded-xl p-4 text-center">
+      <p class="tnum font-display text-2xl font-extrabold text-primary">
+        {{ loading() ? '—' : compactKg(totalVolume()) }}
+      </p>
+      <p class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+        {{ 'progress.volumeKg' | mnTranslate }}
+      </p>
+    </div>
+    <div class="glass-card rounded-xl p-4 text-center">
+      <p class="tnum font-display text-2xl font-extrabold text-primary">
+        {{ loading() ? '—' : totalSets() }}
+      </p>
+      <p class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+        {{ 'progress.totalSets' | mnTranslate }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Honest placeholder: charts need a progression endpoint that isn't built yet -->
+  <div
+    class="relative overflow-hidden rounded-2xl border border-outline-variant/40 bg-gradient-to-br from-surface-container-high via-surface-container to-surface-container p-8 text-center"
+  >
+    <div
+      class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary"
+    >
+      <app-icon [data]="{ name: 'trending-up', size: 28 }" />
+    </div>
+    <h3 class="font-display text-lg font-bold text-on-surface">{{ 'progress.soon.title' | mnTranslate }}</h3>
+    <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-on-surface-variant">
+      {{ 'progress.soon.hint' | mnTranslate }}
+    </p>
+
+    <!-- Decorative, non-data sparkline so the empty state feels intentional -->
+    <svg class="mx-auto mt-6 h-16 w-full max-w-xs opacity-40" viewBox="0 0 300 60" fill="none" aria-hidden="true">
+      <polyline
+        points="0,45 40,40 80,42 120,30 160,32 200,20 240,24 300,10"
+        stroke="var(--color-primary-container)"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+  </div>
+</main>

@@ -43,7 +43,7 @@ export class WorkoutsController {
   @ApiNotFoundResponse({ description: 'Workout not found' })
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req) {
-    return this.workoutsService.findOne(id, req.user.userId);
+    return this.workoutsService.findOneWithDetails(id, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Create a new workout' })
@@ -51,6 +51,27 @@ export class WorkoutsController {
   @Post()
   create(@Body() dto: CreateWorkoutDto, @Req() req) {
     return this.workoutsService.create(dto, req.user.userId);
+  }
+
+  @ApiOperation({
+    summary: 'Re-run a workout: deep-copy it (exercises + sets) to a new workout dated today',
+  })
+  @ApiParam({ name: 'id', description: 'The workout to duplicate' })
+  @ApiOkResponse({ type: Workout })
+  @ApiNotFoundResponse({ description: 'Workout not found' })
+  @Post(':id/duplicate')
+  duplicate(@Param('id') id: string, @Req() req) {
+    return this.workoutsService.duplicate(id, req.user.userId);
+  }
+
+  @ApiOperation({
+    summary: 'Finish a workout (permanently locks it; requires non-empty exercises)',
+  })
+  @ApiParam({ name: 'id', description: 'The workout to finish' })
+  @ApiOkResponse({ type: Workout })
+  @Post(':id/finish')
+  finish(@Param('id') id: string, @Req() req) {
+    return this.workoutsService.finish(id, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Update an existing workout' })

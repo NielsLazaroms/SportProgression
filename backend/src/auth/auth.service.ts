@@ -99,6 +99,22 @@ export class AuthService {
     return tokens;
   }
 
+  async getProfile(userId: string) {
+    const user = await this.users.findById(userId);
+    if (!user) {
+      throw new ForbiddenException('Access denied');
+    }
+    return {
+      // `userId` kept as an alias for backwards compatibility with the JWT payload shape
+      userId: user.id,
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      picture: user.picture,
+    };
+  }
+
   async logout(userId: string) {
     // Revoke all refresh tokens for this user
     await this.refreshTokenRepo.update(

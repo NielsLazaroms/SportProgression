@@ -1,27 +1,32 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { MnTranslatePipe } from 'mn-angular-lib';
 import { AuthService } from '../../data-access/auth.service';
 
 @Component({
   selector: 'app-auth-callback-page',
-  imports: [],
-  template: '<p>Logging in...</p>',
+  standalone: true,
+  imports: [MnTranslatePipe],
+  template: `
+    <div class="flex min-h-dvh flex-col items-center justify-center gap-4 bg-surface text-on-surface">
+      <div
+        class="h-10 w-10 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
+        role="status"
+      ></div>
+      <p class="font-display text-sm font-semibold uppercase tracking-widest text-on-surface-variant">
+        {{ 'callback.loading' | mnTranslate }}
+      </p>
+    </div>
+  `,
 })
 export class AuthCallbackPage implements OnInit {
-  constructor(
-    private router: Router,
-    private auth: AuthService,
-  ) {}
+  private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
 
   ngOnInit(): void {
-    // Cookies are already set by the backend redirect.
-    // Verify auth status, then navigate to the app.
+    // Cookies are already set by the backend redirect; verify then route in.
     this.auth.checkAuth().subscribe((loggedIn) => {
-      if (loggedIn) {
-        this.router.navigate(['/workouts']);
-      } else {
-        this.router.navigate(['/login']);
-      }
+      this.router.navigate([loggedIn ? '/workouts' : '/login']);
     });
   }
 }

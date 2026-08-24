@@ -1,18 +1,22 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ExerciseType } from '../exercise-definition.entity';
 
 export class CreateExerciseDefinitionDto {
   @IsString()
+  @IsNotEmpty()
   @ApiProperty({ example: 'Bench Press' })
   name: string;
 
-  @IsEnum(ExerciseType)
-  @ApiProperty({ example: ExerciseType.STRENGTH, enum: ExerciseType })
-  type: ExerciseType;
-
+  // The app currently only tracks strength ("power") exercises; type defaults
+  // to STRENGTH when omitted.
   @IsOptional()
+  @IsEnum(ExerciseType)
+  @ApiProperty({ example: ExerciseType.STRENGTH, enum: ExerciseType, required: false })
+  type?: ExerciseType = ExerciseType.STRENGTH;
+
   @IsString()
-  @ApiProperty({ example: 'Chest', required: false })
-  muscleGroup?: string;
+  @IsNotEmpty()
+  @ApiProperty({ example: 'Chest' })
+  muscleGroup: string;
 }

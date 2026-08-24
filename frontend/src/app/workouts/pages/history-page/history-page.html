@@ -1,0 +1,89 @@
+<app-header [title]="'history.title' | mnTranslate" [showBack]="false" />
+
+<main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
+  <!-- Search -->
+  <div class="relative mb-5">
+    <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
+      <app-icon [data]="{ name: 'search', size: 20 }" />
+    </span>
+    <input
+      type="search"
+      [ngModel]="query()"
+      (ngModelChange)="query.set($event)"
+      [placeholder]="'history.search.ph' | mnTranslate"
+      class="h-12 w-full rounded-xl border border-outline-variant/40 bg-surface-container pl-12 pr-4 text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-1 focus:ring-primary"
+    />
+  </div>
+
+  @if (loading()) {
+    <div class="space-y-3">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <mn-skeleton [data]="{ shape: 'rectangle', height: '112px' }" class="rounded-xl" />
+      }
+    </div>
+  } @else if (!filtered().length) {
+    <div class="glass-card flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center">
+      <span class="text-outline"><app-icon [data]="{ name: 'search-x', size: 40 }" /></span>
+      <p class="font-bold text-on-surface">
+        {{ (query() ? 'history.noMatch.title' : 'history.empty.title') | mnTranslate }}
+      </p>
+      <p class="max-w-xs text-sm text-on-surface-variant">
+        {{ (query() ? 'history.noMatch.hint' : 'history.empty.hint') | mnTranslate }}
+      </p>
+    </div>
+  } @else {
+    <div class="space-y-3">
+      @for (w of filtered(); track w.id) {
+        <button
+          type="button"
+          (click)="open(w)"
+          class="glass-card flex w-full items-stretch gap-4 overflow-hidden rounded-xl p-3 text-left transition-transform active:scale-[0.99]"
+        >
+          <div
+            class="flex w-20 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary-container/25 via-surface-container-high to-surface-container text-outline-variant/60"
+          >
+            <app-icon [data]="{ name: 'dumbbell', size: 32 }" />
+          </div>
+
+          <div class="flex min-w-0 flex-1 flex-col justify-center">
+            <div class="flex items-center gap-2">
+              <h3 class="truncate font-bold text-on-surface">{{ w.name }}</h3>
+              @if (w.completedAt) {
+                <span class="shrink-0 text-success" [attr.aria-label]="'badge.finished' | mnTranslate">
+                  <app-icon [data]="{ name: 'check', size: 16 }" />
+                </span>
+              }
+            </div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+              {{ rel(w.date) }}
+              @if (timeOfDay(w.createdAt)) {
+                <span> • {{ timeOfDay(w.createdAt) }}</span>
+              }
+            </p>
+            <div class="mt-2 flex items-center gap-4 text-on-surface-variant">
+              <span class="flex items-center gap-1 text-xs font-semibold">
+                <app-icon [data]="{ name: 'dumbbell', size: 14 }" />
+                {{ exerciseCount(w) }} {{ 'unit.exercises' | mnTranslate }}
+              </span>
+              <span class="tnum flex items-center gap-1 text-xs font-semibold">
+                <app-icon [data]="{ name: 'flame', size: 14 }" />
+                {{ compactKg(volume(w)) }} {{ 'unit.kg' | mnTranslate }}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex items-center pr-1">
+            <span
+              (click)="reRun(w, $event)"
+              [class.opacity-50]="rerunningId() === w.id"
+              class="flex h-11 w-11 items-center justify-center rounded-full bg-primary-container text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+              aria-label="Re-run workout"
+            >
+              <app-icon [data]="{ name: 'play', size: 20 }" />
+            </span>
+          </div>
+        </button>
+      }
+    </div>
+  }
+</main>

@@ -1,2 +1,114 @@
 @import 'tailwindcss';
 
+/* Make Tailwind generate the DaisyUI-style semantic utilities that
+   mn-angular-lib's compiled components rely on (bg-base-100, text-base-content…). */
+@source '../node_modules/mn-angular-lib';
+
+@theme {
+  /* ---- Type ---- */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+
+  /* ---- Iron Pulse M3 surface palette ---- */
+  --color-background: #11131b;
+  --color-surface: #11131b;
+  --color-surface-dim: #0b0e15;
+  --color-surface-bright: #373941;
+  --color-surface-container-lowest: #0b0e15;
+  --color-surface-container-low: #191b23;
+  --color-surface-container: #1d1f27;
+  --color-surface-container-high: #272a32;
+  --color-surface-container-highest: #32353d;
+  --color-surface-variant: #32353d;
+
+  --color-on-surface: #e1e2ed;
+  --color-on-surface-variant: #c2c6d7;
+  --color-on-background: #e1e2ed;
+  --color-outline: #8c90a0;
+  --color-outline-variant: #424654;
+
+  --color-on-primary: #002d6f;
+  --color-primary-container: #568dff;
+  --color-on-primary-container: #002662;
+  --color-tertiary: #b7c8e1;
+  --color-on-tertiary-container: #1a2b3e;
+
+  /* ---- Brand accents ---- */
+  --color-record: #ffd700; /* gold — reserved for personal records only */
+  --color-brand-blue: #3c7efc;
+
+  /* ---- DaisyUI semantic tokens consumed by mn-angular-lib ---- */
+  --color-base-100: #1d1f27;
+  --color-base-200: #272a32;
+  --color-base-300: #424654;
+  --color-base-content: #e1e2ed;
+
+  --color-primary: #b0c6ff;
+  --color-primary-content: #002d6f;
+  --color-secondary: #c8c6c5;
+  --color-secondary-content: #313030;
+  --color-accent: #b7c8e1;
+  --color-accent-content: #213145;
+  --color-neutral: #32353d;
+  --color-neutral-content: #e1e2ed;
+  --color-info: #568dff;
+  --color-success: #00e676;
+  --color-success-content: #00382a;
+  --color-warning: #ffd700;
+  --color-warning-content: #402d00;
+  --color-error: #ffb4ab;
+  --color-error-content: #690005;
+
+  /* ---- Radius ---- */
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+    min-height: 100dvh;
+    /* Full-bleed scroll rails (-mx-4) must not widen the page itself. */
+    overflow-x: hidden;
+  }
+  /* Numeric data reads cleaner with tabular figures */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Frosted card — the recurring surface of the whole app */
+@utility glass-card {
+  background: color-mix(in srgb, var(--color-surface-container) 72%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
+}
+
+/* High-tech "active" glow used on primary CTAs and focused cards */
+@utility active-glow {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--color-primary-container) 30%, transparent);
+}
+
+/* Hide scrollbars on horizontal snap rails without losing scroll */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

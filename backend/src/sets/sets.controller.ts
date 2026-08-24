@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { SetsService } from './sets.service';
@@ -37,8 +38,8 @@ export class SetsController {
   })
   @ApiOkResponse({ type: [ExerciseSet] })
   @Get()
-  findAll(@Param('exerciseId', ParseIntPipe) exerciseId: number) {
-    return this.setsService.findAll(exerciseId);
+  findAll(@Param('exerciseId', ParseIntPipe) exerciseId: number, @Req() req) {
+    return this.setsService.findAll(exerciseId, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Get a specific set by ID' })
@@ -53,8 +54,9 @@ export class SetsController {
   findOne(
     @Param('exerciseId', ParseIntPipe) exerciseId: number,
     @Param('id', ParseIntPipe) id: number,
+    @Req() req,
   ) {
-    return this.setsService.findOne(id, exerciseId);
+    return this.setsService.findOne(id, exerciseId, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Create a new set for an exercise' })
@@ -67,8 +69,9 @@ export class SetsController {
   create(
     @Param('exerciseId', ParseIntPipe) exerciseId: number,
     @Body() dto: CreateSetDto,
+    @Req() req,
   ) {
-    return this.setsService.create(dto, exerciseId);
+    return this.setsService.create(dto, exerciseId, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Update an existing set' })
@@ -84,8 +87,9 @@ export class SetsController {
     @Param('exerciseId', ParseIntPipe) exerciseId: number,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSetDto,
+    @Req() req,
   ) {
-    return this.setsService.update(id, dto, exerciseId);
+    return this.setsService.update(id, dto, exerciseId, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Delete a set' })
@@ -100,7 +104,8 @@ export class SetsController {
   remove(
     @Param('exerciseId', ParseIntPipe) exerciseId: number,
     @Param('id', ParseIntPipe) id: number,
+    @Req() req,
   ) {
-    return this.setsService.remove(id, exerciseId);
+    return this.setsService.remove(id, exerciseId, req.user.userId);
   }
 }

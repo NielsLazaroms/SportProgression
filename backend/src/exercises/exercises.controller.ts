@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ExercisesService } from './exercises.service';
@@ -37,8 +38,8 @@ export class ExercisesController {
   })
   @ApiOkResponse({ type: [WorkoutExercise] })
   @Get()
-  findAll(@Param('workoutId') workoutId: string) {
-    return this.exercisesService.findAll(workoutId);
+  findAll(@Param('workoutId') workoutId: string, @Req() req) {
+    return this.exercisesService.findAll(workoutId, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Get a specific exercise by ID' })
@@ -56,8 +57,9 @@ export class ExercisesController {
   findOne(
     @Param('workoutId') workoutId: string,
     @Param('id', ParseIntPipe) id: number,
+    @Req() req,
   ) {
-    return this.exercisesService.findOne(id, workoutId);
+    return this.exercisesService.findOne(id, workoutId, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Log an exercise to a workout' })
@@ -70,8 +72,9 @@ export class ExercisesController {
   create(
     @Param('workoutId') workoutId: string,
     @Body() dto: CreateWorkoutExerciseDto,
+    @Req() req,
   ) {
-    return this.exercisesService.create(dto, workoutId);
+    return this.exercisesService.create(dto, workoutId, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Update a logged exercise' })
@@ -90,8 +93,9 @@ export class ExercisesController {
     @Param('workoutId') workoutId: string,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateWorkoutExerciseDto,
+    @Req() req,
   ) {
-    return this.exercisesService.update(id, dto, workoutId);
+    return this.exercisesService.update(id, dto, workoutId, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Delete a logged exercise' })
@@ -111,7 +115,8 @@ export class ExercisesController {
   remove(
     @Param('workoutId') workoutId: string,
     @Param('id', ParseIntPipe) id: number,
+    @Req() req,
   ) {
-    return this.exercisesService.remove(id, workoutId);
+    return this.exercisesService.remove(id, workoutId, req.user.userId);
   }
 }

@@ -8,5 +8,6 @@ import { Workout } from './workouts.entity';
   imports: [TypeOrmModule.forFeature([Workout])],
   controllers: [WorkoutsController],
   providers: [WorkoutsService],
+  exports: [WorkoutsService],
 })
 export class WorkoutsModule {}

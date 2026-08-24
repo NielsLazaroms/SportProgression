@@ -22,7 +22,9 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
-  app.useGlobalPipes(new ValidationPipe());
+  // whitelist strips properties that have no validation decorator, which
+  // blocks mass-assignment of server-controlled fields (e.g. createdByUserId).
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   const config = new DocumentBuilder()
     .setTitle('SportProgression')
     .setDescription('The SportProgression API description')

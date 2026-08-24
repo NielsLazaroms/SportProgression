@@ -1,40 +1,108 @@
-<div style="display: flex; justify-content: space-between; align-items: center;">
-  <h1>Oefeningen Catalogus</h1>
-  <button (click)="goBack()">← Terug naar workouts</button>
-</div>
+<app-header [title]="'def.title' | mnTranslate" (back)="back()">
+  <button
+    type="button"
+    (click)="openAdd()"
+    aria-label="Add exercise"
+    class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/15"
+  >
+    <app-icon [data]="{ name: 'plus', size: 24 }" />
+  </button>
+</app-header>
 
-<div *ngIf="errorMessage" style="color: red; margin-bottom: 1rem;">
-  {{ errorMessage }}
-</div>
+<main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
+  <p class="mb-4 text-sm text-on-surface-variant">
+    {{ 'def.note' | mnTranslate }}
+  </p>
 
-<section style="margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc;">
-  <h3>Nieuwe Oefening Aanmaken</h3>
-  <div style="margin-bottom: 0.5rem;">
-    <label>Naam:</label><br>
-    <input type="text" [(ngModel)]="newDefinition.name" placeholder="Bijv. Bench Press">
-  </div>
-  <div style="margin-bottom: 0.5rem;">
-    <label>Type:</label><br>
-    <select [(ngModel)]="newDefinition.type">
-      <option *ngFor="let t of exerciseTypes" [value]="t.value">{{ t.label }}</option>
-    </select>
-  </div>
-  <div style="margin-bottom: 0.5rem;">
-    <label>Spiergroep (optioneel):</label><br>
-    <input type="text" [(ngModel)]="newDefinition.muscleGroup" placeholder="Bijv. Chest">
-  </div>
-  <button (click)="addDefinition()">Toevoegen</button>
-</section>
+  @if (loading()) {
+    <div class="space-y-3">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <mn-skeleton [data]="{ shape: 'rectangle', height: '64px' }" class="rounded-xl" />
+      }
+    </div>
+  } @else if (!definitions().length) {
+    <div class="glass-card flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center">
+      <span class="text-outline"><app-icon [data]="{ name: 'list-plus', size: 40 }" /></span>
+      <p class="font-bold text-on-surface">{{ 'def.empty.title' | mnTranslate }}</p>
+      <p class="max-w-xs text-sm text-on-surface-variant">{{ 'def.empty.hint' | mnTranslate }}</p>
+    </div>
+  } @else {
+    <div class="space-y-3">
+      @for (def of definitions(); track def.id) {
+        <div class="glass-card flex items-center gap-3 rounded-xl p-4">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-surface-container-high text-primary">
+            <app-icon [data]="{ name: 'dumbbell', size: 20 }" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="truncate font-bold text-on-surface">{{ def.name }}</h3>
+            @if (def.muscleGroup) {
+              <span class="mt-0.5 inline-block rounded-full bg-surface-container-high px-2 py-0.5 text-[11px] font-semibold text-on-surface-variant">
+                {{ muscleLabel(def.muscleGroup) }}
+              </span>
+            }
+          </div>
+          @if (ownedByMe(def)) {
+            <button
+              type="button"
+              (click)="remove(def)"
+              aria-label="Delete exercise"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
+            >
+              <app-icon [data]="{ name: 'trash-2', size: 18 }" />
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+</main>
 
-<section>
-  <h3>Beschikbare Oefeningen</h3>
-  <ul style="list-style: none; padding: 0;">
-    <li *ngFor="let def of definitions" style="margin-bottom: 0.75rem; padding: 0.5rem; border-bottom: 1px solid #eee;">
-      <strong>{{ def.name }}</strong>
-      <span style="color: #666; margin-left: 0.5rem;">({{ def.type }})</span>
-      <span *ngIf="def.muscleGroup" style="color: #888; margin-left: 0.5rem;">- {{ def.muscleGroup }}</span>
-      <button (click)="deleteDefinition(def.id)" style="color: red; margin-left: 1rem;">Verwijderen</button>
-    </li>
-  </ul>
-  <p *ngIf="definitions.length === 0 && !errorMessage">Nog geen oefeningen in de catalogus.</p>
-</section>
+<!-- Add exercise bottom sheet -->
+@if (showAdd()) {
+  <mn-bottom-sheet
+    [maxHeightVh]="90"
+    [ariaLabel]="'def.new' | mnTranslate"
+    (dismiss)="showAdd.set(false)"
+  >
+    <div class="px-5 pb-6 pt-2">
+      <div class="mb-5 flex items-center justify-between">
+        <h2 class="font-display text-xl font-bold text-on-surface">{{ 'def.new' | mnTranslate }}</h2>
+        <button
+          type="button"
+          (click)="showAdd.set(false)"
+          aria-label="Close"
+          class="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/50"
+        >
+          <app-icon [data]="{ name: 'x', size: 22 }" />
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <mn-lib-input-field
+          [props]="{ id: 'defname', type: 'text', label: ('form.name' | mnTranslate), placeholder: ('def.name.ph' | mnTranslate), fullWidth: true }"
+          [(ngModel)]="name"
+          [ngModelOptions]="{ standalone: true }"
+        />
+        <mn-lib-select
+          [props]="{ id: 'defmuscle', label: ('def.muscle' | mnTranslate), options: muscleOptions, placeholder: ('def.muscle.ph' | mnTranslate), fullWidth: true }"
+          [(ngModel)]="muscleGroup"
+          [ngModelOptions]="{ standalone: true }"
+        />
+      </div>
+
+      <div class="mt-6 flex gap-3">
+        <button mnButton [data]="{ color: 'gray', size: 'lg', wrap: true }" class="flex-1" (click)="showAdd.set(false)">
+          {{ 'action.cancel' | mnTranslate }}
+        </button>
+        <button
+          mnButton
+          [data]="{ color: 'primary', size: 'lg', wrap: true, disabled: !name.trim() || !muscleGroup.trim() || saving() }"
+          class="flex-1"
+          (click)="add()"
+        >
+          {{ (saving() ? 'action.adding' : 'action.add') | mnTranslate }}
+        </button>
+      </div>
+    </div>
+  </mn-bottom-sheet>
+}

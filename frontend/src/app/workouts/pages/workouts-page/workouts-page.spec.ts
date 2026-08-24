@@ -1,22 +1,31 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideMnAlerts } from 'mn-angular-lib';
 
 import { WorkoutsPage } from './workouts-page';
 
 describe('WorkoutsPage', () => {
-  let component: WorkoutsPage;
   let fixture: ComponentFixture<WorkoutsPage>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [WorkoutsPage],
+      providers: [
+        provideZonelessChangeDetection(),
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideMnAlerts(),
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(WorkoutsPage);
-    component = fixture.componentInstance;
-    await fixture.whenStable();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });
