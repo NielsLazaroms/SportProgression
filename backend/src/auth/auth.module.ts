@@ -12,6 +12,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { RefreshToken } from './refresh-token.entity';
 import { TokenCleanupService } from './token-cleanup.service';
 import { EnvKey } from '../../envKey';
+import { DevSeedService } from './dev-seed.service';
 
 @Module({
   imports: [
@@ -31,6 +32,12 @@ import { EnvKey } from '../../envKey';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, GoogleStrategy, JwtStrategy, TokenCleanupService],
+  providers: [
+    AuthService,
+    GoogleStrategy,
+    JwtStrategy,
+    TokenCleanupService,
+    DevSeedService,
+  ],
 })
 export class AuthModule {}

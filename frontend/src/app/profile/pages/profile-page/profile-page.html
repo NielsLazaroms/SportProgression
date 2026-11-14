@@ -7,101 +7,118 @@
       @if (profile()?.picture) {
         <img
           [src]="profile()!.picture"
-          [alt]="displayName()"
+          alt=""
           class="h-24 w-24 rounded-full object-cover"
           referrerpolicy="no-referrer"
         />
       } @else {
         <div
+          aria-hidden="true"
           class="flex h-24 w-24 items-center justify-center rounded-full bg-surface-container-high font-display text-2xl font-extrabold text-primary"
         >
           {{ initials() || '—' }}
         </div>
       }
     </div>
-    <h2 class="mt-4 font-display text-2xl font-bold text-on-surface">
+    <h2 class="mt-4 max-w-full break-words font-display text-2xl font-bold text-on-surface">
       {{ displayName() || ('profile.athlete' | mnTranslate) }}
     </h2>
-    @if (profile()?.email) {
-      <p class="text-sm text-on-surface-variant">{{ profile()!.email }}</p>
+    @if (profile()?.email; as email) {
+      @if (email !== displayName()) {
+        <p class="max-w-full break-all text-sm text-on-surface-variant">{{ email }}</p>
+      }
     }
   </div>
 
-  <!-- Live stats -->
-  <div class="mb-8 mt-4 grid grid-cols-2 gap-3">
-    <div class="glass-card rounded-xl p-4 text-center">
-      <p class="tnum font-display text-2xl font-extrabold text-primary">
-        {{ workoutCount() === null ? '—' : workoutCount() }}
-      </p>
-      <p class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+  <!-- All-time totals (same numbers as Progress) -->
+  <dl class="mb-8 mt-4 grid grid-cols-2 gap-3">
+    <div class="glass-card flex flex-col-reverse rounded-xl p-4 text-center">
+      <dt class="mt-1 text-xs font-semibold text-on-surface-variant">
         {{ 'profile.workouts' | mnTranslate }}
-      </p>
+      </dt>
+      <dd class="tnum font-display text-2xl font-extrabold text-primary">
+        {{ workoutCount() === null ? '—' : countText(workoutCount()!) }}
+      </dd>
     </div>
-    <div class="glass-card rounded-xl p-4 text-center">
-      <p class="tnum font-display text-2xl font-extrabold text-primary">
-        {{ lifetimeVolume() === null ? '—' : compactKg(lifetimeVolume()!) }}
-      </p>
-      <p class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+    <div class="glass-card flex flex-col-reverse rounded-xl p-4 text-center">
+      <dt class="mt-1 text-xs font-semibold text-on-surface-variant">
         {{ 'profile.volumeKg' | mnTranslate }}
-      </p>
+      </dt>
+      <dd class="tnum font-display text-2xl font-extrabold text-primary">
+        {{ lifetimeVolume() === null ? '—' : volumeText(lifetimeVolume()!) }}
+      </dd>
     </div>
-  </div>
+  </dl>
 
-  <!-- Account -->
-  <p class="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-on-surface-variant">
-    {{ 'profile.account' | mnTranslate }}
-  </p>
-  <div class="mb-8 overflow-hidden rounded-xl glass-card">
-    <div class="flex items-center gap-3 px-4 py-4">
-      <app-icon [data]="{ name: 'mail', size: 20 }" />
-      <span class="flex-1 truncate text-on-surface">{{ profile()?.email || '—' }}</span>
-    </div>
-    <div class="h-px bg-outline-variant/30"></div>
-    <div class="flex items-center gap-3 px-4 py-4">
-      <app-icon [data]="{ name: 'link', size: 20 }" />
-      <span class="flex-1 text-on-surface">{{ 'profile.linked' | mnTranslate }}</span>
-      <span class="text-sm font-semibold text-on-surface-variant">Google</span>
-    </div>
-    <div class="h-px bg-outline-variant/30"></div>
+  <!-- Settings -->
+  <h2 class="mb-2 text-sm font-semibold text-on-surface-variant">
+    {{ 'profile.settings' | mnTranslate }}
+  </h2>
+  <div class="glass-card mb-8 overflow-hidden rounded-xl">
     <!-- Language switch -->
-    <div class="flex items-center gap-3 px-4 py-4">
-      <app-icon [data]="{ name: 'languages', size: 20 }" />
-      <span class="flex-1 text-on-surface">{{ 'profile.language' | mnTranslate }}</span>
-      <div class="flex overflow-hidden rounded-md border border-outline-variant/50">
-        <button
-          type="button"
-          (click)="setLanguage('en')"
-          class="px-3 py-1 text-sm font-bold transition-colors"
-          [class.bg-primary-container]="locale() === 'en'"
-          [class.text-white]="locale() === 'en'"
-          [class.text-on-surface-variant]="locale() !== 'en'"
-        >EN</button>
-        <button
-          type="button"
-          (click)="setLanguage('nl')"
-          class="px-3 py-1 text-sm font-bold transition-colors"
-          [class.bg-primary-container]="locale() === 'nl'"
-          [class.text-white]="locale() === 'nl'"
-          [class.text-on-surface-variant]="locale() !== 'nl'"
-        >NL</button>
+    <div class="px-4 py-4">
+      <p id="lang-label" class="mb-3 flex items-center gap-3 text-on-surface">
+        <app-icon [data]="{ name: 'languages', size: 20 }" />
+        {{ 'profile.language' | mnTranslate }}
+      </p>
+      <div
+        role="group"
+        aria-labelledby="lang-label"
+        class="grid grid-cols-2 gap-1 rounded-xl border border-outline-variant p-1"
+      >
+        @for (l of languages; track l.code) {
+          <button
+            type="button"
+            (click)="setLanguage(l.code)"
+            [attr.aria-pressed]="locale() === l.code"
+            [attr.lang]="l.code"
+            class="flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-bold transition-colors"
+            [class.bg-primary-container]="locale() === l.code"
+            [class.text-on-primary-container]="locale() === l.code"
+            [class.text-on-surface-variant]="locale() !== l.code"
+            [class.hover:bg-surface-variant/40]="locale() !== l.code"
+          >
+            @if (locale() === l.code) {
+              <app-icon [data]="{ name: 'check', size: 16 }" />
+            }
+            {{ l.label }}
+          </button>
+        }
       </div>
     </div>
     <div class="h-px bg-outline-variant/30"></div>
-    <div class="flex items-center gap-3 px-4 py-4">
-      <app-icon [data]="{ name: 'ruler', size: 20 }" />
-      <span class="flex-1 text-on-surface">{{ 'profile.units' | mnTranslate }}</span>
-      <span class="rounded-md bg-primary-container px-2.5 py-1 text-sm font-bold text-white">kg</span>
+    <!-- Theme -->
+    <div class="px-4 py-4">
+      <p id="theme-label" class="mb-3 flex items-center gap-3 text-on-surface">
+        <app-icon [data]="{ name: 'sun', size: 20 }" />
+        {{ 'profile.theme' | mnTranslate }}
+      </p>
+      <div
+        role="group"
+        aria-labelledby="theme-label"
+        class="grid grid-cols-3 gap-1 rounded-xl border border-outline-variant p-1"
+      >
+        @for (t of themes; track t.id) {
+          <button
+            type="button"
+            (click)="setTheme(t.id)"
+            [attr.aria-pressed]="themeChoice() === t.id"
+            class="flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-sm font-bold transition-colors min-[360px]:flex-row min-[360px]:gap-1.5"
+            [class.bg-primary-container]="themeChoice() === t.id"
+            [class.text-on-primary-container]="themeChoice() === t.id"
+            [class.text-on-surface-variant]="themeChoice() !== t.id"
+            [class.hover:bg-surface-variant/40]="themeChoice() !== t.id"
+          >
+            <app-icon [data]="{ name: t.icon, size: 16 }" />
+            <span class="min-w-0 break-words">{{ t.label | mnTranslate }}</span>
+          </button>
+        }
+      </div>
     </div>
-  </div>
-
-  <!-- Training -->
-  <p class="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-on-surface-variant">
-    {{ 'profile.training' | mnTranslate }}
-  </p>
-  <div class="mb-8 overflow-hidden rounded-xl glass-card">
+    <div class="h-px bg-outline-variant/30"></div>
     <a
       routerLink="/exercise-definitions"
-      class="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-surface-variant/30"
+      class="flex min-h-14 items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-variant/30"
     >
       <app-icon [data]="{ name: 'list-checks', size: 20 }" />
       <span class="flex-1 text-on-surface">{{ 'profile.catalog' | mnTranslate }}</span>
@@ -109,11 +126,43 @@
     </a>
   </div>
 
+  <!-- Your data -->
+  <p class="mb-2 mt-8 text-xs font-semibold uppercase tracking-[0.15em] text-on-surface-variant">
+    {{ 'profile.data' | mnTranslate }}
+  </p>
+  <div class="mb-8 overflow-hidden rounded-xl glass-card">
+    <button
+      type="button"
+      (click)="exportData()"
+      [disabled]="exporting()"
+      class="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-variant/30 disabled:opacity-60"
+    >
+      <app-icon [data]="{ name: 'save', size: 20 }" />
+      <span class="flex-1">
+        <span class="block text-on-surface">{{ 'profile.export' | mnTranslate }}</span>
+        <span class="block text-xs text-on-surface-variant">{{ 'profile.export.hint' | mnTranslate }}</span>
+      </span>
+    </button>
+    <div class="h-px bg-outline-variant/30"></div>
+    <button
+      type="button"
+      (click)="deleteAccount()"
+      [disabled]="deleting()"
+      class="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left text-error transition-colors hover:bg-error/10 disabled:opacity-60"
+    >
+      <app-icon [data]="{ name: 'trash-2', size: 20 }" />
+      <span class="flex-1">
+        <span class="block">{{ 'profile.delete' | mnTranslate }}</span>
+        <span class="block text-xs text-on-surface-variant">{{ 'profile.delete.hint' | mnTranslate }}</span>
+      </span>
+    </button>
+  </div>
+
   <!-- Sign out -->
   <button
     type="button"
     (click)="logout()"
-    class="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-error/40 font-semibold text-error transition-colors hover:bg-error/10"
+    class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-error/40 px-4 font-semibold text-error transition-colors hover:bg-error/10"
   >
     <app-icon [data]="{ name: 'log-out', size: 20, color: 'danger' }" />
     {{ 'profile.signOut' | mnTranslate }}

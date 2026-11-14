@@ -28,6 +28,23 @@ import {
   LucideTrendingUp,
   LucideUser,
   LucideX,
+  LucideArrowDownRight,
+  LucideArrowUpRight,
+  LucideAward,
+  LucideCalendarDays,
+  LucideChevronDown,
+  LucideLockOpen,
+  LucideRotateCcw,
+  LucideSave,
+  LucideSkipForward,
+  LucideStickyNote,
+  LucideTarget,
+  LucideTimer,
+  LucideTrophy,
+  LucideZap,
+  LucideMonitor,
+  LucideMoon,
+  LucideSun,
 } from '@lucide/angular';
 
 /**
@@ -39,6 +56,9 @@ import {
   selector: 'app-icon',
   standalone: true,
   imports: [
+    LucideMonitor,
+    LucideMoon,
+    LucideSun,
     LucideArrowLeft,
     LucideCalendar,
     LucideChartColumn,
@@ -67,6 +87,20 @@ import {
     LucideTrendingUp,
     LucideUser,
     LucideX,
+    LucideArrowDownRight,
+    LucideArrowUpRight,
+    LucideAward,
+    LucideCalendarDays,
+    LucideChevronDown,
+    LucideLockOpen,
+    LucideRotateCcw,
+    LucideSave,
+    LucideSkipForward,
+    LucideStickyNote,
+    LucideTarget,
+    LucideTimer,
+    LucideTrophy,
+    LucideZap,
   ],
   template: `
     @switch (data().name) {
@@ -98,6 +132,23 @@ import {
       @case ('trending-up') { <svg lucideTrendingUp [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('user') { <svg lucideUser [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('x') { <svg lucideX [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('arrow-down-right') { <svg lucideArrowDownRight [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('arrow-up-right') { <svg lucideArrowUpRight [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('award') { <svg lucideAward [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('calendar-days') { <svg lucideCalendarDays [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('chevron-down') { <svg lucideChevronDown [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('lock-open') { <svg lucideLockOpen [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('rotate-ccw') { <svg lucideRotateCcw [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('save') { <svg lucideSave [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('skip-forward') { <svg lucideSkipForward [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('sticky-note') { <svg lucideStickyNote [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('target') { <svg lucideTarget [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('timer') { <svg lucideTimer [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('trophy') { <svg lucideTrophy [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('monitor') { <svg lucideMonitor [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('moon') { <svg lucideMoon [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('sun') { <svg lucideSun [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('zap') { <svg lucideZap [style.width.px]="size()" [style.height.px]="size()"></svg> }
     }
   `,
 })

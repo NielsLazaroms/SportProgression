@@ -29,7 +29,7 @@ export class AuthService {
     const user = await this.users.findOrCreateFromGoogle(profile);
 
     const family = crypto.randomUUID();
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user);
     await this.storeRefreshToken(user.id, tokens.refreshToken, family);
 
     return {
@@ -93,7 +93,7 @@ export class AuthService {
     await this.refreshTokenRepo.save(matchedToken);
 
     // Issue new tokens in the same family
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user);
     await this.storeRefreshToken(user.id, tokens.refreshToken, matchedToken.family);
 
     return tokens;
@@ -116,7 +116,9 @@ export class AuthService {
   }
 
   async logout(userId: string) {
-    // Revoke all refresh tokens for this user
+    // End the session right now: outstanding access tokens stop working...
+    await this.users.bumpTokenVersion(userId);
+    // ...and no refresh token can mint a new one.
     await this.refreshTokenRepo.update(
       { userId, isRevoked: false },
       { isRevoked: true },
@@ -145,8 +147,17 @@ export class AuthService {
     );
   }
 
-  private async generateTokens(userId: string, email: string) {
-    const payload = { sub: userId, email };
+  private async generateTokens(user: {
+    id: string;
+    email: string;
+    tokenVersion?: number;
+  }) {
+    // `tv` ties the token to the user's current token version (see User).
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      tv: user.tokenVersion ?? 0,
+    };
 
     const accessToken = await this.jwt.signAsync(payload, {
       secret: this.config.get<string>(EnvKey.JWT_SECRET),

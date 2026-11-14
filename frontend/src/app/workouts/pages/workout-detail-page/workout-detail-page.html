@@ -1,17 +1,18 @@
 <app-header [title]="workout()?.name || ('nav.workouts' | mnTranslate)" (back)="back()">
-  @if (workout() && !completed()) {
+  @if (workout()) {
     <button
       type="button"
       (click)="deleteWorkout()"
-      aria-label="Delete workout"
-      class="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
+      [attr.aria-label]="'detail.aria.deleteWorkout' | mnTranslate"
+      [attr.title]="'detail.aria.deleteWorkout' | mnTranslate"
+      class="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
     >
       <app-icon [data]="{ name: 'trash-2', size: 20 }" />
     </button>
   }
 </app-header>
 
-<main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
+<main class="mx-auto max-w-2xl px-3 pb-28 pt-20 min-[360px]:px-4">
   @if (loading()) {
     <div class="space-y-3">
       <mn-skeleton [data]="{ shape: 'rectangle', height: '112px' }" class="rounded-2xl" />
@@ -21,52 +22,74 @@
     <!-- Summary -->
     <section class="mb-5 glass-card rounded-2xl p-5">
       <div class="flex items-center justify-between gap-2">
-        <p class="text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+        <p class="min-w-0 text-xs font-semibold uppercase tracking-[0.15em] text-primary">
           {{ rel(w.date) }}
         </p>
         @if (completed()) {
-          <span class="flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-success">
+          <span class="flex shrink-0 items-center gap-1 rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-success">
             <app-icon [data]="{ name: 'check', size: 14 }" />
             {{ 'detail.completed.badge' | mnTranslate }}
           </span>
+        } @else {
+          <button
+            type="button"
+            (click)="openEdit()"
+            [attr.aria-label]="'detail.editDetails' | mnTranslate"
+            [attr.title]="'detail.editDetails' | mnTranslate"
+            class="-my-2 -mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant/50 hover:text-primary"
+          >
+            <app-icon [data]="{ name: 'pencil', size: 18 }" />
+          </button>
         }
       </div>
       @if (w.description) {
-        <p class="mt-1 text-sm text-on-surface-variant">{{ w.description }}</p>
+        <p class="mt-2 flex items-start gap-2 text-sm text-on-surface-variant">
+          <span class="mt-0.5 shrink-0 text-outline"><app-icon [data]="{ name: 'sticky-note', size: 16 }" /></span>
+          <span class="min-w-0 whitespace-pre-line break-words">{{ w.description }}</span>
+        </p>
+      } @else if (!completed()) {
+        <button
+          type="button"
+          (click)="openEdit()"
+          class="-ml-1 mt-1 flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-left text-sm font-semibold text-primary"
+        >
+          <app-icon [data]="{ name: 'sticky-note', size: 16 }" />
+          {{ 'detail.note.add' | mnTranslate }}
+        </button>
       }
-      <div class="mt-4 grid grid-cols-3 gap-3 text-center">
-        <div>
+      <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+        <div class="min-w-0">
           <p class="tnum font-display text-xl font-extrabold text-on-surface">{{ exercises().length }}</p>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.exercises' | mnTranslate }}</p>
+          <p class="break-words text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.exercises' | mnTranslate }}</p>
         </div>
-        <div>
+        <div class="min-w-0">
           <p class="tnum font-display text-xl font-extrabold text-on-surface">{{ totalSets() }}</p>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.sets' | mnTranslate }}</p>
+          <p class="break-words text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.sets' | mnTranslate }}</p>
         </div>
-        <div>
-          <p class="tnum font-display text-xl font-extrabold text-primary">{{ compactKg(volume()) }}</p>
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.volumeKg' | mnTranslate }}</p>
+        <div class="min-w-0">
+          <p class="tnum font-display text-xl font-extrabold text-primary">{{ volumeText() }}</p>
+          <p class="break-words text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.volumeKg' | mnTranslate }}</p>
         </div>
       </div>
 
       @if (!completed() && exercises().length) {
-        <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-surface-container-high">
+        <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-surface-container-high" aria-hidden="true">
           <div
             class="h-full rounded-full bg-success transition-all duration-300"
             [style.width.%]="(finishedCount() / exercises().length) * 100"
           ></div>
         </div>
         <p class="mt-1.5 text-right text-[11px] font-semibold text-on-surface-variant">
-          {{ finishedCount() }} / {{ exercises().length }}
+          {{ 'detail.progress' | mnTranslate: { done: finishedCount(), total: exercises().length } }}
         </p>
       }
     </section>
 
     @if (completed()) {
-      <!-- ============ LOCKED / read-only accordion ============ -->
-      <div class="mb-4 flex items-center gap-2 rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
-        <app-icon [data]="{ name: 'check', size: 18 }" />
-        <span>{{ 'detail.completed.banner' | mnTranslate }}</span>
+      <!-- ============ FINISHED / read-only accordion ============ -->
+      <div class="mb-4 flex items-start gap-2 rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
+        <span class="mt-0.5 shrink-0"><app-icon [data]="{ name: 'check', size: 18 }" /></span>
+        <span class="min-w-0">{{ 'detail.completed.banner' | mnTranslate }}</span>
       </div>
 
       @for (ex of exercises(); track ex.id) {
@@ -82,8 +105,8 @@
             </span>
             <span class="min-w-0 flex-1">
               <span class="block truncate font-bold text-on-surface">{{ ex.name }}</span>
-              <span class="block text-xs text-on-surface-variant">
-                {{ ex.sets.length }} {{ 'unit.sets' | mnTranslate }} · {{ compactKg(exerciseVolume(ex)) }} {{ 'unit.kg' | mnTranslate }}
+              <span class="tnum block text-xs text-on-surface-variant">
+                {{ exerciseMeta(ex) }}
                 @if (ex.muscleGroup) {
                   <span> · {{ muscleLabel(ex.muscleGroup) }}</span>
                 }
@@ -98,32 +121,27 @@
           </button>
 
           @if (isExpanded(ex.id)) {
-            <div class="divide-y divide-outline-variant/20 border-t border-outline-variant/30">
-              @for (set of ex.sets; track set.setId) {
-                <div class="flex items-center gap-3 px-4 py-3">
-                  <span class="flex h-7 w-7 items-center justify-center rounded-full bg-success/15 text-xs font-bold text-success">{{ $index + 1 }}</span>
-                  <div class="tnum flex items-center gap-1 font-semibold text-on-surface">
-                    <span>{{ set.repsAmount }}</span>
-                    <span class="text-on-surface-variant">{{ 'detail.reps.short' | mnTranslate }}</span>
-                    <span class="mx-1 text-outline-variant">×</span>
-                    <span>{{ set.weightKg }}</span>
-                    <span class="text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
-                  </div>
-                </div>
-              }
-            </div>
-            @if (ex.notes) {
-              <p class="border-t border-outline-variant/20 px-4 py-3 text-sm italic text-on-surface-variant">{{ ex.notes }}</p>
-            }
+            <ng-container [ngTemplateOutlet]="readonlySets" [ngTemplateOutletContext]="{ $implicit: ex }" />
           }
         </section>
       }
+
+      <button
+        type="button"
+        (click)="reopenWorkout()"
+        [disabled]="reopening()"
+        class="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-outline-variant/50 px-3 font-bold text-on-surface transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <app-icon [data]="{ name: 'lock-open', size: 18 }" />
+        {{ (reopening() ? 'action.saving' : 'detail.reopen') | mnTranslate }}
+      </button>
     } @else {
       <!-- ============ EDITABLE / focused accordion ============ -->
       @for (ex of exercises(); track ex.id) {
         @let st = state(ex);
         <section
-          class="mb-3 overflow-hidden rounded-2xl glass-card transition-colors"
+          [id]="'ex-' + ex.id"
+          class="mb-3 scroll-mt-20 overflow-hidden rounded-2xl glass-card transition-colors"
           [class.border-primary-container]="st === 'active'"
           [class.active-glow]="st === 'active'"
         >
@@ -140,40 +158,22 @@
               </span>
               <span class="min-w-0 flex-1">
                 <span class="block truncate font-bold text-on-surface">{{ ex.name }}</span>
-                <span class="block text-xs text-on-surface-variant">
-                  {{ ex.sets.length }} {{ 'unit.sets' | mnTranslate }} · {{ compactKg(exerciseVolume(ex)) }} {{ 'unit.kg' | mnTranslate }}
-                </span>
+                <span class="tnum block text-xs text-on-surface-variant">{{ exerciseMeta(ex) }}</span>
               </span>
               <span class="shrink-0 text-on-surface-variant transition-transform duration-200" [class.rotate-90]="isExpanded(ex.id)">
                 <app-icon [data]="{ name: 'chevron-right', size: 20 }" />
               </span>
             </button>
             @if (isExpanded(ex.id)) {
-              <div class="divide-y divide-outline-variant/20 border-t border-outline-variant/30">
-                @for (set of ex.sets; track set.setId) {
-                  <div class="flex items-center gap-3 px-4 py-3">
-                    <span class="flex h-7 w-7 items-center justify-center rounded-full bg-success/15 text-xs font-bold text-success">{{ $index + 1 }}</span>
-                    <div class="tnum flex items-center gap-1 font-semibold text-on-surface">
-                      <span>{{ set.repsAmount }}</span>
-                      <span class="text-on-surface-variant">{{ 'detail.reps.short' | mnTranslate }}</span>
-                      <span class="mx-1 text-outline-variant">×</span>
-                      <span>{{ set.weightKg }}</span>
-                      <span class="text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
-                    </div>
-                  </div>
-                }
-              </div>
-              @if (ex.notes) {
-                <p class="border-t border-outline-variant/20 px-4 py-3 text-sm italic text-on-surface-variant">{{ ex.notes }}</p>
-              }
+              <ng-container [ngTemplateOutlet]="readonlySets" [ngTemplateOutletContext]="{ $implicit: ex }" />
               <div class="p-3">
                 <button
                   type="button"
                   (click)="reopenExercise(ex)"
-                  class="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-outline-variant/50 text-sm font-bold text-on-surface transition-colors hover:border-primary hover:text-primary"
+                  class="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-outline-variant/50 px-3 py-2 text-sm font-bold text-on-surface transition-colors hover:border-primary hover:text-primary"
                 >
-                  <app-icon [data]="{ name: 'pencil', size: 16 }" />
-                  {{ 'detail.editExercise' | mnTranslate }}
+                  <span class="shrink-0"><app-icon [data]="{ name: 'pencil', size: 16 }" /></span>
+                  {{ 'detail.reopenExercise' | mnTranslate }}
                 </button>
               </div>
             }
@@ -188,9 +188,9 @@
               </span>
               <span class="min-w-0 flex-1">
                 <span class="block truncate font-bold text-on-surface">{{ ex.name }}</span>
-                <span class="block text-xs text-on-surface-variant">
+                <span class="tnum block text-xs text-on-surface-variant">
                   @if (ex.sets.length) {
-                    {{ ex.sets.length }} {{ 'unit.sets' | mnTranslate }} · {{ compactKg(exerciseVolume(ex)) }} {{ 'unit.kg' | mnTranslate }}
+                    {{ exerciseMeta(ex) }} · {{ 'detail.tapToContinue' | mnTranslate }}
                   } @else {
                     {{ 'detail.tapToLog' | mnTranslate }}
                   }
@@ -198,9 +198,10 @@
               </span>
             </button>
           } @else {
+            @let d = draft(ex.id);
             <header class="flex items-start justify-between gap-3 border-b border-outline-variant/30 p-4">
               <div class="min-w-0">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-x-2">
                   <span class="rounded-full bg-primary-container/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
                     {{ 'detail.active' | mnTranslate }}
                   </span>
@@ -208,64 +209,326 @@
                     <span class="text-[11px] font-semibold text-on-surface-variant">{{ muscleLabel(ex.muscleGroup) }}</span>
                   }
                 </div>
-                <h3 class="mt-1 truncate font-display text-lg font-bold text-on-surface">{{ ex.name }}</h3>
+                <h3 class="mt-1 break-words font-display text-lg font-bold leading-snug text-on-surface">{{ ex.name }}</h3>
               </div>
               <button
                 type="button"
                 (click)="deleteExercise(ex)"
-                aria-label="Remove exercise"
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
+                [attr.aria-label]="'detail.aria.removeExercise' | mnTranslate: { name: ex.name }"
+                [attr.title]="'detail.aria.removeExercise' | mnTranslate: { name: ex.name }"
+                class="-mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
               >
                 <app-icon [data]="{ name: 'trash-2', size: 18 }" />
               </button>
             </header>
 
-            <div class="divide-y divide-outline-variant/20">
-              @for (set of ex.sets; track set.setId) {
-                <div class="flex items-center gap-3 px-4 py-3">
-                  <span class="flex h-7 w-7 items-center justify-center rounded-full bg-success/15 text-xs font-bold text-success">{{ $index + 1 }}</span>
-                  <div class="tnum flex flex-1 items-center gap-1 font-semibold text-on-surface">
-                    <span>{{ set.repsAmount }}</span>
-                    <span class="text-on-surface-variant">{{ 'detail.reps.short' | mnTranslate }}</span>
-                    <span class="mx-1 text-outline-variant">×</span>
-                    <span>{{ set.weightKg }}</span>
-                    <span class="text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
+            @if (refs().get(ex.id); as ref) {
+              <!-- Last time: what to beat -->
+              <div class="border-b border-outline-variant/30 bg-surface-container-low/50 px-4 py-3">
+                <div class="flex items-start gap-2">
+                  <span class="mt-0.5 shrink-0 text-primary"><app-icon [data]="{ name: 'history', size: 16 }" /></span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+                      {{ (ref.offset === 0 ? 'detail.lastTime' : 'detail.earlierSession') | mnTranslate }}
+                      · <span class="text-on-surface">{{ refDate(ref.shown.date) }}</span>
+                    </p>
+                    <p class="truncate text-xs text-on-surface-variant">{{ ref.shown.workoutName }}</p>
                   </div>
-                  <button
-                    type="button"
-                    (click)="deleteSet(ex, set.setId)"
-                    aria-label="Remove set"
-                    class="flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
-                  >
-                    <app-icon [data]="{ name: 'x', size: 16 }" />
-                  </button>
+                  @if (ref.maxOffset > 0) {
+                    <div class="-my-2 -mr-2 flex shrink-0">
+                      <button
+                        type="button"
+                        (click)="shiftRef(ex, 1)"
+                        [disabled]="ref.offset >= ref.maxOffset"
+                        [attr.aria-label]="'detail.aria.refOlder' | mnTranslate"
+                        [attr.title]="'detail.aria.refOlder' | mnTranslate"
+                        class="flex h-11 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        <span class="rotate-180"><app-icon [data]="{ name: 'chevron-right', size: 20 }" /></span>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="shiftRef(ex, -1)"
+                        [disabled]="ref.offset === 0"
+                        [attr.aria-label]="'detail.aria.refNewer' | mnTranslate"
+                        [attr.title]="'detail.aria.refNewer' | mnTranslate"
+                        class="flex h-11 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        <app-icon [data]="{ name: 'chevron-right', size: 20 }" />
+                      </button>
+                    </div>
+                  }
                 </div>
-              } @empty {
-                <p class="px-4 py-3 text-sm text-on-surface-variant">{{ 'detail.noSets' | mnTranslate }}</p>
+                <div class="tnum mt-2 flex flex-wrap gap-1.5">
+                  @for (s of ref.shown.sets; track $index) {
+                    <span
+                      class="rounded-md border px-2 py-1 text-sm font-bold"
+                      [class]="$index === workingCount(ex)
+                        ? 'border-primary-container/60 bg-primary-container/15 text-primary'
+                        : 'border-transparent bg-surface-container-high text-on-surface'"
+                    >{{ chipText(s.reps, s.weightKg) }}</span>
+                  }
+                </div>
+                @if (ref.best; as best) {
+                  <p class="tnum mt-2 text-xs font-semibold text-on-surface-variant">
+                    {{ 'detail.lastTime.best' | mnTranslate }}
+                    <span class="text-on-surface">{{ setText(best.reps, best.weightKg) }}</span>
+                  </p>
+                }
+              </div>
+            }
+
+            <!-- Log form: sits above the logged sets so it never moves -->
+            <div
+              class="border-b border-outline-variant/30 px-1.5 py-3 transition-colors min-[360px]:px-3"
+              [class]="d.warmup ? 'bg-warning/10' : 'bg-surface-container-low/50'"
+            >
+              <div class="grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-1.5 min-[360px]:gap-2">
+                <div class="min-w-0">
+                  <label [attr.for]="'reps-' + ex.id" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.reps' | mnTranslate }}</label>
+                  <div class="flex items-stretch overflow-hidden rounded-lg border border-control bg-surface-container focus-within:border-primary">
+                    <button
+                      type="button"
+                      tabindex="-1"
+                      (click)="step(ex.id, 'reps', -1)"
+                      [attr.aria-label]="'detail.aria.repsMinus' | mnTranslate"
+                      class="flex h-12 w-[44px] shrink-0 items-center justify-center text-on-surface-variant active:bg-surface-variant/40"
+                    ><app-icon [data]="{ name: 'minus', size: 18 }" /></button>
+                    <input
+                      [id]="'reps-' + ex.id"
+                      type="number"
+                      inputmode="numeric"
+                      min="1"
+                      step="1"
+                      [ngModel]="d.reps"
+                      (ngModelChange)="setDraft(ex.id, 'reps', $event)"
+                      [ngModelOptions]="{ standalone: true }"
+                      (keydown.enter)="addSet(ex)"
+                      (wheel)="blurOnWheel($event)"
+                      [attr.aria-label]="'detail.reps' | mnTranslate"
+                      class="tnum h-12 w-full min-w-0 flex-1 bg-transparent px-0 text-center text-base font-bold text-on-surface outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      tabindex="-1"
+                      (click)="step(ex.id, 'reps', 1)"
+                      [attr.aria-label]="'detail.aria.repsPlus' | mnTranslate"
+                      class="flex h-12 w-[44px] shrink-0 items-center justify-center text-on-surface-variant active:bg-surface-variant/40"
+                    ><app-icon [data]="{ name: 'plus', size: 18 }" /></button>
+                  </div>
+                </div>
+                <div class="min-w-0">
+                  <label [attr.for]="'weight-' + ex.id" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.weightKg' | mnTranslate }}</label>
+                  <div class="flex items-stretch overflow-hidden rounded-lg border border-control bg-surface-container focus-within:border-primary">
+                    <button
+                      type="button"
+                      tabindex="-1"
+                      (click)="step(ex.id, 'weight', -2.5)"
+                      [attr.aria-label]="'detail.aria.weightMinus' | mnTranslate: { n: num(2.5) }"
+                      class="flex h-12 w-[44px] shrink-0 items-center justify-center text-on-surface-variant active:bg-surface-variant/40"
+                    ><app-icon [data]="{ name: 'minus', size: 18 }" /></button>
+                    <input
+                      [id]="'weight-' + ex.id"
+                      type="number"
+                      inputmode="decimal"
+                      min="0"
+                      step="any"
+                      [ngModel]="d.weight"
+                      (ngModelChange)="setDraft(ex.id, 'weight', $event)"
+                      [ngModelOptions]="{ standalone: true }"
+                      (keydown.enter)="addSet(ex)"
+                      (wheel)="blurOnWheel($event)"
+                      [attr.aria-label]="'detail.weightKg' | mnTranslate"
+                      class="tnum h-12 w-full min-w-0 flex-1 bg-transparent px-0 text-center text-base font-bold text-on-surface outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      tabindex="-1"
+                      (click)="step(ex.id, 'weight', 2.5)"
+                      [attr.aria-label]="'detail.aria.weightPlus' | mnTranslate: { n: num(2.5) }"
+                      class="flex h-12 w-[44px] shrink-0 items-center justify-center text-on-surface-variant active:bg-surface-variant/40"
+                    ><app-icon [data]="{ name: 'plus', size: 18 }" /></button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  (click)="toggleWarmup(ex.id)"
+                  [attr.aria-pressed]="d.warmup"
+                  class="flex min-h-12 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-bold transition-colors"
+                  [class]="d.warmup
+                    ? 'border-warning bg-warning text-warning-content'
+                    : 'border-control text-on-surface-variant'"
+                >
+                  <span
+                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]"
+                    [class]="d.warmup ? 'bg-warning-content/20' : 'bg-surface-container-high'"
+                  >
+                    @if (d.warmup) {
+                      <app-icon [data]="{ name: 'check', size: 14 }" />
+                    } @else {
+                      {{ 'detail.warmup.badge' | mnTranslate }}
+                    }
+                  </span>
+                  {{ 'detail.warmup.toggle' | mnTranslate }}
+                </button>
+                <button
+                  type="button"
+                  (click)="addSet(ex)"
+                  [disabled]="!canLog(ex.id) || logging()"
+                  class="flex min-h-12 min-w-[7.5rem] flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1 text-center font-bold leading-tight active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                  [class]="d.warmup ? 'bg-warning text-warning-content' : 'bg-primary text-on-primary-container'"
+                >
+                  @if (!logging()) {
+                    <span class="shrink-0"><app-icon [data]="{ name: 'plus', size: 18 }" /></span>
+                  }
+                  {{ (logging() ? 'action.saving' : d.warmup ? 'detail.log.warmup' : 'detail.log') | mnTranslate }}
+                </button>
+              </div>
+              @if (d.warmup) {
+                <p class="mt-2 text-xs font-semibold text-warning" role="status">
+                  {{ 'detail.warmup.on' | mnTranslate }}
+                </p>
               }
             </div>
 
-            <div class="flex items-end gap-2 bg-surface-container-low/50 p-3">
-              <div class="flex-1">
-                <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.reps' | mnTranslate }}</p>
-                <div class="flex items-center overflow-hidden rounded-lg border border-outline-variant/40 bg-surface-container">
-                  <button type="button" (click)="step(ex.id, 'reps', -1)" class="flex h-11 w-10 items-center justify-center text-on-surface-variant active:bg-surface-variant/40" aria-label="-1 rep"><app-icon [data]="{ name: 'minus', size: 18 }" /></button>
-                  <input type="number" [(ngModel)]="draft(ex.id).reps" [ngModelOptions]="{ standalone: true }" inputmode="numeric" class="tnum h-11 w-full min-w-0 border-x border-outline-variant/40 bg-transparent text-center font-bold text-on-surface outline-none" />
-                  <button type="button" (click)="step(ex.id, 'reps', 1)" class="flex h-11 w-10 items-center justify-center text-on-surface-variant active:bg-surface-variant/40" aria-label="+1 rep"><app-icon [data]="{ name: 'plus', size: 18 }" /></button>
+            @if (undo(); as u) {
+              @if (u.exerciseId === ex.id) {
+                <!-- Just removed a set: a few seconds to take it back -->
+                <div role="status" class="flex items-center gap-2 border-b border-outline-variant/30 bg-surface-container-high py-1 pl-4 pr-2">
+                  <span class="tnum min-w-0 flex-1 text-sm text-on-surface">
+                    {{ 'detail.undo.removed' | mnTranslate: { set: setText(u.reps, u.weightKg) } }}
+                  </span>
+                  <button
+                    type="button"
+                    (click)="undoDelete()"
+                    [disabled]="restoring()"
+                    class="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-bold text-primary transition-colors hover:bg-primary-container/15 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <app-icon [data]="{ name: 'rotate-ccw', size: 16 }" />
+                    {{ (restoring() ? 'action.saving' : 'detail.undo') | mnTranslate }}
+                  </button>
                 </div>
-              </div>
-              <div class="flex-1">
-                <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.weightKg' | mnTranslate }}</p>
-                <div class="flex items-center overflow-hidden rounded-lg border border-outline-variant/40 bg-surface-container">
-                  <button type="button" (click)="step(ex.id, 'weight', -2.5)" class="flex h-11 w-10 items-center justify-center text-on-surface-variant active:bg-surface-variant/40" aria-label="-2.5 kg"><app-icon [data]="{ name: 'minus', size: 18 }" /></button>
-                  <input type="number" [(ngModel)]="draft(ex.id).weight" [ngModelOptions]="{ standalone: true }" inputmode="decimal" step="2.5" class="tnum h-11 w-full min-w-0 border-x border-outline-variant/40 bg-transparent text-center font-bold text-on-surface outline-none" />
-                  <button type="button" (click)="step(ex.id, 'weight', 2.5)" class="flex h-11 w-10 items-center justify-center text-on-surface-variant active:bg-surface-variant/40" aria-label="+2.5 kg"><app-icon [data]="{ name: 'plus', size: 18 }" /></button>
-                </div>
-              </div>
-              <button type="button" (click)="addSet(ex)" class="flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 font-bold text-on-primary-container active:scale-95">
-                <app-icon [data]="{ name: 'plus', size: 18 }" />
-                {{ 'detail.log' | mnTranslate }}
-              </button>
+              }
+            }
+
+            <div class="divide-y divide-outline-variant/20">
+              @for (set of ex.sets; track set.setId) {
+                @if (editingSetId() === set.setId) {
+                  <!-- Inline set editor -->
+                  <div class="space-y-2 bg-surface-container-low/60 px-3 py-2.5" (keydown.escape)="cancelEditSet()">
+                    <div class="flex items-center gap-2">
+                      <input
+                        type="number"
+                        [(ngModel)]="editReps"
+                        [ngModelOptions]="{ standalone: true }"
+                        inputmode="numeric"
+                        min="1"
+                        step="1"
+                        [attr.aria-label]="'detail.reps' | mnTranslate"
+                        (keydown.enter)="saveSet(ex, set)"
+                        (wheel)="blurOnWheel($event)"
+                        class="tnum h-11 w-full min-w-0 flex-1 rounded-lg border border-control bg-surface-container px-1 text-center text-base font-bold text-on-surface outline-none focus:border-primary [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                      <span class="shrink-0 text-outline">×</span>
+                      <input
+                        type="number"
+                        [(ngModel)]="editWeight"
+                        [ngModelOptions]="{ standalone: true }"
+                        inputmode="decimal"
+                        min="0"
+                        step="any"
+                        [attr.aria-label]="'detail.weightKg' | mnTranslate"
+                        (keydown.enter)="saveSet(ex, set)"
+                        (wheel)="blurOnWheel($event)"
+                        class="tnum h-11 w-full min-w-0 flex-[1.5] rounded-lg border border-control bg-surface-container px-1 text-center text-base font-bold text-on-surface outline-none focus:border-primary [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                      <span class="shrink-0 text-sm text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        (click)="editWarmup.set(!editWarmup())"
+                        [attr.aria-pressed]="editWarmup()"
+                        class="mr-auto flex min-h-11 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-bold transition-colors"
+                        [class]="editWarmup()
+                          ? 'border-warning bg-warning text-warning-content'
+                          : 'border-control text-on-surface-variant'"
+                      >
+                        <span
+                          class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]"
+                          [class]="editWarmup() ? 'bg-warning-content/20' : 'bg-surface-container-high'"
+                        >
+                          @if (editWarmup()) {
+                            <app-icon [data]="{ name: 'check', size: 14 }" />
+                          } @else {
+                            {{ 'detail.warmup.badge' | mnTranslate }}
+                          }
+                        </span>
+                        {{ 'detail.warmup.toggle' | mnTranslate }}
+                      </button>
+                      <button
+                        type="button"
+                        (click)="cancelEditSet()"
+                        [attr.aria-label]="'action.cancel' | mnTranslate"
+                        [attr.title]="'action.cancel' | mnTranslate"
+                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant/50"
+                      >
+                        <app-icon [data]="{ name: 'x', size: 18 }" />
+                      </button>
+                      <button
+                        type="button"
+                        (click)="saveSet(ex, set)"
+                        [disabled]="!canSaveSet || savingSet()"
+                        class="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg bg-success/15 px-3 text-sm font-bold text-success transition-colors hover:bg-success/25 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <app-icon [data]="{ name: 'check', size: 18 }" />
+                        {{ (savingSet() ? 'action.saving' : 'action.save') | mnTranslate }}
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="flex items-center gap-2 py-1 pl-4 pr-1.5">
+                    <span
+                      class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                      [class]="set.isWarmup ? 'bg-warning/15 text-warning' : 'bg-success/15 text-success'"
+                      [attr.title]="set.isWarmup ? ('detail.warmup' | mnTranslate) : null"
+                    >{{ setLabel(ex, set) }}</span>
+                    <button
+                      type="button"
+                      (click)="startEditSet(set)"
+                      [attr.aria-label]="setAria(ex, set, 'edit')"
+                      class="group flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1 pl-1 text-left"
+                    >
+                      <span class="min-w-0 flex-1">
+                        <ng-container [ngTemplateOutlet]="setLine" [ngTemplateOutletContext]="{ $implicit: set }" />
+                        @if (prSets().has(set.setId)) {
+                          <span class="mt-0.5 flex w-fit items-center gap-1 rounded-full bg-record-fill/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-record">
+                            <span class="shrink-0"><app-icon [data]="{ name: 'trophy', size: 12 }" /></span>
+                            {{ prLabel(set) }}
+                          </span>
+                        }
+                      </span>
+                      <span class="shrink-0 text-outline transition-colors group-hover:text-primary">
+                        <app-icon [data]="{ name: 'pencil', size: 14 }" />
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="deleteSet(ex, set)"
+                      [disabled]="isDeleting(set.setId)"
+                      [attr.aria-label]="setAria(ex, set, 'remove')"
+                      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      <app-icon [data]="{ name: 'x', size: 16 }" />
+                    </button>
+                  </div>
+                }
+              } @empty {
+                <p class="px-4 py-3 text-sm text-on-surface-variant">{{ 'detail.noSets' | mnTranslate }}</p>
+              }
             </div>
 
             <div class="border-t border-outline-variant/20 p-3">
@@ -276,8 +539,9 @@
                 (ngModelChange)="setNote(ex.id, $event)"
                 (blur)="saveNotes(ex)"
                 rows="2"
+                maxlength="255"
                 [placeholder]="'detail.exerciseNotes.ph' | mnTranslate"
-                class="w-full rounded-lg border border-base-300 bg-base-100 p-3 text-sm text-base-content outline-none transition-colors focus:ring-1 focus:ring-primary"
+                class="w-full rounded-lg border border-base-300 bg-base-100 p-3 text-base text-base-content outline-none transition-colors focus:ring-1 focus:ring-primary"
               ></textarea>
             </div>
 
@@ -285,11 +549,11 @@
               <button
                 type="button"
                 (click)="finishExercise(ex)"
-                [disabled]="ex.sets.length === 0"
-                class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-success/15 font-bold text-success transition-colors hover:bg-success/25 disabled:cursor-not-allowed disabled:bg-surface-variant/40 disabled:text-on-surface-variant/50"
+                [disabled]="ex.sets.length === 0 || finishingExerciseId() === ex.id"
+                class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-success/15 px-3 font-bold text-success transition-colors hover:bg-success/25 disabled:cursor-not-allowed disabled:bg-surface-variant/40 disabled:text-on-surface-variant/50"
               >
                 <app-icon [data]="{ name: 'check', size: 20 }" />
-                {{ (ex.sets.length === 0 ? 'detail.finishExercise.needSet' : 'detail.finishExercise') | mnTranslate }}
+                {{ (finishingExerciseId() === ex.id ? 'action.saving' : ex.sets.length === 0 ? 'detail.finishExercise.needSet' : 'detail.finishExercise') | mnTranslate }}
               </button>
             </div>
           }
@@ -302,61 +566,21 @@
         </div>
       }
 
-      <!-- Add exercise -->
+      <!-- Add exercise: always possible (supersets, a taken machine) -->
       @if (showAddExercise()) {
-        <section class="glass-card mb-4 rounded-2xl p-4">
-          @if (creatingNew() || !definitions().length) {
-            <!-- Inline: create an exercise that isn't in the list yet -->
-            <p class="mb-3 font-display font-bold text-on-surface">{{ 'detail.newExercise' | mnTranslate }}</p>
-            <div class="space-y-3">
-              <mn-lib-input-field
-                [props]="{ id: 'newname', type: 'text', label: ('form.name' | mnTranslate), placeholder: ('def.name.ph' | mnTranslate), fullWidth: true, autoFocus: true }"
-                [(ngModel)]="newDefName"
-                [ngModelOptions]="{ standalone: true }"
-              />
-              <mn-lib-select
-                [props]="{ id: 'newmuscle', label: ('def.muscle' | mnTranslate), options: muscleOptions, placeholder: ('def.muscle.ph' | mnTranslate), fullWidth: true }"
-                [(ngModel)]="newDefMuscle"
-                [ngModelOptions]="{ standalone: true }"
-              />
-            </div>
-            <div class="mt-4 flex gap-3">
-              <button mnButton [data]="{ color: 'gray', size: 'lg', wrap: true }" class="flex-1" (click)="backFromCreate()">{{ 'action.cancel' | mnTranslate }}</button>
-              <button mnButton [data]="{ color: 'primary', size: 'lg', wrap: true, disabled: !newDefName.trim() || !newDefMuscle.trim() || savingNew() }" class="flex-1" (click)="addNewExercise()">{{ (savingNew() ? 'action.adding' : 'action.add') | mnTranslate }}</button>
-            </div>
-          } @else {
-            <!-- Pick an existing catalog exercise -->
-            <p class="mb-3 font-display font-bold text-on-surface">{{ 'detail.addExercise' | mnTranslate }}</p>
-            <mn-lib-select
-              [props]="{ id: 'defpick', options: definitionOptions(), placeholder: ('detail.chooseExercise' | mnTranslate), fullWidth: true }"
-              [(ngModel)]="selectedDefinitionId"
-              [ngModelOptions]="{ standalone: true }"
-            />
-            <button
-              type="button"
-              (click)="creatingNew.set(true)"
-              class="mt-3 flex items-center gap-1.5 text-sm font-semibold text-primary"
-            >
-              <app-icon [data]="{ name: 'plus', size: 16 }" />
-              {{ 'detail.notInList' | mnTranslate }}
-            </button>
-            <div class="mt-4 flex gap-3">
-              <button mnButton [data]="{ color: 'gray', size: 'lg', wrap: true }" class="flex-1" (click)="closeAddExercise()">{{ 'action.cancel' | mnTranslate }}</button>
-              <button mnButton [data]="{ color: 'primary', size: 'lg', wrap: true }" class="flex-1" (click)="addExercise()">{{ 'action.add' | mnTranslate }}</button>
-            </div>
-          }
-        </section>
+        <app-exercise-picker
+          [definitions]="definitions()"
+          [usedIds]="usedDefinitionIds()"
+          [busy]="adding()"
+          (pick)="addExercise($event)"
+          (create)="addNewExercise($event)"
+          (closed)="closeAddExercise()"
+        />
       } @else {
-        @if (!canAddExercise()) {
-          <p class="mb-2 text-center text-xs font-semibold text-on-surface-variant">
-            {{ 'detail.addBlocked' | mnTranslate }}
-          </p>
-        }
         <button
           type="button"
-          (click)="showAddExercise.set(true)"
-          [disabled]="!canAddExercise()"
-          class="mb-4 flex h-14 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-outline-variant/60 font-bold text-on-surface-variant transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-outline-variant/60 disabled:hover:text-on-surface-variant"
+          (click)="openAddExercise()"
+          class="mb-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-outline-variant/60 px-3 font-bold text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
         >
           <app-icon [data]="{ name: 'plus', size: 20 }" />
           {{ 'detail.addExercise' | mnTranslate }}
@@ -372,13 +596,149 @@
       <button
         type="button"
         (click)="finishWorkout()"
-        [disabled]="!canFinish()"
-        class="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary font-display text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+        [disabled]="!canFinish() || finishing()"
+        class="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 font-display text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
         [class.active-glow]="canFinish()"
       >
         <app-icon [data]="{ name: 'check', size: 22 }" />
-        {{ 'detail.finishWorkout' | mnTranslate }}
+        {{ (finishing() ? 'action.saving' : 'detail.finishWorkout') | mnTranslate }}
       </button>
     }
   }
 </main>
+
+<!-- One set as text: "10 reps × 67.5 kg" / "12 reps × BW" -->
+<ng-template #setLine let-set>
+  <span class="tnum flex flex-wrap items-baseline gap-x-1 font-semibold text-on-surface">
+    <span>{{ num(set.repsAmount) }}</span>
+    <span class="text-on-surface-variant">{{ plural(+set.repsAmount, 'unit.reps') | mnTranslate }}</span>
+    <span class="mx-0.5 text-outline">×</span>
+    @if (+set.weightKg === 0) {
+      <span>{{ 'unit.bw' | mnTranslate }}</span>
+    } @else {
+      <span>{{ num(set.weightKg) }}</span>
+      <span class="text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
+    }
+  </span>
+</ng-template>
+
+<!-- Read-only set list (+ notes) shared by finished exercises and the finished view -->
+<ng-template #readonlySets let-ex>
+  <div class="divide-y divide-outline-variant/20 border-t border-outline-variant/30">
+    @for (set of ex.sets; track set.setId) {
+      <div class="flex items-center gap-3 px-4 py-2.5">
+        <span
+          class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+          [class]="set.isWarmup ? 'bg-warning/15 text-warning' : 'bg-success/15 text-success'"
+          [attr.title]="set.isWarmup ? ('detail.warmup' | mnTranslate) : null"
+        >{{ setLabel(ex, set) }}</span>
+        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5">
+          <ng-container [ngTemplateOutlet]="setLine" [ngTemplateOutletContext]="{ $implicit: set }" />
+          @if (set.isWarmup) {
+            <span class="text-xs text-on-surface-variant">{{ 'detail.warmup' | mnTranslate }}</span>
+          }
+          @if (prSets().has(set.setId)) {
+            <span class="flex items-center gap-1 rounded-full bg-record-fill/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-record">
+              <span class="shrink-0"><app-icon [data]="{ name: 'trophy', size: 12 }" /></span>
+              {{ prLabel(set) }}
+            </span>
+          }
+        </div>
+      </div>
+    }
+  </div>
+  @if (ex.notes) {
+    <p class="whitespace-pre-line break-words border-t border-outline-variant/20 px-4 py-3 text-sm italic text-on-surface-variant">{{ ex.notes }}</p>
+  }
+</ng-template>
+
+
+<!-- Edit workout details bottom sheet -->
+@if (showEdit()) {
+  <mn-bottom-sheet
+    [maxHeightVh]="90"
+    [ariaLabel]="'detail.editDetails' | mnTranslate"
+    (dismiss)="showEdit.set(false)"
+  >
+    <div class="max-h-[80dvh] overflow-y-auto overscroll-contain px-5 pb-6 pt-2">
+      <div class="mb-5 flex items-center justify-between gap-2">
+        <h2 class="min-w-0 font-display text-xl font-bold text-on-surface">{{ 'detail.editDetails' | mnTranslate }}</h2>
+        <button
+          type="button"
+          (click)="showEdit.set(false)"
+          [attr.aria-label]="'action.cancel' | mnTranslate"
+          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/50"
+        >
+          <app-icon [data]="{ name: 'x', size: 22 }" />
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label for="ewname" class="mb-1 block text-sm font-semibold text-on-surface-variant">
+            {{ 'form.name' | mnTranslate }}
+          </label>
+          <input
+            id="ewname"
+            type="text"
+            maxlength="100"
+            autocomplete="off"
+            [ngModel]="editName()"
+            (ngModelChange)="editName.set($event)"
+            [ngModelOptions]="{ standalone: true }"
+            (keydown.enter)="saveEdit()"
+            [placeholder]="'form.name.ph' | mnTranslate"
+            class="h-12 w-full min-w-0 rounded-lg border border-base-300 bg-base-100 px-3 text-base text-base-content outline-none transition-colors focus:ring-1 focus:ring-primary"
+          />
+        </div>
+        <mn-lib-input-field
+          [props]="{ id: 'ewdate', type: 'date', label: ('form.date' | mnTranslate), fullWidth: true }"
+          [ngModel]="editDate()"
+          (ngModelChange)="editDate.set($event ?? '')"
+          [ngModelOptions]="{ standalone: true }"
+        />
+        <div>
+          <label for="ewdesc" class="mb-1 block text-sm font-semibold text-on-surface-variant">
+            {{ 'form.workoutNotes' | mnTranslate }}
+            <span class="font-normal text-on-surface-variant">({{ 'action.optional' | mnTranslate }})</span>
+          </label>
+          <textarea
+            id="ewdesc"
+            [(ngModel)]="editNote"
+            [ngModelOptions]="{ standalone: true }"
+            rows="3"
+            maxlength="255"
+            [placeholder]="'form.workoutNotes.ph' | mnTranslate"
+            class="w-full rounded-lg border border-base-300 bg-base-100 p-3 text-base text-base-content outline-none transition-colors focus:ring-1 focus:ring-primary"
+          ></textarea>
+        </div>
+      </div>
+
+      @if (editBlock(); as block) {
+        <p class="mt-4 text-xs font-semibold text-on-surface-variant" aria-live="polite">
+          {{ block | mnTranslate }}
+        </p>
+      }
+      <div class="flex gap-3" [class]="editBlock() ? 'mt-2' : 'mt-6'">
+        <button
+          mnButton
+          type="button"
+          [data]="{ color: 'gray', size: 'lg', wrap: true }"
+          class="min-w-0 flex-1"
+          (click)="showEdit.set(false)"
+        >
+          {{ 'action.cancel' | mnTranslate }}
+        </button>
+        <button
+          mnButton
+          type="button"
+          [data]="{ color: 'primary', size: 'lg', wrap: true, disabled: !!editBlock() || savingEdit() }"
+          class="min-w-0 flex-1"
+          (click)="saveEdit()"
+        >
+          {{ (savingEdit() ? 'action.saving' : 'action.save') | mnTranslate }}
+        </button>
+      </div>
+    </div>
+  </mn-bottom-sheet>
+}

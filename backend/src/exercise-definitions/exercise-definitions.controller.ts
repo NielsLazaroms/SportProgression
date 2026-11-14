@@ -24,6 +24,18 @@ import {
 import { ExerciseDefinition } from './exercise-definition.entity';
 import { AuthGuard } from '@nestjs/passport';
 
+/**
+ * What clients get to see of a catalog entry. The catalog is shared between
+ * all users, so the creator's account id is never exposed — only whether the
+ * entry belongs to the caller (and may therefore be edited or deleted).
+ */
+function toPublic(def: ExerciseDefinition, userId: string) {
+  const { createdByUserId, createdByUser, workoutExercises, ...rest } = def;
+  void createdByUser;
+  void workoutExercises;
+  return { ...rest, mine: !!createdByUserId && createdByUserId === userId };
+}
+
 @ApiTags('Exercise Definitions')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -34,8 +46,9 @@ export class ExerciseDefinitionsController {
   @ApiOperation({ summary: 'Get all available exercise definitions' })
   @ApiOkResponse({ type: [ExerciseDefinition] })
   @Get()
-  findAll() {
-    return this.service.findAll();
+  async findAll(@Req() req) {
+    const all = await this.service.findAll();
+    return all.map((d) => toPublic(d, req.user.userId));
   }
 
   @ApiOperation({ summary: 'Get a specific exercise definition' })
@@ -46,15 +59,18 @@ export class ExerciseDefinitionsController {
   @ApiOkResponse({ type: ExerciseDefinition })
   @ApiNotFoundResponse({ description: 'Exercise definition not found' })
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    return toPublic(await this.service.findOne(id), req.user.userId);
   }
 
   @ApiOperation({ summary: 'Create a new exercise definition' })
   @ApiOkResponse({ type: ExerciseDefinition })
   @Post()
-  create(@Body() dto: CreateExerciseDefinitionDto, @Req() req) {
-    return this.service.create(dto, req.user.userId);
+  async create(@Body() dto: CreateExerciseDefinitionDto, @Req() req) {
+    return toPublic(
+      await this.service.create(dto, req.user.userId),
+      req.user.userId,
+    );
   }
 
   @ApiOperation({ summary: 'Update an exercise definition' })
@@ -65,12 +81,15 @@ export class ExerciseDefinitionsController {
   @ApiOkResponse({ type: ExerciseDefinition })
   @ApiNotFoundResponse({ description: 'Exercise definition not found' })
   @Patch(':id')
-  update(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateExerciseDefinitionDto,
     @Req() req,
   ) {
-    return this.service.update(id, dto, req.user.userId);
+    return toPublic(
+      await this.service.update(id, dto, req.user.userId),
+      req.user.userId,
+    );
   }
 
   @ApiOperation({ summary: 'Delete an exercise definition' })

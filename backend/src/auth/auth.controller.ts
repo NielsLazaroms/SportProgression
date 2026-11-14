@@ -1,5 +1,16 @@
-import {Controller, ForbiddenException, Get, Post, Req, Res, UseGuards} from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import {
+  Controller,
+  ForbiddenException,
+  Get,
+  NotFoundException,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import { DevSeedService } from './dev-seed.service';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -15,7 +26,81 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly config: ConfigService,
     private readonly jwt: JwtService,
+    private readonly devSeed: DevSeedService,
   ) {}
+
+  /**
+   * Passwordless demo login for local development. Fails closed: it needs
+   * DEV_LOGIN=true, NODE_ENV=development and the local SQLite database, so a
+   * misconfigured production server can never expose it.
+   */
+  private devLoginEnabled(): boolean {
+    return (
+      this.config.get<string>(EnvKey.DEV_LOGIN) === 'true' &&
+      this.config.get<string>(EnvKey.NODE_ENV) === 'development' &&
+      this.config.get<string>(EnvKey.DB_TYPE) === 'sqljs'
+    );
+  }
+
+  /** Lets the login page know which sign-in options this server offers. */
+  @SkipThrottle()
+  @Get('config')
+  authConfig() {
+    return { devLogin: this.devLoginEnabled() };
+  }
+
+  /**
+   * `?as=<name>` signs in a separate throw-away account (for testing with
+   * several users); `?seed=0` skips the sample training history.
+   */
+  @SkipThrottle()
+  @Get('dev-login')
+  async devLogin(
+    @Res() res: Response,
+    @Query('as') as?: string,
+    @Query('seed') seed?: string,
+  ) {
+    if (!this.devLoginEnabled()) {
+      throw new NotFoundException();
+    }
+    const slug = (as ?? '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);
+    const { accessToken, refreshToken, user } = await this.auth.loginWithGoogle(
+      slug
+        ? {
+            googleId: `dev-local-${slug}`,
+            email: `${slug}@ironpulse.local`,
+            firstName: 'Test',
+            lastName: slug,
+          }
+        : {
+            googleId: 'dev-local-user',
+            email: 'demo@ironpulse.local',
+            firstName: 'Demo',
+            lastName: 'Athlete',
+          },
+    );
+    if (seed !== '0') await this.devSeed.seedIfEmpty(user.id);
+
+    const frontend = this.config.get<string>(
+      EnvKey.FRONTEND_URL,
+      'http://localhost:4200',
+    );
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000,
+      path: '/',
+    });
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+    return res.redirect(`${frontend}/auth/callback`);
+  }
 
   @Get('google')
   @UseGuards(AuthGuard('google'))

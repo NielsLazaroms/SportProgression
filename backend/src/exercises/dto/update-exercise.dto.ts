@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateWorkoutExerciseDto {
@@ -10,6 +10,7 @@ export class UpdateWorkoutExerciseDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   @ApiProperty({ example: 'Go heavy today', required: false })
   notes?: string;
 }

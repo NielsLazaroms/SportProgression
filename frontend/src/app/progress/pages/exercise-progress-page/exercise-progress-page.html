@@ -1,0 +1,349 @@
+<app-header [title]="history()?.name || ('progress.title' | mnTranslate)" (back)="back()" />
+
+<main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
+  @switch (state()) {
+    @case ('loading') {
+      <div class="space-y-3">
+        <mn-skeleton [data]="{ shape: 'rectangle', height: '44px' }" class="rounded-xl" />
+        <mn-skeleton [data]="{ shape: 'rectangle', height: '300px' }" class="rounded-2xl" />
+        <mn-skeleton [data]="{ shape: 'rectangle', height: '96px' }" class="rounded-xl" />
+        <mn-skeleton [data]="{ shape: 'rectangle', height: '80px' }" class="rounded-xl" />
+      </div>
+    }
+
+    @case ('notFound') {
+      <div class="glass-card flex flex-col items-center gap-3 rounded-2xl px-6 py-12 text-center">
+        <span class="text-outline"><app-icon [data]="{ name: 'dumbbell', size: 40 }" /></span>
+        <p class="font-display text-lg font-bold text-on-surface">{{ 'progress.ex.notFound.title' | mnTranslate }}</p>
+        <p class="max-w-xs text-sm leading-relaxed text-on-surface-variant">{{ 'progress.ex.notFound.hint' | mnTranslate }}</p>
+        <a
+          routerLink="/progress"
+          class="mt-2 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2 text-center font-bold text-on-primary-container transition-transform active:scale-95"
+        >
+          <app-icon [data]="{ name: 'arrow-left', size: 18 }" />
+          {{ 'progress.ex.back' | mnTranslate }}
+        </a>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="glass-card flex flex-col items-center gap-3 rounded-2xl px-6 py-12 text-center">
+        <span class="text-outline"><app-icon [data]="{ name: 'search-x', size: 40 }" /></span>
+        <p class="font-bold text-on-surface">{{ 'progress.error.title' | mnTranslate }}</p>
+        <p class="max-w-xs text-sm text-on-surface-variant">{{ 'progress.error.hint' | mnTranslate }}</p>
+        <div class="mt-2 flex flex-wrap items-center justify-center gap-3">
+          <a
+            routerLink="/progress"
+            class="flex min-h-11 items-center justify-center rounded-xl border border-outline-variant/50 px-5 py-2 text-center font-bold text-on-surface"
+          >
+            {{ 'progress.ex.back' | mnTranslate }}
+          </a>
+          <button
+            type="button"
+            (click)="load()"
+            class="flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2 font-bold text-on-primary-container transition-transform active:scale-95"
+          >
+            {{ 'progress.retry' | mnTranslate }}
+          </button>
+        </div>
+      </div>
+    }
+
+    @case ('ready') {
+      @if (history(); as h) {
+        @let opt = metricOption();
+
+        <!-- ============ Title line ============ -->
+        <p class="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+          @if (h.muscleGroup) {
+            {{ muscleLabel(h.muscleGroup) }} ·
+          }
+          {{ count('progress.nSessions', h.sessions.length) }}
+        </p>
+
+        <!-- ============ Metric toggle (kg metrics are hidden for bodyweight work) ============ -->
+        @if (metrics().length > 1) {
+          <div class="mb-2 grid grid-cols-2 gap-1 rounded-xl border border-outline-variant bg-surface-container-low p-1 sm:grid-cols-4">
+            @for (m of metrics(); track m.id) {
+              <button
+                type="button"
+                (click)="setMetric(m.id)"
+                [attr.aria-pressed]="opt.id === m.id"
+                class="min-h-11 min-w-0 rounded-lg px-2 py-1 text-xs font-bold leading-tight transition-colors"
+                [class]="opt.id === m.id ? 'bg-primary text-on-primary-container' : 'text-on-surface-variant'"
+              >
+                {{ m.label | mnTranslate }}
+              </button>
+            }
+          </div>
+        }
+        <!-- Plain-language explanation of the selected metric -->
+        <p class="mb-3 px-1 text-xs leading-relaxed text-on-surface-variant" aria-live="polite">
+          {{ opt.explain | mnTranslate }}
+        </p>
+
+        <!-- ============ Chart ============ -->
+        <section class="mb-8 glass-card rounded-2xl p-4">
+          <!-- Readout for the selected session (defaults to the latest) -->
+          @if (active(); as p) {
+            <div class="mb-5" aria-live="polite">
+              <div class="flex items-end justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+                    {{ fullDay(p.session.date) }} · {{ opt.label | mnTranslate }}
+                  </p>
+                  <p class="tnum mt-0.5 font-display text-3xl font-extrabold text-on-surface">
+                    {{ metricText(p.value) }}
+                    <span class="text-sm font-bold text-on-surface-variant">{{ metricUnit(p.value) }}</span>
+                  </p>
+                </div>
+                @if (change(); as c) {
+                  @let dir = changeDir(c.pct);
+                  <div class="max-w-[45%] shrink-0 text-right">
+                    <p
+                      class="tnum flex items-center justify-end gap-0.5 text-sm font-bold"
+                      [class]="dir === 'up' ? 'text-success' : 'text-on-surface-variant'"
+                    >
+                      @if (dir !== 'flat') {
+                        <app-icon [data]="{ name: dir === 'up' ? 'arrow-up-right' : 'arrow-down-right', size: 16 }" />
+                      }
+                      {{ changeText(c.pct) }}
+                    </p>
+                    <p class="text-[11px] font-semibold leading-tight text-on-surface-variant">
+                      {{ 'progress.ex.sinceFirst' | mnTranslate }}
+                    </p>
+                  </div>
+                } @else if (h.sessions.length > 1 && activeIndex() === 0) {
+                  <p class="max-w-[45%] shrink-0 text-right text-[11px] font-semibold leading-tight text-on-surface-variant">
+                    {{ 'progress.ex.firstSession' | mnTranslate }}
+                  </p>
+                }
+              </div>
+              @if (p.session.isPr) {
+                <p class="mt-2 flex items-start gap-1.5 text-xs font-bold text-record">
+                  <span class="mt-px shrink-0"><app-icon [data]="{ name: 'trophy', size: 14 }" /></span>
+                  <span class="tnum min-w-0">
+                    {{ p.session.record ? recordText(p.session.record) : ('progress.ex.prLegend' | mnTranslate) }}
+                  </span>
+                </p>
+              }
+            </div>
+          }
+
+          <div class="flex gap-2 pr-2">
+            <!-- y labels live in HTML so the stretched SVG never distorts text -->
+            <div class="relative h-44 w-10 shrink-0" aria-hidden="true">
+              @for (l of yLabels(); track l.top) {
+                <span
+                  class="tnum absolute right-0 -translate-y-1/2 text-[11px] font-semibold text-on-surface-variant"
+                  [style.top.%]="l.top"
+                >
+                  {{ l.text }}
+                </span>
+              }
+            </div>
+
+            <div
+              class="relative h-44 min-w-0 flex-1 cursor-crosshair touch-pan-y select-none"
+              (pointerdown)="onChartPointer($event)"
+              (pointermove)="onChartPointer($event)"
+            >
+              <!-- gridlines -->
+              <span class="absolute inset-x-0 top-0 border-t border-dashed border-outline-variant/40"></span>
+              <span class="absolute inset-x-0 top-1/2 border-t border-dashed border-outline-variant/25"></span>
+              <span class="absolute inset-x-0 bottom-0 border-t border-outline-variant/40"></span>
+
+              <svg
+                class="absolute inset-0 h-full w-full overflow-visible"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                role="img"
+                [attr.aria-label]="'progress.ex.chart.aria' | mnTranslate: { metric: (opt.label | mnTranslate), name: h.name, n: h.sessions.length }"
+              >
+                <defs>
+                  <linearGradient id="exProgressArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="var(--color-primary-container)" stop-opacity="0.35" />
+                    <stop offset="1" stop-color="var(--color-primary-container)" stop-opacity="0" />
+                  </linearGradient>
+                </defs>
+                @if (linePath()) {
+                  <path [attr.d]="areaPath()" fill="url(#exProgressArea)" />
+                  <path
+                    [attr.d]="linePath()"
+                    fill="none"
+                    stroke="var(--color-primary-container)"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    vector-effect="non-scaling-stroke"
+                  />
+                }
+              </svg>
+
+              <!-- guide line for the selected session -->
+              @if (active(); as p) {
+                <span
+                  class="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-outline/50"
+                  [style.left.%]="p.x"
+                ></span>
+              }
+
+              <!-- dots are HTML so they stay round at any aspect ratio -->
+              @for (p of points(); track p.session.workoutId) {
+                @let isActive = active() === p;
+                <button
+                  type="button"
+                  (click)="selected.set($index)"
+                  (focus)="selected.set($index)"
+                  [attr.aria-label]="pointAria(p)"
+                  [attr.aria-pressed]="isActive"
+                  class="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-surface-container outline-none transition-transform focus-visible:ring-2 focus-visible:ring-primary"
+                  [class]="
+                    (p.session.isPr ? 'z-10 h-3 w-3 border-2 bg-record-fill ring-1 ring-record ' : dense() && !isActive ? 'h-1.5 w-1.5 bg-primary-container ' : 'h-2.5 w-2.5 border-2 bg-primary-container ') +
+                    (isActive ? 'z-20 scale-150' : '')
+                  "
+                  [style.left.%]="p.x"
+                  [style.top.%]="p.y"
+                ></button>
+              }
+            </div>
+          </div>
+
+          <!-- x labels: first / last session -->
+          <div class="tnum mt-2 flex pl-12 pr-2 text-[11px] font-semibold text-on-surface-variant" aria-hidden="true">
+            @if (h.sessions.length > 1) {
+              <span>{{ day(h.sessions[0].date) }}</span>
+              <span class="ml-auto">{{ day(h.sessions[h.sessions.length - 1].date) }}</span>
+            } @else {
+              <span class="mx-auto">{{ day(h.sessions[0].date) }}</span>
+            }
+          </div>
+
+          <div class="mt-3 space-y-1 border-t border-outline-variant/20 pt-3 text-xs text-on-surface-variant">
+            <p class="flex items-center gap-2">
+              <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-record-fill ring-1 ring-record"></span>
+              <span>{{ 'progress.ex.prLegend' | mnTranslate }}</span>
+            </p>
+            @if (h.sessions.length < 2) {
+              <p>{{ 'progress.ex.onePoint' | mnTranslate }}</p>
+            }
+          </div>
+        </section>
+
+        <!-- ============ Records ============ -->
+        <section class="mb-8">
+          <h2 class="mb-3 flex items-center gap-2 font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+            <span class="shrink-0 text-record"><app-icon [data]="{ name: 'trophy', size: 18 }" /></span>
+            {{ 'progress.ex.records' | mnTranslate }}
+          </h2>
+          <div class="grid grid-cols-2 gap-2">
+            @if (h.records.maxWeight; as r) {
+              @if (r.weightKg > 0) {
+                <a [routerLink]="['/workouts', r.workoutId]" class="glass-card flex min-w-0 flex-col rounded-xl p-3 transition-colors active:bg-surface-variant/30">
+                  <p class="text-[11px] font-semibold uppercase leading-tight tracking-wide text-on-surface-variant">{{ 'progress.ex.rec.maxWeight' | mnTranslate }}</p>
+                  <p class="tnum mt-1 font-display text-xl font-extrabold text-record">
+                    {{ kg(r.weightKg) }} <span class="text-xs font-bold">{{ 'unit.kg' | mnTranslate }}</span>
+                  </p>
+                  <p class="tnum text-xs text-on-surface">× {{ repsText(r.reps) }}</p>
+                  <p class="mt-auto pt-1 text-[11px] text-on-surface-variant">{{ fullDay(r.date) }}</p>
+                </a>
+              }
+            }
+            @if (h.records.mostReps; as r) {
+              @if (r.reps > 0) {
+                <a [routerLink]="['/workouts', r.workoutId]" class="glass-card flex min-w-0 flex-col rounded-xl p-3 transition-colors active:bg-surface-variant/30">
+                  <p class="text-[11px] font-semibold uppercase leading-tight tracking-wide text-on-surface-variant">{{ 'progress.ex.rec.mostReps' | mnTranslate }}</p>
+                  <p class="tnum mt-1 font-display text-xl font-extrabold text-record">
+                    {{ r.reps }} <span class="text-xs font-bold">{{ (r.reps === 1 ? 'unit.reps.one' : 'unit.reps') | mnTranslate }}</span>
+                  </p>
+                  <p class="tnum text-xs text-on-surface">× {{ weightText(r.weightKg) }}</p>
+                  <p class="mt-auto pt-1 text-[11px] text-on-surface-variant">{{ fullDay(r.date) }}</p>
+                </a>
+              }
+            }
+            @if (h.records.bestE1rm; as r) {
+              @if (r.e1rmKg > 0) {
+                <a [routerLink]="['/workouts', r.workoutId]" class="glass-card flex min-w-0 flex-col rounded-xl p-3 transition-colors active:bg-surface-variant/30">
+                  <p class="text-[11px] font-semibold uppercase leading-tight tracking-wide text-on-surface-variant">{{ 'progress.ex.rec.bestE1rm' | mnTranslate }}</p>
+                  <p class="tnum mt-1 font-display text-xl font-extrabold text-record">
+                    {{ kg(r.e1rmKg) }} <span class="text-xs font-bold">{{ 'unit.kg' | mnTranslate }}</span>
+                  </p>
+                  <p class="tnum text-xs text-on-surface">
+                    {{ 'progress.ex.rec.fromSet' | mnTranslate: { set: r.reps + ' × ' + weightText(r.weightKg) } }}
+                  </p>
+                  <p class="mt-auto pt-1 text-[11px] text-on-surface-variant">{{ fullDay(r.date) }}</p>
+                </a>
+              }
+            }
+            @if (h.records.bestVolume; as r) {
+              @if (r.volumeKg > 0) {
+                <a [routerLink]="['/workouts', r.workoutId]" class="glass-card flex min-w-0 flex-col rounded-xl p-3 transition-colors active:bg-surface-variant/30">
+                  <p class="text-[11px] font-semibold uppercase leading-tight tracking-wide text-on-surface-variant">{{ 'progress.ex.rec.bestVolume' | mnTranslate }}</p>
+                  <p class="tnum mt-1 font-display text-xl font-extrabold text-record">
+                    {{ volume(r.volumeKg) }} <span class="text-xs font-bold">{{ 'unit.kg' | mnTranslate }}</span>
+                  </p>
+                  <p class="text-xs text-on-surface">{{ 'progress.ex.rec.volumeHint' | mnTranslate }}</p>
+                  <p class="mt-auto pt-1 text-[11px] text-on-surface-variant">{{ fullDay(r.date) }}</p>
+                </a>
+              }
+            }
+          </div>
+        </section>
+
+        <!-- ============ Session history (newest first) ============ -->
+        <section>
+          <h2 class="mb-3 font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+            {{ 'progress.ex.history' | mnTranslate }}
+          </h2>
+          <div class="space-y-2">
+            @for (s of sessionsNewestFirst(); track s.workoutId) {
+              @let v = opt.id === 'e1rm' ? s.e1rmKg : opt.id === 'weight' ? s.topWeightKg : opt.id === 'volume' ? s.volumeKg : s.topReps;
+              <a
+                [routerLink]="['/workouts', s.workoutId]"
+                class="glass-card block rounded-xl p-4 transition-colors active:bg-surface-variant/30"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span class="font-bold text-on-surface">{{ rel(s.date) }}</span>
+                      @if (!s.completed) {
+                        <span class="shrink-0 rounded-full bg-primary-container/20 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-primary">
+                          {{ 'progress.ex.inProgress' | mnTranslate }}
+                        </span>
+                      }
+                    </p>
+                    <p class="text-xs text-on-surface-variant [overflow-wrap:anywhere]">{{ s.workoutName }}</p>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-1">
+                    <div class="text-right">
+                      <p class="tnum font-display font-extrabold text-on-surface">
+                        {{ metricText(v) }} <span class="text-xs font-bold text-on-surface-variant">{{ metricUnit(v) }}</span>
+                      </p>
+                      <p class="text-[11px] font-semibold text-on-surface-variant">{{ opt.label | mnTranslate }}</p>
+                    </div>
+                    <span class="text-outline"><app-icon [data]="{ name: 'chevron-right', size: 18 }" /></span>
+                  </div>
+                </div>
+                @if (s.isPr) {
+                  <p class="mt-2 flex items-start gap-1.5 text-xs font-bold text-record">
+                    <span class="mt-px shrink-0"><app-icon [data]="{ name: 'trophy', size: 14 }" /></span>
+                    <span class="tnum min-w-0">
+                      {{ s.record ? recordText(s.record) : ('progress.ex.prLegend' | mnTranslate) }}
+                    </span>
+                  </p>
+                }
+                <ul class="mt-3 flex flex-wrap gap-1.5">
+                  @for (set of s.sets; track set.setId) {
+                    <li class="tnum rounded-md bg-surface-container-high px-2 py-1 text-xs font-semibold text-on-surface">
+                      {{ set.reps }} <span class="text-outline">×</span> {{ weightText(set.weightKg) }}
+                    </li>
+                  }
+                </ul>
+              </a>
+            }
+          </div>
+        </section>
+      }
+    }
+  }
+</main>

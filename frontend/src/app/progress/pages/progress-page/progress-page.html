@@ -1,64 +1,289 @@
 <app-header [title]="'progress.title' | mnTranslate" [showBack]="false" />
 
 <main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
-  <p class="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-primary">
-    {{ 'progress.insights' | mnTranslate }}
-  </p>
-  <h2 class="mb-6 font-display text-2xl font-extrabold tracking-tight text-on-surface">
-    {{ 'progress.lifetime' | mnTranslate }}
-  </h2>
+  @if (loading()) {
+    <div class="space-y-3">
+      <mn-skeleton [data]="{ shape: 'rectangle', height: '132px' }" class="rounded-2xl" />
+      <mn-skeleton [data]="{ shape: 'rectangle', height: '72px' }" class="rounded-xl" />
+      <mn-skeleton [data]="{ shape: 'rectangle', height: '220px' }" class="rounded-2xl" />
+      <mn-skeleton [data]="{ shape: 'rectangle', height: '160px' }" class="rounded-2xl" />
+    </div>
+  } @else if (failed()) {
+    <div class="glass-card flex flex-col items-center gap-3 rounded-2xl px-6 py-12 text-center">
+      <span class="text-outline"><app-icon [data]="{ name: 'search-x', size: 40 }" /></span>
+      <p class="font-bold text-on-surface">{{ 'progress.error.title' | mnTranslate }}</p>
+      <p class="max-w-xs text-sm text-on-surface-variant">{{ 'progress.error.hint' | mnTranslate }}</p>
+      <button
+        type="button"
+        (click)="load()"
+        class="mt-2 flex h-11 items-center justify-center rounded-xl bg-primary px-5 font-bold text-on-primary-container transition-transform active:scale-95"
+      >
+        {{ 'progress.retry' | mnTranslate }}
+      </button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="glass-card flex flex-col items-center gap-3 rounded-2xl px-6 py-12 text-center">
+      <span class="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <app-icon [data]="{ name: 'trending-up', size: 28 }" />
+      </span>
+      <p class="font-display text-lg font-bold text-on-surface">{{ 'progress.empty.title' | mnTranslate }}</p>
+      <p class="max-w-xs text-sm leading-relaxed text-on-surface-variant">{{ 'progress.empty.hint' | mnTranslate }}</p>
+      <a
+        routerLink="/workouts"
+        class="active-glow mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-bold text-on-primary-container transition-transform active:scale-95"
+      >
+        <app-icon [data]="{ name: 'dumbbell', size: 20 }" />
+        {{ 'progress.empty.cta' | mnTranslate }}
+      </a>
+    </div>
+  } @else if (summary(); as s) {
+    <!-- Progression first: what you lift and whether it is going up. -->
+    <!-- ============ Exercises ============ -->
+    <section class="mb-8">
+      <div class="mb-3 flex items-baseline justify-between gap-3">
+        <h2 class="font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+          {{ 'progress.exercises' | mnTranslate }}
+        </h2>
+        <span class="tnum text-xs font-semibold text-on-surface-variant">{{ s.exercises.length }}</span>
+      </div>
 
-  <!-- Real aggregates computed from logged sets -->
-  <div class="mb-8 grid grid-cols-3 gap-3">
-    <div class="glass-card rounded-xl p-4 text-center">
-      <p class="tnum font-display text-2xl font-extrabold text-primary">
-        {{ loading() ? '—' : totalWorkouts() }}
-      </p>
-      <p class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-        {{ 'progress.workouts' | mnTranslate }}
-      </p>
-    </div>
-    <div class="glass-card rounded-xl p-4 text-center">
-      <p class="tnum font-display text-2xl font-extrabold text-primary">
-        {{ loading() ? '—' : compactKg(totalVolume()) }}
-      </p>
-      <p class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-        {{ 'progress.volumeKg' | mnTranslate }}
-      </p>
-    </div>
-    <div class="glass-card rounded-xl p-4 text-center">
-      <p class="tnum font-display text-2xl font-extrabold text-primary">
-        {{ loading() ? '—' : totalSets() }}
-      </p>
-      <p class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-        {{ 'progress.totalSets' | mnTranslate }}
-      </p>
-    </div>
-  </div>
+      @if (showSearch()) {
+        <label class="mb-3 flex h-11 items-center gap-2 rounded-xl border border-control bg-surface-container px-3 text-on-surface-variant focus-within:border-primary">
+          <app-icon [data]="{ name: 'search', size: 18 }" />
+          <input
+            type="search"
+            [value]="query()"
+            (input)="onSearch($event)"
+            [placeholder]="'progress.search.ph' | mnTranslate"
+            [attr.aria-label]="'progress.search.ph' | mnTranslate"
+            class="h-full w-full min-w-0 bg-transparent text-sm text-on-surface outline-none placeholder:text-outline"
+          />
+        </label>
+      }
 
-  <!-- Honest placeholder: charts need a progression endpoint that isn't built yet -->
-  <div
-    class="relative overflow-hidden rounded-2xl border border-outline-variant/40 bg-gradient-to-br from-surface-container-high via-surface-container to-surface-container p-8 text-center"
-  >
-    <div
-      class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary"
-    >
-      <app-icon [data]="{ name: 'trending-up', size: 28 }" />
-    </div>
-    <h3 class="font-display text-lg font-bold text-on-surface">{{ 'progress.soon.title' | mnTranslate }}</h3>
-    <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-on-surface-variant">
-      {{ 'progress.soon.hint' | mnTranslate }}
-    </p>
+      <div class="space-y-2">
+        @for (e of filteredExercises(); track e.exerciseDefinitionId) {
+          @let dir = trendDir(e);
+          <a
+            [routerLink]="['/progress/exercise', e.exerciseDefinitionId]"
+            class="glass-card flex items-center gap-3 rounded-xl p-4 transition-colors active:bg-surface-variant/30"
+          >
+            <span class="min-w-0 flex-1">
+              <span class="block font-bold text-on-surface [overflow-wrap:anywhere]">{{ e.name }}</span>
+              <span class="block text-xs text-on-surface-variant">
+                {{ muscleLabel(e.muscleGroup) }} · {{ count('progress.nSessions', e.sessions) }} · {{ rel(e.lastDate) }}
+              </span>
+              <!-- Trend first → latest session; a dip stays neutral, not alarm red -->
+              @if (dir) {
+                <span
+                  class="tnum mt-1 flex items-center gap-1 text-xs font-semibold"
+                  [class]="dir === 'up' ? 'text-success' : 'text-on-surface-variant'"
+                >
+                  @if (dir !== 'flat') {
+                    <span class="shrink-0">
+                      <app-icon [data]="{ name: dir === 'up' ? 'arrow-up-right' : 'arrow-down-right', size: 14 }" />
+                    </span>
+                  }
+                  <span>{{ 'progress.trend.sinceFirst' | mnTranslate: { pct: trendText(e) } }}</span>
+                </span>
+              }
+            </span>
+            <span class="shrink-0 text-right">
+              <span class="block text-[11px] font-semibold text-on-surface-variant">
+                {{ (e.bodyweight ? 'progress.bestSet' : 'progress.bestLift') | mnTranslate }}
+              </span>
+              <span class="tnum block font-display text-lg font-extrabold text-on-surface">
+                @if (e.bodyweight) {
+                  {{ e.bestReps }}
+                  <span class="text-xs font-bold text-on-surface-variant">{{ plural(e.bestReps, 'unit.reps') | mnTranslate }}</span>
+                } @else {
+                  {{ kg(e.bestWeightKg) }}
+                  <span class="text-xs font-bold text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
+                }
+              </span>
+            </span>
+            <span class="shrink-0 text-outline"><app-icon [data]="{ name: 'chevron-right', size: 18 }" /></span>
+          </a>
+        } @empty {
+          <div class="glass-card flex flex-col items-center gap-2 rounded-xl px-6 py-8 text-center">
+            <span class="text-outline"><app-icon [data]="{ name: 'search-x', size: 32 }" /></span>
+            <p class="text-sm text-on-surface-variant">
+              @if (query().trim()) {
+                {{ 'progress.search.none' | mnTranslate: { q: query().trim() } }}
+              } @else {
+                {{ 'progress.exercises.empty' | mnTranslate }}
+              }
+            </p>
+          </div>
+        }
+      </div>
+    </section>
 
-    <!-- Decorative, non-data sparkline so the empty state feels intentional -->
-    <svg class="mx-auto mt-6 h-16 w-full max-w-xs opacity-40" viewBox="0 0 300 60" fill="none" aria-hidden="true">
-      <polyline
-        points="0,45 40,40 80,42 120,30 160,32 200,20 240,24 300,10"
-        stroke="var(--color-primary-container)"
-        stroke-width="2.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
-  </div>
+    <!-- ============ Recent personal records ============ -->
+    <section class="mb-8">
+      <h2 class="mb-3 flex items-start gap-2 font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+        <span class="mt-1 shrink-0 text-record"><app-icon [data]="{ name: 'trophy', size: 18 }" /></span>
+        {{ 'progress.records' | mnTranslate }}
+      </h2>
+
+      @if (s.recentRecords.length) {
+        <div class="glass-card divide-y divide-outline-variant/20 overflow-hidden rounded-2xl">
+          @for (r of s.recentRecords; track r.exerciseDefinitionId + r.workoutId) {
+            <a
+              [routerLink]="['/progress/exercise', r.exerciseDefinitionId]"
+              class="flex items-center gap-3 px-4 py-3 transition-colors active:bg-surface-variant/30"
+            >
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-record-fill/20 text-record">
+                <app-icon [data]="{ name: 'award', size: 18 }" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block font-bold text-on-surface [overflow-wrap:anywhere]">{{ r.name }}</span>
+                <span class="tnum block text-xs font-bold text-record">{{ recordText(r) }}</span>
+              </span>
+              <span class="shrink-0 text-right text-xs text-on-surface-variant">{{ rel(r.date) }}</span>
+            </a>
+          }
+        </div>
+      } @else {
+        <p class="glass-card rounded-2xl px-4 py-5 text-center text-sm text-on-surface-variant">
+          {{ 'progress.records.empty' | mnTranslate }}
+        </p>
+      }
+    </section>
+
+    <!-- ============ 12-week consistency ============ -->
+    <section class="mb-8">
+      <div class="mb-3 flex items-end justify-between gap-3">
+        <div class="min-w-0">
+          <span
+            class="tnum mb-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide"
+            [class]="s.streakWeeks > 0 ? 'bg-success/15 text-success' : 'bg-surface-container-high text-on-surface-variant'"
+          >
+            <app-icon [data]="{ name: 'flame', size: 14 }" />
+            {{ streakText(s.streakWeeks) }}
+          </span>
+          <h2 class="font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+            {{ 'progress.consistency' | mnTranslate }}
+          </h2>
+          <p class="text-xs text-on-surface-variant">
+            {{ 'progress.consistency.sub' | mnTranslate }}
+            @if (avgWorkouts(); as avg) {
+              <span class="tnum"> · {{ 'progress.avgPerWeek' | mnTranslate: { n: kg(avg) } }}</span>
+            }
+          </p>
+        </div>
+        <div class="flex shrink-0 rounded-lg border border-outline-variant bg-surface-container-low p-0.5">
+          @for (m of weekMetrics; track m.id) {
+            <button
+              type="button"
+              (click)="weekMetric.set(m.id)"
+              [attr.aria-pressed]="weekMetric() === m.id"
+              class="h-8 rounded-md px-3 text-xs font-bold transition-colors"
+              [class]="weekMetric() === m.id ? 'bg-primary text-on-primary-container' : 'text-on-surface-variant'"
+            >
+              {{ m.label | mnTranslate }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4">
+        <!-- Readout for the selected week (defaults to the current one) -->
+        @if (activeWeek(); as w) {
+          <div class="mb-4 flex items-baseline justify-between gap-3" aria-live="polite">
+            <p class="min-w-0 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+              @if (activeWeekIsCurrent()) {
+                <span class="text-primary">{{ 'progress.thisWeek' | mnTranslate }}</span>
+              } @else {
+                {{ 'progress.week.of' | mnTranslate: { date: day(w.weekStart) } }}
+              }
+            </p>
+            <p class="tnum shrink-0 text-right text-sm text-on-surface-variant">
+              <span class="font-display text-lg font-extrabold text-on-surface">
+                {{ weekMetric() === 'workouts' ? w.workouts : volume(w.volumeKg) }}
+              </span>
+              {{ (weekMetric() === 'workouts' ? plural(w.workouts, 'progress.unit.workouts') : 'unit.kg') | mnTranslate }}
+              <span class="text-outline"> · {{ w.sets }} {{ plural(w.sets, 'unit.sets') | mnTranslate }}</span>
+            </p>
+          </div>
+        }
+
+        <div
+          class="flex h-32 items-end gap-1.5 border-b border-outline-variant/40"
+          role="group"
+          [attr.aria-label]="'progress.consistency.aria' | mnTranslate"
+        >
+          @for (b of bars(); track b.week.weekStart) {
+            <button
+              type="button"
+              (click)="selectedWeek.set($index)"
+              [attr.aria-pressed]="b.selected"
+              [attr.aria-label]="weekAria(b.week)"
+              class="flex h-full min-w-0 flex-1 items-end rounded-t-md outline-none transition-colors focus-visible:bg-surface-variant/40"
+              [class]="b.selected ? 'bg-surface-variant/30' : ''"
+            >
+              @if (b.pct > 0) {
+                <span
+                  class="block w-full rounded-t-md transition-all duration-300"
+                  [style.height.%]="b.pct"
+                  [class]="b.isCurrent ? 'bg-primary-container active-glow' : b.selected ? 'bg-primary' : 'bg-primary/35'"
+                ></span>
+              } @else {
+                <span class="block h-[3px] w-full rounded-t-sm bg-outline-variant/50"></span>
+              }
+            </button>
+          }
+        </div>
+        <div class="mt-1.5 flex gap-1.5" aria-hidden="true">
+          @for (b of bars(); track b.week.weekStart) {
+            <span
+              class="tnum flex min-w-0 flex-1 justify-center whitespace-nowrap text-[11px] font-semibold"
+              [class]="b.isCurrent ? 'text-primary' : 'text-on-surface-variant'"
+            >
+              @if (b.isCurrent) {
+                {{ 'progress.week.now' | mnTranslate }}
+              } @else if (b.label) {
+                {{ b.label }}
+              }
+            </span>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Muscle balance (30 days) ============ -->
+    <section>
+      <h2 class="font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+        {{ 'progress.muscles' | mnTranslate }}
+      </h2>
+      <p class="mb-3 text-xs text-on-surface-variant">{{ 'progress.muscles.sub' | mnTranslate }}</p>
+
+      <div class="glass-card rounded-2xl p-4">
+        @if (muscles().length) {
+          <ul class="space-y-3">
+            @for (m of muscles(); track m.key) {
+              <li>
+                <div class="mb-1 flex items-baseline justify-between gap-3 text-sm">
+                  <span class="min-w-0 truncate font-semibold text-on-surface">{{ muscleLabel(m.key) }}</span>
+                  <span class="tnum shrink-0 text-xs text-on-surface-variant">
+                    <span class="font-bold text-on-surface">{{ m.workouts }}</span>
+                    {{ plural(m.workouts, 'progress.muscles.workouts') | mnTranslate }}
+                  </span>
+                </div>
+                <div class="h-2 overflow-hidden rounded-full bg-surface-container-high">
+                  <div
+                    class="h-full rounded-full transition-all duration-300"
+                    [class]="$first ? 'bg-primary-container' : 'bg-primary/50'"
+                    [style.width.%]="m.pct"
+                  ></div>
+                </div>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="py-2 text-center text-sm text-on-surface-variant">{{ 'progress.muscles.empty' | mnTranslate }}</p>
+        }
+      </div>
+    </section>
+  }
 </main>

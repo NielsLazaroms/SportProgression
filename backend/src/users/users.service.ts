@@ -31,4 +31,8 @@ export class UsersService {
     return this.userRepository.save(newUser);
   }
 
+  /** Invalidates every access token issued to this user so far. */
+  async bumpTokenVersion(id: string) {
+    await this.userRepository.increment({ id }, 'tokenVersion', 1);
+  }
 }

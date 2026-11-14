@@ -1,94 +1,158 @@
 <app-header>
   <a
     routerLink="/profile"
-    aria-label="Profile"
-    class="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant/50"
+    [attr.aria-label]="'nav.profile' | mnTranslate"
+    class="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant/50 lg:hidden"
   >
     <app-icon [data]="{ name: 'circle-user-round', size: 26 }" />
   </a>
 </app-header>
 
 <main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
+  <!-- Continue today's/yesterday's unfinished workout -->
+  @if (unfinished(); as u) {
+    <section class="mb-4">
+      <a
+        [routerLink]="['/workouts', u.id]"
+        class="glass-card active-glow flex w-full items-center gap-4 rounded-xl border-primary-container p-4 transition-transform active:scale-[0.98]"
+      >
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+          <app-icon [data]="{ name: 'play', size: 22 }" />
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-sm font-bold text-primary">
+            {{ 'home.continue' | mnTranslate }}
+          </span>
+          <span class="block truncate font-display text-lg font-bold text-on-surface">{{ u.name }}</span>
+          <span class="tnum block text-sm text-on-surface-variant">
+            {{ rel(u.date) }} ·
+            @if (setCount(u); as n) {
+              {{ n }} {{ plural(n, 'unit.sets') | mnTranslate }}
+            } @else {
+              {{ 'home.continue.noSets' | mnTranslate }}
+            }
+          </span>
+        </span>
+        <span class="shrink-0 text-on-surface-variant">
+          <app-icon [data]="{ name: 'chevron-right', size: 22 }" />
+        </span>
+      </a>
+    </section>
+  }
+
   <!-- Primary CTA -->
   <section class="mb-8">
     <button
       type="button"
       (click)="openNew()"
-      class="active-glow flex h-16 w-full items-center justify-center gap-3 rounded-xl bg-primary font-display text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+      class="active-glow flex min-h-16 w-full items-center justify-center gap-3 rounded-xl bg-primary px-4 py-3 font-display text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
     >
       <app-icon [data]="{ name: 'plus-circle', size: 24 }" />
       {{ 'home.start' | mnTranslate }}
     </button>
+
+    <!-- This week -->
+    @if (week(); as wk) {
+      <div class="glass-card mt-4 rounded-xl px-2 py-3">
+        <h2 class="mb-2 px-2 text-sm font-semibold text-on-surface-variant">
+          {{ 'home.week.title' | mnTranslate }}
+        </h2>
+        <dl class="grid grid-cols-[1fr_auto_1fr] divide-x divide-outline-variant/30 text-center">
+          <div class="flex flex-col-reverse px-2">
+            <dt class="text-xs font-semibold leading-tight text-on-surface-variant">{{ plural(wk.workouts, 'home.week.workouts') | mnTranslate }}</dt>
+            <dd class="tnum flex items-center justify-center gap-1.5 font-display text-xl font-extrabold text-on-surface">
+              <span class="text-primary"><app-icon [data]="{ name: 'dumbbell', size: 16 }" /></span>
+              {{ wk.workouts }}
+            </dd>
+          </div>
+          <div class="flex flex-col-reverse px-3">
+            <dt class="text-xs font-semibold leading-tight text-on-surface-variant">{{ plural(wk.streakWeeks, 'home.week.streak') | mnTranslate }}</dt>
+            <dd class="tnum flex items-center justify-center gap-1.5 font-display text-xl font-extrabold text-on-surface">
+              <span class="text-primary"><app-icon [data]="{ name: 'flame', size: 16 }" /></span>
+              {{ wk.streakWeeks }}
+            </dd>
+          </div>
+          <div class="flex flex-col-reverse px-2">
+            <dt class="text-xs font-semibold leading-tight text-on-surface-variant">{{ 'home.week.volume' | mnTranslate }}</dt>
+            <dd class="tnum font-display text-xl font-extrabold text-primary">{{ volumeText(wk.volumeKg) }}</dd>
+          </div>
+        </dl>
+      </div>
+    }
   </section>
 
-  <!-- Re-run Recent -->
-  @if (recent().length) {
+  <!-- Re-run a recent workout -->
+  @if (rerunnable().length) {
     <section class="mb-8">
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <h2 class="font-display text-lg font-bold text-on-surface">
           {{ 'home.rerun' | mnTranslate }}
         </h2>
-        <a routerLink="/history" class="text-xs font-semibold uppercase tracking-wide text-primary">
+        <a routerLink="/history" class="-my-2 flex min-h-11 shrink-0 items-center text-sm font-semibold text-primary">
           {{ 'home.seeAll' | mnTranslate }}
         </a>
       </div>
 
       <div class="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
-        @for (w of recent(); track w.id) {
-          <button
-            type="button"
-            (click)="open(w)"
-            class="group w-60 shrink-0 snap-start overflow-hidden rounded-xl text-left transition-transform active:scale-[0.97] glass-card"
-          >
-            <div
-              class="relative flex h-24 items-center justify-center overflow-hidden bg-gradient-to-br from-primary-container/25 via-surface-container-high to-surface-container"
+        @for (w of rerunnable(); track w.id) {
+          <div class="glass-card flex w-56 shrink-0 snap-start flex-col rounded-xl">
+            <a
+              [routerLink]="['/workouts', w.id]"
+              class="block min-w-0 flex-1 rounded-t-xl p-4 pb-3 transition-colors hover:bg-surface-variant/20"
             >
-              <span class="text-outline-variant/50">
-                <app-icon [data]="{ name: 'dumbbell', size: 56 }" />
+              <span class="block text-xs font-semibold text-primary">{{ rel(w.date) }}</span>
+              <span class="mt-0.5 block truncate font-bold text-on-surface">{{ w.name }}</span>
+              <span class="tnum mt-1 block text-sm text-on-surface-variant">
+                {{ exerciseCount(w) }} {{ plural(exerciseCount(w), 'unit.exercises') | mnTranslate }}
+                · {{ setCount(w) }} {{ plural(setCount(w), 'unit.sets') | mnTranslate }}
               </span>
-              <span
-                class="absolute bottom-2 left-3 rounded bg-primary/90 px-2 py-0.5 text-[10px] font-bold uppercase text-on-primary-container"
-              >
-                {{ rel(w.date) }}
-              </span>
-              <span
-                (click)="reRun(w, $event)"
-                class="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary-container text-white shadow-lg transition-transform hover:scale-105"
-                aria-label="Re-run workout"
-              >
-                <app-icon [data]="{ name: 'play', size: 18 }" />
-              </span>
-            </div>
-            <div class="p-4">
-              <h3 class="truncate font-bold text-on-surface">{{ w.name }}</h3>
-              <div class="mt-1 flex items-center gap-3 text-on-surface-variant">
-                <span class="flex items-center gap-1 text-xs font-semibold">
-                  <app-icon [data]="{ name: 'dumbbell', size: 14 }" />
-                  {{ exerciseCount(w) }} {{ 'unit.ex' | mnTranslate }}
-                </span>
-                <span class="tnum flex items-center gap-1 text-xs font-semibold">
-                  <app-icon [data]="{ name: 'layers', size: 14 }" />
-                  {{ setCount(w) }} {{ 'unit.sets' | mnTranslate }}
-                </span>
-              </div>
-            </div>
-          </button>
+            </a>
+            <button
+              type="button"
+              (click)="reRun(w)"
+              [attr.aria-label]="'action.rerunNamed' | mnTranslate: { name: w.name }"
+              class="mx-3 mb-3 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-outline-variant/60 px-3 text-sm font-bold text-primary transition-colors hover:bg-primary/15 active:bg-primary/25"
+            >
+              <app-icon [data]="{ name: 'rotate-ccw', size: 18 }" />
+              {{ 'action.rerun' | mnTranslate }}
+            </button>
+          </div>
         }
       </div>
     </section>
   }
 
-  <!-- Recent History -->
+  <!-- Recent workouts -->
   <section>
-    <h2 class="mb-4 font-display text-lg font-bold uppercase tracking-wider text-on-surface">
-      {{ 'home.recent' | mnTranslate }}
-    </h2>
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <h2 class="font-display text-lg font-bold text-on-surface">
+        {{ 'home.recent' | mnTranslate }}
+      </h2>
+      @if (workouts().length > latest().length) {
+        <a routerLink="/history" class="flex min-h-11 items-center text-sm font-semibold text-primary">
+          {{ 'home.seeAllCount' | mnTranslate: { n: workouts().length } }}
+        </a>
+      }
+    </div>
 
     @if (loading()) {
       <div class="space-y-3">
         @for (i of [1, 2, 3]; track i) {
-          <mn-skeleton [data]="{ shape: 'rectangle', height: '80px' }" class="rounded-xl" />
+          <mn-skeleton [data]="{ shape: 'rectangle', height: '92px' }" class="rounded-xl" />
         }
+      </div>
+    } @else if (loadError(); as hint) {
+      <div class="glass-card flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center" role="alert">
+        <span class="text-outline"><app-icon [data]="{ name: 'search-x', size: 40 }" /></span>
+        <p class="font-bold text-on-surface">{{ 'home.error.title' | mnTranslate }}</p>
+        <p class="max-w-xs text-sm text-on-surface-variant">{{ hint | mnTranslate }}</p>
+        <button
+          type="button"
+          (click)="load()"
+          class="mt-2 flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 font-bold text-on-primary-container transition-transform active:scale-95"
+        >
+          {{ 'action.retry' | mnTranslate }}
+        </button>
       </div>
     } @else if (!workouts().length) {
       <div class="glass-card flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center">
@@ -99,112 +163,15 @@
         </p>
       </div>
     } @else {
-      <div class="space-y-3">
-        @for (w of workouts(); track w.id) {
-          <button
-            type="button"
-            (click)="open(w)"
-            class="glass-card flex w-full items-center justify-between rounded-xl p-4 text-left transition-colors active:bg-surface-variant/30"
-          >
-            <div class="flex min-w-0 items-center gap-4">
-              <div
-                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-outline-variant/40 bg-surface-container-high text-primary"
-              >
-                <app-icon [data]="{ name: 'calendar', size: 22 }" />
-              </div>
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <h3 class="truncate font-bold text-on-surface">{{ w.name }}</h3>
-                  @if (w.completedAt) {
-                    <span class="shrink-0 text-success" [attr.aria-label]="'badge.finished' | mnTranslate">
-                      <app-icon [data]="{ name: 'check', size: 16 }" />
-                    </span>
-                  }
-                </div>
-                <p class="text-sm text-on-surface-variant">
-                  {{ rel(w.date) }}
-                  @if (timeOfDay(w.createdAt)) {
-                    <span> • {{ timeOfDay(w.createdAt) }}</span>
-                  }
-                </p>
-              </div>
-            </div>
-            <div class="pl-3 text-right">
-              <p class="tnum font-bold text-primary">{{ compactKg(volume(w)) }} {{ 'unit.kg' | mnTranslate }}</p>
-              <p class="text-sm text-on-surface-variant">{{ setCount(w) }} {{ 'unit.sets' | mnTranslate }}</p>
-            </div>
-          </button>
+      <ul class="space-y-3">
+        @for (w of latest(); track w.id) {
+          <li><app-workout-row [workout]="w" (rerun)="reRun($event)" /></li>
         }
-      </div>
+      </ul>
     }
   </section>
 </main>
 
-<!-- New workout bottom sheet -->
 @if (showNew()) {
-  <mn-bottom-sheet
-    [maxHeightVh]="90"
-    [ariaLabel]="'dialog.newWorkout' | mnTranslate"
-    (dismiss)="showNew.set(false)"
-  >
-    <div class="px-5 pb-6 pt-2">
-      <div class="mb-5 flex items-center justify-between">
-        <h2 class="font-display text-xl font-bold text-on-surface">{{ 'dialog.newWorkout' | mnTranslate }}</h2>
-        <button
-          type="button"
-          (click)="showNew.set(false)"
-          aria-label="Close"
-          class="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/50"
-        >
-          <app-icon [data]="{ name: 'x', size: 22 }" />
-        </button>
-      </div>
-
-      <div class="space-y-4">
-        <mn-lib-input-field
-          [props]="{ id: 'wname', type: 'text', label: ('form.name' | mnTranslate), placeholder: ('form.name.ph' | mnTranslate), fullWidth: true }"
-          [(ngModel)]="name"
-          [ngModelOptions]="{ standalone: true }"
-        />
-        <mn-lib-input-field
-          [props]="{ id: 'wdate', type: 'date', label: ('form.date' | mnTranslate), fullWidth: true }"
-          [(ngModel)]="date"
-          [ngModelOptions]="{ standalone: true }"
-        />
-        <div>
-          <label for="wdesc" class="mb-1 block text-sm font-semibold text-on-surface-variant">
-            {{ 'form.workoutNotes' | mnTranslate }}
-            <span class="font-normal opacity-60">({{ 'action.optional' | mnTranslate }})</span>
-          </label>
-          <textarea
-            id="wdesc"
-            [(ngModel)]="description"
-            [ngModelOptions]="{ standalone: true }"
-            rows="2"
-            [placeholder]="'form.workoutNotes.ph' | mnTranslate"
-            class="w-full rounded-lg border border-base-300 bg-base-100 p-3 text-sm text-base-content outline-none transition-colors focus:ring-1 focus:ring-primary"
-          ></textarea>
-        </div>
-      </div>
-
-      <div class="mt-6 flex gap-3">
-        <button
-          mnButton
-          [data]="{ color: 'gray', size: 'lg', wrap: true }"
-          class="flex-1"
-          (click)="showNew.set(false)"
-        >
-          {{ 'action.cancel' | mnTranslate }}
-        </button>
-        <button
-          mnButton
-          [data]="{ color: 'primary', size: 'lg', wrap: true, disabled: !name.trim() || saving() }"
-          class="flex-1"
-          (click)="createWorkout()"
-        >
-          {{ (saving() ? 'action.creating' : 'action.create') | mnTranslate }}
-        </button>
-      </div>
-    </div>
-  </mn-bottom-sheet>
+  <app-new-workout-sheet [source]="rerunSource()" (closed)="showNew.set(false)" />
 }

@@ -10,7 +10,6 @@ import { DataSource, Repository } from 'typeorm';
 import { CreateWorkoutDto } from './dto/create-workout.dto';
 import { UpdateWorkoutDto } from './dto/update-workout.dto';
 import { WorkoutExercise } from '../exercises/workout-exercise.entity';
-import { ExerciseSet } from '../sets/set.entity';
 
 @Injectable()
 export class WorkoutsService {
@@ -25,7 +24,11 @@ export class WorkoutsService {
     return this.workoutRepository.find({
       where: { userId },
       relations: { exercises: { sets: true } },
-      order: { date: 'DESC', createdAt: 'DESC' },
+      order: {
+        date: 'DESC',
+        createdAt: 'DESC',
+        exercises: { orderInWorkout: 'ASC' },
+      },
     });
   }
 
@@ -50,7 +53,7 @@ export class WorkoutsService {
       where: { id, userId },
       relations: { exercises: { sets: true } },
       order: {
-        exercises: { orderInWorkout: 'ASC', sets: { setOrder: 'ASC' } },
+        exercises: { orderInWorkout: 'ASC', sets: { setOrder: 'ASC', setId: 'ASC' } },
       },
     });
     if (!workout) {
@@ -65,45 +68,41 @@ export class WorkoutsService {
   }
 
   /**
-   * "Re-run" a previous workout: deep-copies its exercises and sets into a new
-   * workout dated today. Set numbers are copied so the user edits last time's
-   * values rather than starting from scratch.
+   * "Re-run" a previous workout: copies its exercises (not its sets) into a
+   * new workout (name, date and note can be overridden). Sets are deliberately left empty — nothing has been lifted
+   * yet, and the logging screen shows last time's sets as the target to beat.
    */
-  async duplicate(id: string, userId: string) {
+  async duplicate(
+    id: string,
+    userId: string,
+    overrides: UpdateWorkoutDto = {},
+  ) {
     const source = await this.findOneWithDetails(id, userId);
-    const today = new Date().toISOString().slice(0, 10);
+    const today =
+      overrides.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
 
     const newId = await this.dataSource.transaction(async (manager) => {
       const workout = manager.create(Workout, {
         date: today,
-        name: source.name,
-        description: source.description,
+        name: overrides.name?.trim() || source.name,
+        // A note describes one session, so it is not carried over.
+        description: overrides.description?.trim() || undefined,
         userId,
       });
       const savedWorkout = await manager.save(workout);
 
+      let order = 1;
       for (const exercise of source.exercises ?? []) {
-        const newExercise = manager.create(WorkoutExercise, {
-          workoutId: savedWorkout.id,
-          exerciseDefinitionId: exercise.exerciseDefinitionId,
-          name: exercise.name,
-          type: exercise.type,
-          muscleGroup: exercise.muscleGroup,
-          orderInWorkout: exercise.orderInWorkout,
-          notes: exercise.notes,
-        });
-        const savedExercise = await manager.save(newExercise);
-
-        for (const set of exercise.sets ?? []) {
-          const newSet = manager.create(ExerciseSet, {
-            workoutExerciseId: savedExercise.id,
-            setOrder: set.setOrder,
-            repsAmount: set.repsAmount,
-            weightKg: set.weightKg,
-            notes: set.notes,
-          });
-          await manager.save(newSet);
-        }
+        await manager.save(
+          manager.create(WorkoutExercise, {
+            workoutId: savedWorkout.id,
+            exerciseDefinitionId: exercise.exerciseDefinitionId,
+            name: exercise.name,
+            type: exercise.type,
+            muscleGroup: exercise.muscleGroup,
+            orderInWorkout: order++,
+          }),
+        );
       }
 
       return savedWorkout.id;
@@ -143,7 +142,16 @@ export class WorkoutsService {
     return this.findOneWithDetails(id, userId);
   }
 
+  /** Unlock a finished workout so its exercises and sets can be edited again. */
+  async reopen(id: string, userId: string) {
+    await this.findOne(id, userId);
+    await this.workoutRepository.update({ id, userId }, { completedAt: null });
+    return this.findOneWithDetails(id, userId);
+  }
+
   async update(id: string, dto: UpdateWorkoutDto, userId: string) {
+    // A finished workout is locked as a whole, not just its exercises/sets.
+    await this.assertEditable(id, userId);
     const result = await this.workoutRepository.update({ id, userId }, dto);
     if (result.affected === 0) {
       throw new NotFoundException(`Workout with ID ${id} not found`);

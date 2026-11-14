@@ -31,7 +31,7 @@ export class ExerciseDefinition {
 
   @ApiProperty({ example: ExerciseType.STRENGTH, enum: ExerciseType })
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: ExerciseType,
   })
   type: ExerciseType;

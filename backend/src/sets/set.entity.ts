@@ -37,6 +37,14 @@ export class ExerciseSet {
   @Column('float')
   weightKg: number;
 
+  /**
+   * Warm-up sets are logged for reference but never count towards volume,
+   * estimated 1RM, personal records or the "last time" target.
+   */
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  isWarmup: boolean;
+
   @ApiProperty({ example: 'Felt easy', required: false })
   @Column({ nullable: true })
   notes: string;

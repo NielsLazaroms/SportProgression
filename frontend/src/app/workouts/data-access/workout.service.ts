@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Workout, CreateWorkout } from '../models/workout.model';
+import { todayIso } from '../../shared/format';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -26,14 +27,25 @@ export class WorkoutService {
     return this.http.patch<Workout>(`${this.baseUrl}/${id}`, workout);
   }
 
-  /** Re-run: deep-copies a workout into a new one dated today. */
-  duplicateWorkout(id: string): Observable<Workout> {
-    return this.http.post<Workout>(`${this.baseUrl}/${id}/duplicate`, {});
+  /** Re-run: copies a workout's exercises (not sets) into a new one dated today. */
+  duplicateWorkout(
+    id: string,
+    overrides: Partial<CreateWorkout> = {},
+  ): Observable<Workout> {
+    return this.http.post<Workout>(`${this.baseUrl}/${id}/duplicate`, {
+      date: todayIso(),
+      ...overrides,
+    });
   }
 
   /** Finish (lock) a workout permanently. Fails if it has empty exercises. */
   finishWorkout(id: string): Observable<Workout> {
     return this.http.post<Workout>(`${this.baseUrl}/${id}/finish`, {});
+  }
+
+  /** Unlock a finished workout so it can be edited again. */
+  reopenWorkout(id: string): Observable<Workout> {
+    return this.http.post<Workout>(`${this.baseUrl}/${id}/reopen`, {});
   }
 
   deleteWorkout(id: string): Observable<{ deleted: boolean }> {

@@ -1,0 +1,89 @@
+@let titleKey = source() ? 'dialog.rerunWorkout' : 'dialog.newWorkout';
+
+<mn-bottom-sheet [maxHeightVh]="90" [ariaLabel]="titleKey | mnTranslate" (dismiss)="closed.emit()">
+  <!-- Scrolls on its own, so Create stays reachable on short (landscape) screens. -->
+  <div #body class="mx-auto max-h-[80dvh] w-full max-w-xl overflow-y-auto overscroll-contain px-5 pb-6 pt-2">
+    <div class="mb-5 flex items-center justify-between gap-3">
+      <h2 class="min-w-0 font-display text-xl font-bold text-on-surface">{{ titleKey | mnTranslate }}</h2>
+      <button
+        type="button"
+        (click)="close()"
+        [attr.aria-label]="'action.close' | mnTranslate"
+        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/50"
+      >
+        <app-icon [data]="{ name: 'x', size: 22 }" />
+      </button>
+    </div>
+
+    <form class="space-y-4" (ngSubmit)="create()">
+      <mn-lib-input-field
+        [props]="{ id: 'wname', type: 'text', label: ('form.name' | mnTranslate), placeholder: ('form.name.ph' | mnTranslate), fullWidth: true }"
+        [ngModel]="name()"
+        (ngModelChange)="name.set($event ?? '')"
+        [ngModelOptions]="{ standalone: true }"
+      />
+      <mn-lib-input-field
+        [props]="{ id: 'wdate', type: 'date', label: ('form.date' | mnTranslate), fullWidth: true }"
+        [ngModel]="date()"
+        (ngModelChange)="date.set($event ?? '')"
+        [ngModelOptions]="{ standalone: true }"
+      />
+      <div>
+        <label for="wdesc" class="mb-1 block text-sm font-semibold text-on-surface-variant">
+          {{ 'form.workoutNotes' | mnTranslate }}
+          <span class="font-normal text-on-surface-variant">({{ 'action.optional' | mnTranslate }})</span>
+        </label>
+        <textarea
+          id="wdesc"
+          [ngModel]="notes()"
+          (ngModelChange)="notes.set($event ?? '')"
+          [ngModelOptions]="{ standalone: true }"
+          rows="2"
+          [attr.maxlength]="notesMax"
+          [placeholder]="'form.workoutNotes.ph' | mnTranslate"
+          class="w-full rounded-lg border border-base-300 bg-base-100 p-3 text-sm text-base-content"
+        ></textarea>
+      </div>
+
+      @if (source(); as src) {
+        <div>
+          <p class="mb-2 text-sm font-semibold text-on-surface-variant">
+            {{ 'dialog.rerun.exercises' | mnTranslate }}
+          </p>
+          <ul class="flex flex-wrap gap-1.5">
+            @for (ex of src.exercises ?? []; track ex.id) {
+              <li class="max-w-full break-words rounded-md bg-surface-container-high px-2 py-1 text-sm font-semibold text-on-surface">{{ ex.name }}</li>
+            }
+          </ul>
+          <p class="mt-2 text-sm text-on-surface-variant">{{ 'dialog.rerun.note' | mnTranslate }}</p>
+        </div>
+      }
+
+      <div>
+        <div class="mt-6 flex gap-3">
+          <button mnButton type="button" [data]="{ color: 'gray', size: 'lg', wrap: true }" class="flex-1" (click)="close()">
+            {{ 'action.cancel' | mnTranslate }}
+          </button>
+          <button
+            mnButton
+            type="submit"
+            [data]="{ color: 'primary', size: 'lg', wrap: true, disabled: !canCreate() }"
+            [attr.aria-describedby]="name().trim() ? null : 'wname-hint'"
+            class="flex-1"
+          >
+            {{ (saving() ? 'action.creating' : 'action.create') | mnTranslate }}
+          </button>
+        </div>
+        @if (!name().trim()) {
+          <p id="wname-hint" class="mt-2 text-center text-sm text-on-surface-variant">
+            {{ 'dialog.needName' | mnTranslate }}
+          </p>
+        } @else if (!date()) {
+          <p class="mt-2 text-center text-sm text-on-surface-variant">
+            {{ 'dialog.needDate' | mnTranslate }}
+          </p>
+        }
+      </div>
+    </form>
+  </div>
+</mn-bottom-sheet>

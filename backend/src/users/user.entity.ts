@@ -34,6 +34,14 @@ export class User {
   @Column({ nullable: true })
   picture?: string;
 
+  /**
+   * Bumped on sign-out (and whenever all sessions must end). Access tokens
+   * carry the version they were issued for, so older ones stop working at once
+   * instead of lingering until they expire.
+   */
+  @Column({ default: 0 })
+  tokenVersion: number;
+
   @OneToMany(() => Workout, (workout) => workout.user)
   workouts: Workout[];
 

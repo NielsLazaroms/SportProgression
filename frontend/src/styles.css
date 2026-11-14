@@ -4,69 +4,175 @@
    mn-angular-lib's compiled components rely on (bg-base-100, text-base-content…). */
 @source '../node_modules/mn-angular-lib';
 
+/* `dark:` follows the theme in effect (<html data-theme>), not only the OS. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 @theme {
   /* ---- Type ---- */
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
 
-  /* ---- Iron Pulse M3 surface palette ---- */
-  --color-background: #11131b;
-  --color-surface: #11131b;
-  --color-surface-dim: #0b0e15;
-  --color-surface-bright: #373941;
-  --color-surface-container-lowest: #0b0e15;
-  --color-surface-container-low: #191b23;
-  --color-surface-container: #1d1f27;
-  --color-surface-container-high: #272a32;
-  --color-surface-container-highest: #32353d;
-  --color-surface-variant: #32353d;
+  /* ---- Colour: "iron & chalk" ----
+     One idea: neutral graphite (dark) / chalk paper (light), ONE cool brand
+     accent (teal), and four semantic colours with exactly one job each:
+       success = done / finished / went up      record  = personal records (gold, nothing else)
+       warning = warm-up & heads-up             error   = destructive / failed
+     The values here are the DARK theme; the light theme overrides the same
+     names in `:root[data-theme='light']` below. Keep both lists in step. */
+  --color-background: #121316;
+  --color-surface: #121316;
+  --color-surface-dim: #0c0d0f;
+  --color-surface-bright: #3a3d44;
+  --color-surface-container-lowest: #0c0d0f;
+  --color-surface-container-low: #17181c;
+  --color-surface-container: #1c1e22;
+  --color-surface-container-high: #26282d;
+  --color-surface-container-highest: #303339;
+  --color-surface-variant: #303339;
 
-  --color-on-surface: #e1e2ed;
-  --color-on-surface-variant: #c2c6d7;
-  --color-on-background: #e1e2ed;
-  --color-outline: #8c90a0;
-  --color-outline-variant: #424654;
+  --color-on-surface: #eceef2;
+  --color-on-surface-variant: #b6bbc6;
+  --color-on-background: #eceef2;
+  --color-outline: #8d93a0; /* quiet text, icons */
+  --color-outline-variant: #4a4e58; /* decorative hairlines (used at 20–60%) */
+  --color-control: #7a808c; /* boundary of inputs and outlined buttons: >= 3:1 */
 
-  --color-on-primary: #002d6f;
-  --color-primary-container: #568dff;
-  --color-on-primary-container: #002662;
-  --color-tertiary: #b7c8e1;
-  --color-on-tertiary-container: #1a2b3e;
+  /* Brand accent: fill and text tone are the same teal. */
+  --color-primary: #3fd6c4;
+  --color-primary-content: #00211d;
+  --color-on-primary: #00211d;
+  --color-primary-container: #3fd6c4;
+  --color-on-primary-container: #00211d;
+  --color-brand-blue: #3fd6c4;
+  --color-tertiary: #b6bbc6;
+  --color-on-tertiary-container: #17181c;
 
-  /* ---- Brand accents ---- */
-  --color-record: #ffd700; /* gold — reserved for personal records only */
-  --color-brand-blue: #3c7efc;
+  /* Personal records only. `record` is the text/icon tone, `record-fill`
+     the metal itself (dots, chip tints). */
+  --color-record: #ffd23f;
+  --color-record-fill: #ffd23f;
 
   /* ---- DaisyUI semantic tokens consumed by mn-angular-lib ---- */
-  --color-base-100: #1d1f27;
-  --color-base-200: #272a32;
-  --color-base-300: #424654;
-  --color-base-content: #e1e2ed;
+  --color-base-100: #1c1e22;
+  --color-base-200: #26282d;
+  --color-base-300: #4a4e58;
+  --color-base-content: #eceef2;
 
-  --color-primary: #b0c6ff;
-  --color-primary-content: #002d6f;
-  --color-secondary: #c8c6c5;
-  --color-secondary-content: #313030;
-  --color-accent: #b7c8e1;
-  --color-accent-content: #213145;
-  --color-neutral: #32353d;
-  --color-neutral-content: #e1e2ed;
-  --color-info: #568dff;
-  --color-success: #00e676;
-  --color-success-content: #00382a;
-  --color-warning: #ffd700;
-  --color-warning-content: #402d00;
-  --color-error: #ffb4ab;
-  --color-error-content: #690005;
+  --color-secondary: #c9ccd3;
+  --color-secondary-content: #1c1e22;
+  --color-accent: #b6bbc6;
+  --color-accent-content: #17181c;
+  --color-neutral: #303339;
+  --color-neutral-content: #eceef2;
+  --color-info: #3fd6c4;
+  --color-info-content: #00211d;
+  --color-success: #86dc4f;
+  --color-success-content: #12290a;
+  --color-warning: #ff9447;
+  --color-warning-content: #3a1700;
+  --color-error: #ff6b6b;
+  --color-error-content: #3d0808;
+
+  /* Stray palette classes hard-coded inside mn-angular-lib (confirm-dialog
+     icon discs, required markers): route them through our tokens. */
+  --color-primary-100: color-mix(in srgb, var(--color-primary) 18%, var(--color-base-100));
+  --color-primary-500: var(--color-primary);
+  --color-red-50: color-mix(in srgb, var(--color-error) 10%, var(--color-base-100));
+  --color-red-100: color-mix(in srgb, var(--color-error) 18%, var(--color-base-100));
+  --color-red-500: var(--color-error);
+  --color-amber-100: color-mix(in srgb, var(--color-warning) 18%, var(--color-base-100));
+  --color-amber-500: var(--color-warning);
+  --color-blue-100: color-mix(in srgb, var(--color-primary) 18%, var(--color-base-100));
+  --color-blue-500: var(--color-primary);
 
   /* ---- Radius ---- */
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
 }
 
+/* Non-colour-utility theme values (dark). */
+:root {
+  --card-bg: color-mix(in srgb, var(--color-surface-container) 86%, transparent);
+  --card-border: color-mix(in srgb, var(--color-outline-variant) 55%, transparent);
+  --card-shadow: 0 0 #0000;
+  --card-blur: blur(12px);
+  --glow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent),
+    0 0 20px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  --float-bg: var(--color-surface-container-high);
+  --float-shadow: 0 10px 30px rgb(0 0 0 / 0.55);
+}
+
+/* ---- Light theme: chalk paper, white cards, ink text. Not an inversion:
+   separation comes from white-on-grey plus a hairline and a soft shadow, and
+   every accent is darkened until it reads as text on white. ---- */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-background: #f1f2f4;
+  --color-surface: #f1f2f4;
+  --color-surface-dim: #e4e6ea;
+  --color-surface-bright: #ffffff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f7f8f9;
+  --color-surface-container: #ffffff;
+  --color-surface-container-high: #eceef1;
+  --color-surface-container-highest: #e1e4e9;
+  --color-surface-variant: #dfe2e7;
+
+  --color-on-surface: #14161a;
+  --color-on-surface-variant: #4a4f5a;
+  --color-on-background: #14161a;
+  --color-outline: #646a76;
+  --color-outline-variant: #9aa0ac;
+  --color-control: #7d838f;
+
+  --color-primary: #0f766e;
+  --color-primary-content: #ffffff;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #0f766e;
+  --color-on-primary-container: #ffffff;
+  --color-brand-blue: #0f766e;
+  --color-tertiary: #4a4f5a;
+  --color-on-tertiary-container: #ffffff;
+
+  --color-record: #7a5200; /* gold does not read as text on white: bronze ink */
+  --color-record-fill: #f0b400;
+
+  --color-base-100: #ffffff;
+  --color-base-200: #f1f2f4;
+  --color-base-300: #c5c9d1;
+  --color-base-content: #14161a;
+
+  --color-secondary: #3a3f49;
+  --color-secondary-content: #ffffff;
+  --color-accent: #4a4f5a;
+  --color-accent-content: #ffffff;
+  --color-neutral: #2b2f37;
+  --color-neutral-content: #f5f6f8;
+  --color-info: #0f766e;
+  --color-info-content: #ffffff;
+  --color-success: #3a7410;
+  --color-success-content: #ffffff;
+  --color-warning: #a34400;
+  --color-warning-content: #ffffff;
+  --color-error: #c4242b;
+  --color-error-content: #ffffff;
+
+  --card-bg: #ffffff;
+  --card-border: color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
+  --card-shadow: 0 1px 2px rgb(20 22 26 / 0.06), 0 2px 8px -4px rgb(20 22 26 / 0.1);
+  --card-blur: none;
+  /* A glow on white is a smudge: a crisp ring plus a short tinted drop instead. */
+  --glow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent),
+    0 6px 14px -8px color-mix(in srgb, var(--color-primary) 70%, transparent);
+  --float-bg: #ffffff;
+  --float-shadow: 0 0 0 1px rgb(20 22 26 / 0.08), 0 12px 32px -8px rgb(20 22 26 / 0.28);
+}
+
 @layer base {
   html {
     color-scheme: dark;
+    scrollbar-color: var(--color-outline-variant) transparent;
   }
   body {
     background-color: var(--color-surface);
@@ -77,22 +183,41 @@
     /* Full-bleed scroll rails (-mx-4) must not widen the page itself. */
     overflow-x: hidden;
   }
+  /* Tailwind v4's preflight leaves the default arrow on buttons. */
+  a[href],
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  select,
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
   /* Numeric data reads cleaner with tabular figures */
   .tnum {
     font-variant-numeric: tabular-nums;
   }
 }
 
-/* Frosted card — the recurring surface of the whole app */
-@utility glass-card {
-  background: color-mix(in srgb, var(--color-surface-container) 72%, transparent);
-  backdrop-filter: blur(12px);
-  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
+/* Keyboard focus must be obvious on every surface, in both themes. Unlayered on purpose:
+   it has to win over per-element `outline-none` utilities. */
+:is(a, button, input, select, textarea, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
-/* High-tech "active" glow used on primary CTAs and focused cards */
+/* Frosted card — the recurring surface of the whole app */
+@utility glass-card {
+  background: var(--card-bg);
+  backdrop-filter: var(--card-blur);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--glow-layer, 0 0 #0000), var(--card-shadow);
+}
+
+/* Marks the one thing in focus (primary CTA, the active exercise card):
+   a soft halo on dark, a crisp ring with a short drop on light. */
 @utility active-glow {
-  box-shadow: 0 0 18px color-mix(in srgb, var(--color-primary-container) 30%, transparent);
+  --glow-layer: var(--glow);
+  box-shadow: var(--glow);
 }
 
 /* Hide scrollbars on horizontal snap rails without losing scroll */
@@ -111,4 +236,28 @@
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* Toasts (mn-angular-lib alert outlet) ship with a translucent tint, which is
+   unreadable over the page. Put an opaque surface underneath the tint. */
+mn-alert-outlet .mn-alert-inner > div {
+  background-image: linear-gradient(var(--float-bg), var(--float-bg));
+  background-blend-mode: normal;
+  box-shadow: var(--float-shadow);
+}
+/* Toasts sit at the top, just below the fixed 4rem app header, so they never
+   cover the Back button or the header actions. */
+mn-alert-outlet > div {
+  top: calc(4.5rem + env(safe-area-inset-top));
+}
+/* A bottom sheet covers the page: lift toasts above its backdrop. */
+body:has(mn-bottom-sheet) mn-alert-outlet > div {
+  z-index: 10000;
+}
+
+/* Form controls from mn-angular-lib (and ours that copy its classes) draw
+   their edge with the decorative border colour; a control's boundary has to
+   reach 3:1 against its surroundings. */
+:is(input, textarea, select).border-base-300 {
+  border-color: var(--color-control);
 }

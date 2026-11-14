@@ -54,14 +54,19 @@ export class WorkoutsController {
   }
 
   @ApiOperation({
-    summary: 'Re-run a workout: deep-copy it (exercises + sets) to a new workout dated today',
+    summary:
+      'Re-run a workout: copy its exercises (without sets) to a new workout dated today',
   })
   @ApiParam({ name: 'id', description: 'The workout to duplicate' })
   @ApiOkResponse({ type: Workout })
   @ApiNotFoundResponse({ description: 'Workout not found' })
   @Post(':id/duplicate')
-  duplicate(@Param('id') id: string, @Req() req) {
-    return this.workoutsService.duplicate(id, req.user.userId);
+  duplicate(
+    @Param('id') id: string,
+    @Req() req,
+    @Body() dto: UpdateWorkoutDto,
+  ) {
+    return this.workoutsService.duplicate(id, req.user.userId, dto);
   }
 
   @ApiOperation({
@@ -72,6 +77,14 @@ export class WorkoutsController {
   @Post(':id/finish')
   finish(@Param('id') id: string, @Req() req) {
     return this.workoutsService.finish(id, req.user.userId);
+  }
+
+  @ApiOperation({ summary: 'Reopen a finished workout so it can be edited again' })
+  @ApiParam({ name: 'id', description: 'The workout to reopen' })
+  @ApiOkResponse({ type: Workout })
+  @Post(':id/reopen')
+  reopen(@Param('id') id: string, @Req() req) {
+    return this.workoutsService.reopen(id, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Update an existing workout' })

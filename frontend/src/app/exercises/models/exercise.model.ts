@@ -10,7 +10,8 @@ export interface ExerciseDefinition {
   name: string;
   type: ExerciseType;
   muscleGroup?: string;
-  createdByUserId?: string;
+  /** True when the signed-in user created this entry (may edit/delete it). */
+  mine?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +42,8 @@ export interface ExerciseSet {
   setOrder: number;
   repsAmount: number;
   weightKg: number;
+  /** Warm-up sets are shown but never count towards stats or records. */
+  isWarmup?: boolean;
   notes?: string;
   createdAt: string;
 }
@@ -49,6 +52,7 @@ export interface CreateSet {
   setOrder: number;
   repsAmount: number;
   weightKg: number;
+  isWarmup?: boolean;
   notes?: string;
 }
 

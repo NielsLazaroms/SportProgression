@@ -11,9 +11,9 @@ import { AuthService } from '../../data-access/auth.service';
     <div class="flex min-h-dvh flex-col items-center justify-center gap-4 bg-surface text-on-surface">
       <div
         class="h-10 w-10 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
-        role="status"
+        aria-hidden="true"
       ></div>
-      <p class="font-display text-sm font-semibold uppercase tracking-widest text-on-surface-variant">
+      <p class="text-sm font-semibold text-on-surface-variant" role="status">
         {{ 'callback.loading' | mnTranslate }}
       </p>
     </div>
