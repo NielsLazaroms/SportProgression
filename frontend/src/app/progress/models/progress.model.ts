@@ -26,7 +26,7 @@ export interface ExerciseOverview {
   lastE1rmKg: number;
   /** Most reps in one set, ever. */
   bestReps: number;
-  /** True when only ever done at 0 kg: show reps, not kg / estimated 1RM. */
+  /** A bodyweight exercise (or only ever done at 0 kg): lead with reps, not kg. */
   bodyweight: boolean;
   /**
    * Change first → latest session in % (estimated 1RM; best-set reps for
@@ -88,6 +88,8 @@ export interface ExerciseHistory {
   exerciseDefinitionId: number;
   name: string;
   muscleGroup: string | null;
+  /** Bodyweight exercise: logged weights are EXTRA weight on top of body weight. */
+  bodyweight: boolean;
   records: {
     maxWeight: { weightKg: number; reps: number; date: string; workoutId: string } | null;
     bestE1rm: {

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Workout } from '../workouts/workouts.entity';
 import { WorkoutExercise } from '../exercises/workout-exercise.entity';
+import { ExerciseType } from '../exercise-definitions/exercise-definition.entity';
 
 /** Estimated one-rep max (Epley). A single rep is the weight itself. */
 export function estimateOneRepMax(weightKg: number, reps: number): number {
@@ -93,9 +94,12 @@ export interface SessionStats {
   record: { kind: RecordKind; reps: number; weightKg: number } | null;
 }
 
-/** One comparable number per session: estimated 1RM, or reps at 0 kg. */
-function sessionScore(s: SessionStats): number {
-  return s.e1rmKg > 0 ? s.e1rmKg : s.topReps;
+/**
+ * One comparable number per session: best-set reps for a bodyweight exercise,
+ * estimated 1RM otherwise. Never mix the two within one exercise.
+ */
+function sessionScore(s: SessionStats, bodyweight: boolean): number {
+  return bodyweight ? s.topReps : s.e1rmKg;
 }
 
 /**
@@ -301,6 +305,10 @@ export class ProgressService {
       );
       const first = sessions[0];
       const last = sessions[sessions.length - 1];
+      // A bodyweight exercise, or one only ever done without weight.
+      const bodyweight =
+        latest.type === ExerciseType.BODYWEIGHT ||
+        sessions.every((s) => s.topWeightKg === 0);
       exercises.push({
         exerciseDefinitionId: definitionId,
         name: latest.name,
@@ -311,12 +319,13 @@ export class ProgressService {
         bestE1rmKg: Math.max(...sessions.map((s) => s.e1rmKg)),
         lastE1rmKg: last.e1rmKg,
         bestReps: Math.max(...sessions.map((s) => s.topReps)),
-        bodyweight: sessions.every((s) => s.topWeightKg === 0),
+        bodyweight,
         trendPct:
-          sessions.length > 1 && sessionScore(first) > 0
+          sessions.length > 1 && sessionScore(first, bodyweight) > 0
             ? round1(
-                ((sessionScore(last) - sessionScore(first)) /
-                  sessionScore(first)) *
+                ((sessionScore(last, bodyweight) -
+                  sessionScore(first, bodyweight)) /
+                  sessionScore(first, bodyweight)) *
                   100,
               )
             : null,
@@ -456,6 +465,8 @@ export class ProgressService {
       exerciseDefinitionId: definitionId,
       name: latest.name,
       muscleGroup: latest.muscleGroup ?? null,
+      /** True for bodyweight exercises: weights are extra weight. */
+      bodyweight: latest.type === ExerciseType.BODYWEIGHT,
       records: { maxWeight, bestE1rm, bestVolume, mostReps },
       sessions,
     };

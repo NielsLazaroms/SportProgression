@@ -12,7 +12,12 @@ import {
 import { FormsModule } from '@angular/forms';
 import { MnButton, MnLanguageService, MnTranslatePipe } from 'mn-angular-lib';
 import { AppIcon } from '../../../shared/app-icon';
-import { ExerciseDefinition } from '../../../exercises/models/exercise.model';
+import {
+  ExerciseDefinition,
+  ExerciseType,
+  isBodyweight,
+} from '../../../exercises/models/exercise.model';
+import { BodyweightTag, ExerciseTypeToggle } from '../../../shared/bodyweight';
 import { MUSCLE_GROUPS } from '../../../shared/muscle-groups';
 
 /** Lower-case and strip accents so "pull up" finds "Pull-Up" / "Crunch (é)". */
@@ -33,7 +38,7 @@ function normalize(s: string): string {
 @Component({
   selector: 'app-exercise-picker',
   standalone: true,
-  imports: [FormsModule, AppIcon, MnButton, MnTranslatePipe],
+  imports: [FormsModule, AppIcon, MnButton, MnTranslatePipe, BodyweightTag, ExerciseTypeToggle],
   templateUrl: './exercise-picker.html',
   host: { class: 'block scroll-mt-20' },
 })
@@ -51,7 +56,7 @@ export class ExercisePicker implements AfterViewInit {
   readonly usedLabel = input('picker.inWorkout');
 
   readonly pick = output<ExerciseDefinition>();
-  readonly create = output<{ name: string; muscleGroup: string }>();
+  readonly create = output<{ name: string; muscleGroup: string; type: ExerciseType }>();
   readonly closed = output<void>();
 
   private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('search');
@@ -61,6 +66,9 @@ export class ExercisePicker implements AfterViewInit {
   readonly creating = signal(false);
   readonly newName = signal('');
   readonly newMuscle = signal('');
+  /** Weights (default) or bodyweight. */
+  readonly newType = signal<ExerciseType>(ExerciseType.STRENGTH);
+  readonly isBodyweight = isBodyweight;
   /** Id of the row that was tapped, to show "Adding…" on that row only. */
   readonly pickedId = signal<number | null>(null);
 
@@ -122,6 +130,7 @@ export class ExercisePicker implements AfterViewInit {
   startCreate(): void {
     this.newName.set(this.query().trim());
     this.newMuscle.set('');
+    this.newType.set(ExerciseType.STRENGTH);
     this.creating.set(true);
     requestAnimationFrame(() => {
       const el = this.nameInput()?.nativeElement;
@@ -139,6 +148,10 @@ export class ExercisePicker implements AfterViewInit {
 
   submitCreate(): void {
     if (this.createBlock() || this.busy()) return;
-    this.create.emit({ name: this.newName().trim(), muscleGroup: this.newMuscle() });
+    this.create.emit({
+      name: this.newName().trim(),
+      muscleGroup: this.newMuscle(),
+      type: this.newType(),
+    });
   }
 }

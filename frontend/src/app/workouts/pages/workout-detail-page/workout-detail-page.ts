@@ -53,7 +53,13 @@ import {
   ExerciseSet,
   ExerciseType,
   WorkoutExercise,
+  isBodyweight,
 } from '../../../exercises/models/exercise.model';
+import {
+  BodyweightTag,
+  bodyweightChipText,
+  bodyweightSetText,
+} from '../../../shared/bodyweight';
 import {
   compactKg,
   errorHintKey,
@@ -148,6 +154,7 @@ const letterAt = (i: number) => String.fromCharCode(65 + (i % 26));
     FormsModule,
     NgTemplateOutlet,
     AppIcon,
+    BodyweightTag,
     ExercisePicker,
     MnBottomSheet,
     MnButton,
@@ -624,13 +631,18 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
       : `${this.num(kg)} ${this.t('unit.kg')}`;
   }
 
-  /** "9 × 67,5 kg" / "12 × BW". */
-  setText(reps: number | string, kg: number | string): string {
+  /** Bodyweight exercise: its weights are extra weight on top of body weight. */
+  readonly isBw = isBodyweight;
+
+  /** "9 × 67,5 kg" / "12 × BW"; bodyweight exercise: "12 reps" / "8 reps · +10 kg". */
+  setText(reps: number | string, kg: number | string, bw = false): string {
+    if (bw) return bodyweightSetText(reps, kg, this.t, this.lang.locale);
     return `${this.num(reps)} × ${this.weightText(kg)}`;
   }
 
   /** Compact chip text without the unit: "9 × 67,5" / "12 × BW". */
-  chipText(reps: number | string, kg: number | string): string {
+  chipText(reps: number | string, kg: number | string, bw = false): string {
+    if (bw) return bodyweightChipText(reps, kg, this.t, this.lang.locale);
     return `${this.num(reps)} × ${Number(kg) === 0 ? this.t('unit.bw') : this.num(kg)}`;
   }
 
@@ -741,6 +753,12 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
             : '')
         : this.setsText(working, warmups, ' · '),
     ];
+    if (isBodyweight(ex)) {
+      // Volume says nothing here (only the extra weight is known): total reps.
+      const reps = workingSets(ex).reduce((n, set) => n + Number(set.repsAmount), 0);
+      if (reps > 0) parts.push(`${this.num(reps)} ${this.t(plural(reps, 'unit.reps'))}`);
+      return parts.join(' · ');
+    }
     const vol = this.exerciseVolume(ex);
     if (vol > 0) parts.push(`${compactKg(vol, this.lang.locale)} ${this.t('unit.kg')}`);
     return parts.join(' · ');
@@ -1035,7 +1053,14 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     this.draftTick(); // re-read in templates when a draft changes programmatically
     let d = this.drafts.get(exerciseId);
     if (!d) {
-      d = { reps: DEFAULT_REPS, weight: DEFAULT_WEIGHT, touched: false, warmup: false };
+      // A bodyweight exercise starts without extra weight.
+      const bw = isBodyweight(this.exercises().find((e) => e.id === exerciseId));
+      d = {
+        reps: DEFAULT_REPS,
+        weight: bw ? 0 : DEFAULT_WEIGHT,
+        touched: false,
+        warmup: false,
+      };
       this.drafts.set(exerciseId, d);
     }
     return d;
@@ -1169,13 +1194,13 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   }
 
   /** Create a brand-new exercise (adds it to the shared catalog) and log it. */
-  addNewExercise(input: { name: string; muscleGroup: string }): void {
+  addNewExercise(input: { name: string; muscleGroup: string; type: ExerciseType }): void {
     const name = input.name.trim();
     const muscleGroup = input.muscleGroup.trim();
     if (!name || !muscleGroup || this.adding()) return;
     this.adding.set(true);
     this.definitionService
-      .create({ name, type: ExerciseType.STRENGTH, muscleGroup })
+      .create({ name, type: input.type ?? ExerciseType.STRENGTH, muscleGroup })
       .subscribe({
         next: (def) => {
           // The server answers with the existing entry for a known name.
@@ -1296,7 +1321,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
               this.t('toast.pr.body', {
                 name: ex.name,
                 kind: this.t(this.prKey(kind, weight)),
-                set: this.setText(reps, weight),
+                set: this.setText(reps, weight, isBodyweight(ex)),
               }),
             );
           }

@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { DEFAULT_EXERCISES } from './default-exercises';
 import { WorkoutExercise } from '../exercises/workout-exercise.entity';
+import { TemplateExercise } from '../templates/template.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ExerciseDefinition, ExerciseType } from './exercise-definition.entity';
@@ -25,16 +26,62 @@ export class ExerciseDefinitionsService implements OnApplicationBootstrap {
 
   /** Seed the starter catalog on a brand-new (empty) database. */
   async onApplicationBootstrap() {
-    if ((await this.exerciseDefinitionRepository.count()) > 0) return;
-    await this.exerciseDefinitionRepository.save(
-      DEFAULT_EXERCISES.map((e) =>
-        this.exerciseDefinitionRepository.create({
-          ...e,
-          type: ExerciseType.STRENGTH,
-        }),
-      ),
-    );
-    this.logger.log(`Seeded ${DEFAULT_EXERCISES.length} default exercises`);
+    const typeOf = (bodyweight?: boolean) =>
+      bodyweight ? ExerciseType.BODYWEIGHT : ExerciseType.STRENGTH;
+
+    if ((await this.exerciseDefinitionRepository.count()) === 0) {
+      await this.exerciseDefinitionRepository.save(
+        DEFAULT_EXERCISES.map(({ bodyweight, ...e }) =>
+          this.exerciseDefinitionRepository.create({
+            ...e,
+            type: typeOf(bodyweight),
+          }),
+        ),
+      );
+      this.logger.log(`Seeded ${DEFAULT_EXERCISES.length} default exercises`);
+      return;
+    }
+
+    // Existing catalogs: make sure the standard bodyweight exercises exist and
+    // are marked as such (they predate the bodyweight type). Only the shared,
+    // ownerless defaults are touched — never an exercise a user created.
+    for (const def of DEFAULT_EXERCISES.filter((d) => d.bodyweight)) {
+      const existing = await this.findByName(def.name);
+      if (!existing) {
+        await this.exerciseDefinitionRepository.save(
+          this.exerciseDefinitionRepository.create({
+            name: def.name,
+            muscleGroup: def.muscleGroup,
+            type: ExerciseType.BODYWEIGHT,
+          }),
+        );
+      } else if (
+        !existing.createdByUserId &&
+        existing.type !== ExerciseType.BODYWEIGHT
+      ) {
+        await this.exerciseDefinitionRepository.update(existing.id, {
+          type: ExerciseType.BODYWEIGHT,
+        });
+        await this.propagateSnapshot(existing.id, {
+          type: ExerciseType.BODYWEIGHT,
+        });
+      }
+    }
+  }
+
+  /**
+   * Logged workouts and templates keep a copy of an exercise's name, muscle
+   * group and type; carry a change through so history, plans and progress
+   * show it too.
+   */
+  private async propagateSnapshot(
+    id: number,
+    snapshot: { name?: string; muscleGroup?: string; type?: ExerciseType },
+  ) {
+    if (!Object.keys(snapshot).length) return;
+    const manager = this.exerciseDefinitionRepository.manager;
+    await manager.update(WorkoutExercise, { exerciseDefinitionId: id }, snapshot);
+    await manager.update(TemplateExercise, { exerciseDefinitionId: id }, snapshot);
   }
 
   findAll() {
@@ -90,19 +137,11 @@ export class ExerciseDefinitionsService implements OnApplicationBootstrap {
       }
     }
     await this.exerciseDefinitionRepository.update(id, dto);
-    // Logged workouts keep a copy of the name/muscle group; carry a rename
-    // (typically a typo fix) through so history and progress show it too.
-    const snapshot = {
+    await this.propagateSnapshot(id, {
       ...(dto.name ? { name: dto.name } : {}),
       ...(dto.muscleGroup ? { muscleGroup: dto.muscleGroup } : {}),
-    };
-    if (Object.keys(snapshot).length) {
-      await this.exerciseDefinitionRepository.manager.update(
-        WorkoutExercise,
-        { exerciseDefinitionId: id },
-        snapshot,
-      );
-    }
+      ...(dto.type ? { type: dto.type } : {}),
+    });
     return this.findOne(id);
   }
 

@@ -12,6 +12,11 @@ import {
   RecordKind,
 } from '../../models/progress.model';
 import {
+  BodyweightTag,
+  bodyweightChipText,
+  extraWeightText,
+} from '../../../shared/bodyweight';
+import {
   compactKg,
   formatKg,
   formatNumber,
@@ -20,7 +25,7 @@ import {
   shortDate,
 } from '../../../shared/format';
 
-type Metric = 'e1rm' | 'weight' | 'volume' | 'reps';
+type Metric = 'e1rm' | 'weight' | 'volume' | 'reps' | 'totalReps';
 type LoadState = 'loading' | 'ready' | 'notFound' | 'error';
 
 interface ChartPoint {
@@ -42,7 +47,21 @@ const METRIC_VALUE: Record<Metric, (s: ExerciseSession) => number> = {
   weight: (s) => s.topWeightKg,
   volume: (s) => s.volumeKg,
   reps: (s) => s.topReps,
+  totalReps: (s) => s.totalReps,
 };
+
+/** Metrics that count reps (shown without "kg"). */
+const REP_METRICS: Metric[] = ['reps', 'totalReps'];
+
+/**
+ * A bodyweight exercise: reps lead; the weight is only the EXTRA weight, so an
+ * estimated 1RM or a kg volume calculated from it would be meaningless.
+ */
+const BODYWEIGHT_METRICS: MetricOption[] = [
+  { id: 'reps', label: 'progress.ex.metric.reps', explain: 'progress.ex.explain.reps' },
+  { id: 'totalReps', label: 'bw.metric.totalReps', explain: 'bw.explain.totalReps' },
+  { id: 'weight', label: 'bw.metric.weight', explain: 'bw.explain.weight' },
+];
 
 const ALL_METRICS: MetricOption[] = [
   { id: 'e1rm', label: 'progress.ex.metric.e1rm', explain: 'progress.ex.explain.e1rm' },
@@ -56,7 +75,7 @@ const APP_TITLE = 'Iron Pulse';
 @Component({
   selector: 'app-exercise-progress-page',
   standalone: true,
-  imports: [AppHeader, AppIcon, RouterLink, MnSkeleton, MnTranslatePipe],
+  imports: [AppHeader, AppIcon, BodyweightTag, RouterLink, MnSkeleton, MnTranslatePipe],
   templateUrl: './exercise-progress-page.html',
 })
 export class ExerciseProgressPage implements OnInit, OnDestroy {
@@ -85,10 +104,18 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
     return sessions.length > 0 && sessions.every((s) => s.topWeightKg === 0);
   });
 
+  /** A bodyweight exercise: logged weights are extra weight. */
+  readonly bodyweight = computed(() => !!this.history()?.bodyweight);
+
   /** kg-based metrics are hidden when they would all be zero. */
-  readonly metrics = computed<MetricOption[]>(() =>
-    this.bodyweightOnly() ? ALL_METRICS.filter((m) => m.id === 'reps') : ALL_METRICS,
-  );
+  readonly metrics = computed<MetricOption[]>(() => {
+    if (this.bodyweight()) {
+      return this.bodyweightOnly()
+        ? BODYWEIGHT_METRICS.filter((m) => m.id !== 'weight')
+        : BODYWEIGHT_METRICS;
+    }
+    return this.bodyweightOnly() ? ALL_METRICS.filter((m) => m.id === 'reps') : ALL_METRICS;
+  });
 
   readonly metricOption = computed<MetricOption>(() => {
     const options = this.metrics();
@@ -224,6 +251,7 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
       case 'volume':
         return this.volume(value);
       case 'reps':
+      case 'totalReps':
         return formatNumber(value, this.lang.locale, 0);
       default:
         return this.kg(value);
@@ -232,14 +260,36 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
 
   /** Unit that goes with a value of the chosen metric: "kg" or "rep(s)". */
   metricUnit(value: number): string {
-    return this.lang.t(this.metric() === 'reps' ? plural(value, 'unit.reps') : 'unit.kg');
+    return this.lang.t(
+      REP_METRICS.includes(this.metric()) ? plural(value, 'unit.reps') : 'unit.kg',
+    );
   }
 
-  /** "100 kg", or "BW" for a bodyweight (0 kg) set. */
+  /** "100 kg", or "BW" for a bodyweight (0 kg) set; "+10 kg" on a bodyweight exercise. */
   weightText(weightKg: number): string {
+    if (weightKg > 0 && this.bodyweight()) return this.extraText(weightKg);
     return weightKg > 0
       ? `${this.kg(weightKg)} ${this.lang.t('unit.kg')}`
       : this.lang.t('unit.bw');
+  }
+
+  /** "+10 kg": extra weight on top of body weight. */
+  extraText(weightKg: number): string {
+    return extraWeightText(weightKg, (k, p) => this.lang.t(k, p), this.lang.locale);
+  }
+
+  /** One set of a session as a chip: "8 × 60 kg" / "12 × BW" / "8 × +10 kg". */
+  chipText(set: { reps: number; weightKg: number }): string {
+    if (this.bodyweight()) {
+      return bodyweightChipText(
+        set.reps,
+        set.weightKg,
+        (k, p) => this.lang.t(k, p),
+        this.lang.locale,
+        true,
+      );
+    }
+    return `${set.reps} × ${this.weightText(set.weightKg)}`;
   }
 
   /** "3 reps" / "1 rep". */

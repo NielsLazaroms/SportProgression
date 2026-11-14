@@ -10,6 +10,7 @@ import {
   ProgressWeek,
   RecentRecord,
 } from '../../models/progress.model';
+import { extraWeightText } from '../../../shared/bodyweight';
 import {
   compactKg,
   formatKg,
@@ -207,12 +208,31 @@ export class ProgressPage implements OnInit {
       : this.lang.t('unit.bw');
   }
 
-  /** What the record was: "Heaviest ever · 185 kg × 1" / "Most reps · 13 × BW". */
+  /** Definition ids of the exercises whose weights are extra weight. */
+  private readonly bodyweightIds = computed(
+    () =>
+      new Set(
+        (this.summary()?.exercises ?? [])
+          .filter((e) => e.bodyweight)
+          .map((e) => e.exerciseDefinitionId),
+      ),
+  );
+
+  /** "+10 kg": extra weight on top of body weight. */
+  extraText(weightKg: number): string {
+    return extraWeightText(weightKg, (k, p) => this.lang.t(k, p), this.lang.locale);
+  }
+
+  /**
+   * What the record was: "Heaviest ever · 185 kg × 1" / "Most reps · 13 × BW";
+   * bodyweight exercise with extra weight: "Heaviest ever · +10 kg × 6".
+   */
   recordText(r: RecentRecord): string {
-    const set =
-      r.kind === 'weight'
-        ? `${this.weightText(r.weightKg)} × ${r.reps}`
-        : `${r.reps} × ${this.weightText(r.weightKg)}`;
+    const weight =
+      r.weightKg > 0 && this.bodyweightIds().has(r.exerciseDefinitionId)
+        ? this.extraText(r.weightKg)
+        : this.weightText(r.weightKg);
+    const set = r.kind === 'weight' ? `${weight} × ${r.reps}` : `${r.reps} × ${weight}`;
     // Non-breaking spaces keep the set itself on one line when the text wraps.
     return `${this.lang.t('progress.rec.' + r.kind)} · ${set.replace(/ /g, ' ')}`;
   }

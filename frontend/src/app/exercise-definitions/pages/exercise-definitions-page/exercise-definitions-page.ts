@@ -32,7 +32,9 @@ import { ExerciseDefinitionService } from '../../../exercises/data-access/exerci
 import {
   ExerciseDefinition,
   ExerciseType,
+  isBodyweight,
 } from '../../../exercises/models/exercise.model';
+import { BodyweightTag, ExerciseTypeToggle } from '../../../shared/bodyweight';
 import { MUSCLE_GROUPS } from '../../../shared/muscle-groups';
 import { errorHintKey } from '../../../shared/format';
 
@@ -46,6 +48,8 @@ const NAME_MAX = 80;
     AppHeader,
     FormsModule,
     AppIcon,
+    BodyweightTag,
+    ExerciseTypeToggle,
     MnButton,
     MnInputField,
     MnSelect,
@@ -88,6 +92,14 @@ export class ExerciseDefinitionsPage implements OnInit {
   readonly saving = signal(false);
   readonly name = signal('');
   readonly muscleGroup = signal('');
+  /** Weights (default) or bodyweight. */
+  readonly type = signal<ExerciseType>(ExerciseType.STRENGTH);
+  readonly isBodyweight = isBodyweight;
+  /** Editing and the type differs from what is stored: explain what follows. */
+  readonly typeChanged = computed(() => {
+    const def = this.editing();
+    return !!def && def.type !== this.type();
+  });
 
   private readonly formBody = viewChild<ElementRef<HTMLElement>>('formBody');
 
@@ -142,6 +154,7 @@ export class ExerciseDefinitionsPage implements OnInit {
     this.editing.set(def);
     this.name.set(def?.name ?? '');
     this.muscleGroup.set(def?.muscleGroup ?? '');
+    this.type.set(def?.type ?? ExerciseType.STRENGTH);
     this.showForm.set(true);
     // The kit's input has no maxlength prop: set it on the real <input>, and
     // start with the cursor in the name field.
@@ -161,13 +174,14 @@ export class ExerciseDefinitionsPage implements OnInit {
     this.showForm.set(false);
   }
 
-  /** Nothing to save while editing if name and muscle group are unchanged. */
+  /** Nothing to save while editing if name, muscle group and type are unchanged. */
   private unchanged(): boolean {
     const def = this.editing();
     return (
       !!def &&
       def.name === this.name().trim() &&
-      (def.muscleGroup ?? '') === this.muscleGroup()
+      (def.muscleGroup ?? '') === this.muscleGroup() &&
+      def.type === this.type()
     );
   }
 
@@ -193,7 +207,7 @@ export class ExerciseDefinitionsPage implements OnInit {
   private add(name: string, muscleGroup: string): void {
     const known = new Set(this.definitions().map((d) => d.id));
     this.service
-      .create({ name, type: ExerciseType.STRENGTH, muscleGroup })
+      .create({ name, type: this.type(), muscleGroup })
       .subscribe({
         next: (created) => {
           this.saving.set(false);
@@ -221,7 +235,10 @@ export class ExerciseDefinitionsPage implements OnInit {
   }
 
   private update(def: ExerciseDefinition, name: string, muscleGroup: string): void {
-    this.service.update(def.id, { name, muscleGroup }).subscribe({
+    const type = this.type();
+    this.service
+      .update(def.id, { name, muscleGroup, ...(type !== def.type ? { type } : {}) })
+      .subscribe({
       next: () => {
         this.saving.set(false);
         this.showForm.set(false);

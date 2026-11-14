@@ -101,6 +101,12 @@
                   <span class="text-xs font-bold text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
                 }
               </span>
+              @if (e.bodyweight && e.bestWeightKg > 0) {
+                <!-- Weighted bodyweight work: the heaviest extra weight used so far -->
+                <span class="tnum block text-[11px] font-semibold text-on-surface-variant">
+                  {{ 'bw.upTo' | mnTranslate: { weight: extraText(e.bestWeightKg) } }}
+                </span>
+              }
             </span>
             <span class="shrink-0 text-outline"><app-icon [data]="{ name: 'chevron-right', size: 18 }" /></span>
           </a>

@@ -391,6 +391,9 @@
                   @if (ex.muscleGroup) {
                     <span class="text-[11px] font-semibold text-on-surface-variant">{{ muscleLabel(ex.muscleGroup) }}</span>
                   }
+                  @if (isBw(ex)) {
+                    <app-bw-tag />
+                  }
                 </div>
                 <h3 class="mt-1 break-words font-display text-lg font-bold leading-snug text-on-surface"><ng-container [ngTemplateOutlet]="letterBadge" [ngTemplateOutletContext]="{ $implicit: it.letter }" />{{ ex.name }}</h3>
                 @if (targetSets(ex)) {
@@ -455,13 +458,13 @@
                       [class]="$index === workingCount(ex)
                         ? 'border-primary-container/60 bg-primary-container/15 text-primary'
                         : 'border-transparent bg-surface-container-high text-on-surface'"
-                    >{{ chipText(s.reps, s.weightKg) }}</span>
+                    >{{ chipText(s.reps, s.weightKg, isBw(ex)) }}</span>
                   }
                 </div>
                 @if (ref.best; as best) {
                   <p class="tnum mt-2 text-xs font-semibold text-on-surface-variant">
                     {{ 'detail.lastTime.best' | mnTranslate }}
-                    <span class="text-on-surface">{{ setText(best.reps, best.weightKg) }}</span>
+                    <span class="text-on-surface">{{ setText(best.reps, best.weightKg, isBw(ex)) }}</span>
                   </p>
                 }
               </div>
@@ -507,7 +510,7 @@
                   </div>
                 </div>
                 <div class="min-w-0">
-                  <label [attr.for]="'weight-' + ex.id" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.weightKg' | mnTranslate }}</label>
+                  <label [attr.for]="'weight-' + ex.id" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ (isBw(ex) ? 'bw.extraKg' : 'detail.weightKg') | mnTranslate }}</label>
                   <div class="flex items-stretch overflow-hidden rounded-lg border border-control bg-surface-container focus-within:border-primary">
                     <button
                       type="button"
@@ -527,7 +530,7 @@
                       [ngModelOptions]="{ standalone: true }"
                       (keydown.enter)="addSet(ex)"
                       (wheel)="blurOnWheel($event)"
-                      [attr.aria-label]="'detail.weightKg' | mnTranslate"
+                      [attr.aria-label]="(isBw(ex) ? 'bw.extraKg' : 'detail.weightKg') | mnTranslate"
                       class="tnum h-12 w-full min-w-0 flex-1 bg-transparent px-0 text-center text-base font-bold text-on-surface outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <button
@@ -594,7 +597,7 @@
                 <!-- Just removed a set: a few seconds to take it back -->
                 <div role="status" class="flex items-center gap-2 border-b border-outline-variant/30 bg-surface-container-high py-1 pl-4 pr-2">
                   <span class="tnum min-w-0 flex-1 text-sm text-on-surface">
-                    {{ 'detail.undo.removed' | mnTranslate: { set: setText(u.reps, u.weightKg) } }}
+                    {{ 'detail.undo.removed' | mnTranslate: { set: setText(u.reps, u.weightKg, isBw(ex)) } }}
                   </span>
                   <button
                     type="button"
@@ -646,7 +649,7 @@
                         (wheel)="blurOnWheel($event)"
                         class="tnum h-11 w-full min-w-0 flex-1 rounded-lg border border-control bg-surface-container px-1 text-center text-base font-bold text-on-surface outline-none focus:border-primary [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       />
-                      <span class="shrink-0 text-outline">×</span>
+                      <span class="shrink-0 text-outline">{{ isBw(ex) ? '+' : '×' }}</span>
                       <input
                         type="number"
                         [(ngModel)]="editWeight"
@@ -654,12 +657,12 @@
                         inputmode="decimal"
                         min="0"
                         step="any"
-                        [attr.aria-label]="'detail.weightKg' | mnTranslate"
+                        [attr.aria-label]="(isBw(ex) ? 'bw.extraKg' : 'detail.weightKg') | mnTranslate"
                         (keydown.enter)="saveSet(ex, set)"
                         (wheel)="blurOnWheel($event)"
                         class="tnum h-11 w-full min-w-0 flex-[1.5] rounded-lg border border-control bg-surface-container px-1 text-center text-base font-bold text-on-surface outline-none focus:border-primary [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       />
-                      <span class="shrink-0 text-sm text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
+                      <span class="shrink-0 text-sm text-on-surface-variant">{{ (isBw(ex) ? 'bw.kgExtra' : 'unit.kg') | mnTranslate }}</span>
                     </div>
                     <div class="flex flex-wrap items-center justify-end gap-2">
                       <button
@@ -717,7 +720,7 @@
                       class="group flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1 pl-1 text-left"
                     >
                       <span class="min-w-0 flex-1">
-                        <ng-container [ngTemplateOutlet]="setLine" [ngTemplateOutletContext]="{ $implicit: set }" />
+                        <ng-container [ngTemplateOutlet]="setLine" [ngTemplateOutletContext]="{ $implicit: set, bw: isBw(ex) }" />
                         @if (prSets().has(set.setId)) {
                           <span class="mt-0.5 flex w-fit items-center gap-1 rounded-full bg-record-fill/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-record">
                             <span class="shrink-0"><app-icon [data]="{ name: 'trophy', size: 12 }" /></span>
@@ -867,14 +870,22 @@
 </ng-template>
 
 <!-- One set as text: "10 reps × 67.5 kg" / "12 reps × BW" -->
-<ng-template #setLine let-set>
+<!-- Bodyweight exercise (bw): "12 reps" / "8 reps · +10 kg" — the weight is extra weight -->
+<ng-template #setLine let-set let-bw="bw">
   <span class="tnum flex flex-wrap items-baseline gap-x-1 font-semibold text-on-surface">
     <span>{{ num(set.repsAmount) }}</span>
     <span class="text-on-surface-variant">{{ plural(+set.repsAmount, 'unit.reps') | mnTranslate }}</span>
-    <span class="mx-0.5 text-outline">×</span>
-    @if (+set.weightKg === 0) {
+    @if (bw) {
+      @if (+set.weightKg > 0) {
+        <span class="mx-0.5 text-outline">·</span>
+        <span>+{{ num(set.weightKg) }}</span>
+        <span class="text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
+      }
+    } @else if (+set.weightKg === 0) {
+      <span class="mx-0.5 text-outline">×</span>
       <span>{{ 'unit.bw' | mnTranslate }}</span>
     } @else {
+      <span class="mx-0.5 text-outline">×</span>
       <span>{{ num(set.weightKg) }}</span>
       <span class="text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
     }
@@ -903,7 +914,7 @@
           [attr.title]="set.isWarmup ? ('detail.warmup' | mnTranslate) : null"
         >{{ setLabel(ex, set) }}</span>
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5">
-          <ng-container [ngTemplateOutlet]="setLine" [ngTemplateOutletContext]="{ $implicit: set }" />
+          <ng-container [ngTemplateOutlet]="setLine" [ngTemplateOutletContext]="{ $implicit: set, bw: isBw(ex) }" />
           @if (set.isWarmup) {
             <span class="text-xs text-on-surface-variant">{{ 'detail.warmup' | mnTranslate }}</span>
           }

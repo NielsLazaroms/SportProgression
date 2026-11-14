@@ -66,3 +66,8 @@ export interface CreateWorkoutExercise {
   orderInWorkout: number;
   notes?: string;
 }
+
+/** Bodyweight exercise: a set's weight is EXTRA weight (0 = just body weight). */
+export function isBodyweight(e: { type?: ExerciseType | string | null } | null | undefined): boolean {
+  return e?.type === ExerciseType.BODYWEIGHT;
+}

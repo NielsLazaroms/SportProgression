@@ -27,7 +27,9 @@ import { ExerciseDefinitionService } from '../../../exercises/data-access/exerci
 import {
   ExerciseDefinition,
   ExerciseType,
+  isBodyweight,
 } from '../../../exercises/models/exercise.model';
+import { BodyweightTag } from '../../../shared/bodyweight';
 import {
   SupersetRole,
   linkWithNext,
@@ -59,6 +61,8 @@ interface Row {
   definitionId: number | null;
   name: string;
   muscleGroup: string | null;
+  /** Shown as a tag; targets stay sets × reps. */
+  bodyweight: boolean;
   targetSets: number;
   targetReps: number;
   /** Neighbouring rows with the same number are one superset; always normalised. */
@@ -93,6 +97,7 @@ function normalized(rows: Row[]): Row[] {
     MnSkeleton,
     MnTranslatePipe,
     ExercisePicker,
+    BodyweightTag,
     TargetStepper,
   ],
   templateUrl: './template-editor-page.html',
@@ -230,6 +235,7 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
             definitionId: e.exerciseDefinitionId ?? null,
             name: e.name,
             muscleGroup: e.muscleGroup ?? null,
+            bodyweight: isBodyweight(e),
             targetSets: e.targetSets,
             targetReps: e.targetReps,
             supersetGroup: e.supersetGroup ?? null,
@@ -269,6 +275,7 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
         definitionId: def.id,
         name: def.name,
         muscleGroup: def.muscleGroup ?? null,
+        bodyweight: isBodyweight(def),
         targetSets: DEFAULT_SETS,
         targetReps: DEFAULT_REPS,
         supersetGroup: null,
@@ -283,11 +290,11 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
   }
 
   /** "Not in the list": create the catalog entry, then plan it. */
-  createAndPick(dto: { name: string; muscleGroup: string }): void {
+  createAndPick(dto: { name: string; muscleGroup: string; type: ExerciseType }): void {
     if (this.pickerBusy()) return;
     this.pickerBusy.set(true);
     this.definitionService
-      .create({ name: dto.name, type: ExerciseType.STRENGTH, muscleGroup: dto.muscleGroup })
+      .create({ name: dto.name, type: dto.type ?? ExerciseType.STRENGTH, muscleGroup: dto.muscleGroup })
       .subscribe({
         next: (def) => {
           this.pickerBusy.set(false);

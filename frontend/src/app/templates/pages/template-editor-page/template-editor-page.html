@@ -80,10 +80,13 @@
                   @if (row.muscleGroup) {
                     <span>{{ muscleLabel(row.muscleGroup) }}</span>
                   }
+                  @if (row.bodyweight) {
+                    <app-bw-tag />
+                  }
                   @if (row.definitionId === null) {
                     <span class="font-semibold text-warning">{{ 'templates.editor.gone' | mnTranslate }}</span>
                   } @else if (duplicateIds().has(row.definitionId)) {
-                    @if (row.muscleGroup) { <span aria-hidden="true">·</span> }
+                    @if (row.muscleGroup && !row.bodyweight) { <span aria-hidden="true">·</span> }
                     <span class="font-semibold text-primary">{{ 'templates.editor.duplicate' | mnTranslate }}</span>
                   }
                 </p>

@@ -17,8 +17,8 @@ export class CreateExerciseDefinitionDto {
   @ApiProperty({ example: 'Bench Press' })
   name: string;
 
-  // The app currently only tracks strength ("power") exercises; type defaults
-  // to STRENGTH when omitted.
+  // StrengthExercise (default) or BodyweightExercise, where the weight of a
+  // set means EXTRA weight on top of the lifter's own body weight.
   @IsOptional()
   @IsEnum(ExerciseType)
   @ApiProperty({ example: ExerciseType.STRENGTH, enum: ExerciseType, required: false })
