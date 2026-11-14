@@ -16,6 +16,7 @@ import { ExerciseDefinitionsModule } from './exercise-definitions/exercise-defin
 import { SetsModule } from './sets/sets.module';
 import { ProgressModule } from './progress/progress.module';
 import { AccountModule } from './account/account.module';
+import { TemplatesModule } from './templates/templates.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { AccountModule } from './account/account.module';
     SetsModule,
     ProgressModule,
     AccountModule,
+    TemplatesModule,
     AuthModule,
   ],
   controllers: [AppController],

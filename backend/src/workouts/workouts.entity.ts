@@ -40,6 +40,12 @@ export class Workout {
   @Column()
   userId: string;
 
+  /** The template this workout was started from, if any (not a hard link:
+   *  deleting the template leaves the workout untouched). */
+  @ApiProperty({ required: false, nullable: true })
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  templateId?: string | null;
+
   @OneToMany(() => WorkoutExercise, (exercise) => exercise.workout)
   exercises: WorkoutExercise[];
 

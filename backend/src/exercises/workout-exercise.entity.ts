@@ -66,6 +66,16 @@ export class WorkoutExercise {
   @Column({ nullable: true })
   notes?: string;
 
+  /** Planned working sets × reps, copied from the template when the workout
+   *  was started from one. Null for exercises added by hand. */
+  @ApiProperty({ example: 4, required: false, nullable: true })
+  @Column({ type: 'int', nullable: true })
+  targetSets?: number | null;
+
+  @ApiProperty({ example: 8, required: false, nullable: true })
+  @Column({ type: 'int', nullable: true })
+  targetReps?: number | null;
+
   @OneToMany(() => ExerciseSet, (set) => set.workoutExercise, { cascade: true })
   sets: ExerciseSet[];
 

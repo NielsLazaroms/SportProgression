@@ -31,6 +31,9 @@ export interface WorkoutExercise {
   muscleGroup?: string;
   orderInWorkout: number;
   notes?: string;
+  /** Planned working sets × reps when the workout came from a template. */
+  targetSets?: number | null;
+  targetReps?: number | null;
   sets: ExerciseSet[];
   createdAt: string;
   updatedAt: string;

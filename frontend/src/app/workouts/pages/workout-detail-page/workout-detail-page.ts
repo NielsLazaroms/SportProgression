@@ -35,6 +35,7 @@ import { ExerciseService } from '../../../exercises/data-access/exercise.service
 import { ExerciseDefinitionService } from '../../../exercises/data-access/exercise-definition.service';
 import { SetService } from '../../../exercises/data-access/set.service';
 import { ProgressService } from '../../../progress/data-access/progress.service';
+import { TemplateService } from '../../../templates/data-access/template.service';
 import {
   ExerciseHistory,
   ExerciseSession,
@@ -135,6 +136,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   private readonly definitionService = inject(ExerciseDefinitionService);
   private readonly setService = inject(SetService);
   private readonly progressService = inject(ProgressService);
+  private readonly templateService = inject(TemplateService);
   private readonly alerts = inject(MnAlertService);
   private readonly lang = inject(MnLanguageService);
   private readonly modal = inject(MnModalService);
@@ -164,12 +166,31 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   });
 
   /** Why "Finish workout" is blocked, or null when it's allowed. */
-  readonly finishBlock = computed<{ key: string; name?: string } | null>(() => {
+  readonly finishBlock = computed<
+    { key: string; name?: string; exercise?: WorkoutExercise } | null
+  >(() => {
     const ex = this.exercises();
     if (ex.length === 0) return { key: 'detail.finish.needExercise' };
     const empty = ex.find((e) => (e.sets?.length ?? 0) === 0);
-    if (empty) return { key: 'detail.finish.needSet', name: empty.name };
+    if (empty) return { key: 'detail.finish.needSet', name: empty.name, exercise: empty };
     return null;
+  });
+
+  /**
+   * Progress against the template plan: working sets done (capped per
+   * exercise at its target, so extras never hide a skipped set) out of all
+   * planned sets. Null when no exercise in this workout has a target.
+   */
+  readonly planned = computed<{ done: number; total: number } | null>(() => {
+    let done = 0;
+    let total = 0;
+    for (const ex of this.exercises()) {
+      const target = this.targetSets(ex);
+      if (!target) continue;
+      total += target;
+      done += Math.min(target, workingSets(ex).length);
+    }
+    return total > 0 ? { done, total } : null;
   });
 
   readonly volume = computed(() => {
@@ -315,6 +336,11 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   private undoTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly showAddExercise = signal(false);
+
+  // "Save as template" bottom sheet (finished workouts only)
+  readonly showSaveTemplate = signal(false);
+  readonly savingTemplate = signal(false);
+  readonly templateName = signal('');
 
   /** Toasts that would contradict each other if both stayed on screen. */
   private finishedToastId: string | null = null;
@@ -493,6 +519,9 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
         d.reps = Number(last.reps);
         d.weight = Number(last.weightKg);
       }
+      // A planned exercise: the plan decides the reps, last time the weight.
+      const planReps = this.targetReps(ex);
+      if (planReps) d.reps = planReps;
     }
     this.draftTick.update((n) => n + 1);
   }
@@ -550,10 +579,92 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     return out;
   }
 
-  /** Row summary: "3 sets · 1 warm-up · 1.8k kg". */
+  // ------------------------------------------------------------------ plan
+
+  /** Planned working sets (from a template), or null for a hand-added exercise. */
+  targetSets(ex: WorkoutExercise): number | null {
+    const n = Number(ex.targetSets);
+    return n > 0 ? n : null;
+  }
+
+  /** Planned reps per set, or null when there is no plan. */
+  targetReps(ex: WorkoutExercise): number | null {
+    const n = Number(ex.targetReps);
+    return this.targetSets(ex) && n > 0 ? n : null;
+  }
+
+  /** "Target 4 × 8" / "4 × 8 planned" (just the set count if reps are unknown). */
+  planText(ex: WorkoutExercise, key: 'detail.plan.target' | 'detail.plan.planned'): string {
+    const sets = this.targetSets(ex) ?? 0;
+    const reps = this.targetReps(ex);
+    return this.t(key, { sets, reps: reps ?? '' }).replace(/\s×\s(?=\s|$)/, '');
+  }
+
+  /** "2 of 4 sets" — working sets against the plan. */
+  planSetsText(ex: WorkoutExercise): string {
+    const total = this.targetSets(ex) ?? 0;
+    return this.t(plural(total, 'detail.plan.sets'), {
+      done: workingSets(ex).length,
+      total,
+    });
+  }
+
+  /** "8 reps planned" for a placeholder row. */
+  planRepsText(ex: WorkoutExercise): string {
+    const reps = this.targetReps(ex);
+    if (!reps) return '';
+    return this.t('detail.plan.row.reps', {
+      reps: `${reps} ${this.t(plural(reps, 'unit.reps'))}`,
+    });
+  }
+
+  /** Numbers of the planned working sets that are still to be logged. */
+  remainingPlan(ex: WorkoutExercise): number[] {
+    const target = this.targetSets(ex);
+    if (!target) return [];
+    const done = workingSets(ex).length;
+    const out: number[] = [];
+    for (let n = done + 1; n <= target; n++) out.push(n);
+    return out;
+  }
+
+  /** One entry per planned set for the progress bar: true = done. */
+  planSegments(ex: WorkoutExercise): boolean[] {
+    const target = this.targetSets(ex) ?? 0;
+    const done = workingSets(ex).length;
+    return Array.from({ length: target }, (_, i) => i < done);
+  }
+
+  targetReached(ex: WorkoutExercise): boolean {
+    const target = this.targetSets(ex);
+    return !!target && workingSets(ex).length >= target;
+  }
+
+  /** Working sets done minus planned: <0 fell short, >0 went beyond, 0/null nothing to flag. */
+  planDelta(ex: WorkoutExercise): number | null {
+    const target = this.targetSets(ex);
+    return target ? workingSets(ex).length - target : null;
+  }
+
+  /** "11 of 13 planned sets", or '' without a plan. */
+  plannedText(): string {
+    const p = this.planned();
+    if (!p) return '';
+    return this.t(plural(p.total, 'detail.plan.summary'), { done: p.done, total: p.total });
+  }
+
+  /** Row summary: "3 sets · 1 warm-up · 1.8k kg" ("3 of 4 sets · …" with a plan). */
   exerciseMeta(ex: WorkoutExercise): string {
     const working = workingSets(ex).length;
-    const parts = [this.setsText(working, (ex.sets?.length ?? 0) - working, ' · ')];
+    const warmups = (ex.sets?.length ?? 0) - working;
+    const parts = [
+      this.targetSets(ex)
+        ? this.planSetsText(ex) +
+          (warmups > 0
+            ? ` · ${warmups} ${this.t(plural(warmups, 'detail.warmupCount'))}`
+            : '')
+        : this.setsText(working, warmups, ' · '),
+    ];
     const vol = this.exerciseVolume(ex);
     if (vol > 0) parts.push(`${compactKg(vol, this.lang.locale)} ${this.t('unit.kg')}`);
     return parts.join(' · ');
@@ -614,7 +725,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     const target = shown[workingSets(ex).length] ?? shown[shown.length - 1];
     if (target) {
       const d = this.draft(ex.id);
-      d.reps = Number(target.reps);
+      d.reps = this.targetReps(ex) ?? Number(target.reps);
       d.weight = Number(target.weightKg);
       d.touched = false;
       this.draftTick.update((n) => n + 1);
@@ -1087,6 +1198,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   finishWorkout(): void {
     if (!this.canFinish() || this.finishing()) return;
     const total = this.totalSets();
+    const plannedText = this.plannedText();
     this.finishing.set(true);
     this.workoutService.finishWorkout(this.workoutId).subscribe({
       next: (w) => {
@@ -1106,7 +1218,8 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
         this.reopenedToastId = null;
         this.finishedToastId = this.alerts.success(
           this.t('detail.workoutDone.title'),
-          this.t(plural(total, 'detail.workoutDone.body'), { n: total }),
+          this.t(plural(total, 'detail.workoutDone.body'), { n: total }) +
+            (plannedText ? ` ${plannedText}.` : ''),
         );
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
@@ -1155,6 +1268,33 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
 
   onEscape(): void {
     if (this.showEdit() && !this.savingEdit()) this.showEdit.set(false);
+    if (this.showSaveTemplate() && !this.savingTemplate()) this.showSaveTemplate.set(false);
+  }
+
+  // ------------------------------------------------------ save as template
+
+  openSaveTemplate(): void {
+    const w = this.workout();
+    if (!w || !this.completed() || this.totalSets() === 0) return;
+    this.templateName.set((w.name ?? '').slice(0, 100));
+    this.showSaveTemplate.set(true);
+  }
+
+  saveTemplate(): void {
+    const name = this.templateName().trim();
+    if (!name || this.savingTemplate()) return;
+    this.savingTemplate.set(true);
+    this.templateService.createFromWorkout(this.workoutId, name).subscribe({
+      next: (tpl) => {
+        this.savingTemplate.set(false);
+        this.showSaveTemplate.set(false);
+        this.alerts.success(this.t('toast.saveTemplate.done'), tpl?.name ?? name);
+      },
+      error: (err) => {
+        this.savingTemplate.set(false);
+        this.alerts.error(this.t('toast.saveTemplate.err'), this.t(errorHintKey(err)));
+      },
+    });
   }
 
   saveEdit(): void {

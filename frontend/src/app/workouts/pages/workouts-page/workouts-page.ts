@@ -7,6 +7,11 @@ import { WorkoutService } from '../../data-access/workout.service';
 import { ProgressService } from '../../../progress/data-access/progress.service';
 import { ProgressSummary } from '../../../progress/models/progress.model';
 import { Workout, workoutSetCount } from '../../models/workout.model';
+import { TemplateService } from '../../../templates/data-access/template.service';
+import {
+  WorkoutTemplate,
+  templateSetCount,
+} from '../../../templates/models/template.model';
 import { NewWorkoutSheet } from '../../components/new-workout-sheet';
 import { WorkoutRow } from '../../components/workout-row';
 import {
@@ -43,6 +48,7 @@ function yesterdayIso(): string {
 export class WorkoutsPage implements OnInit {
   private readonly workoutService = inject(WorkoutService);
   private readonly progressService = inject(ProgressService);
+  private readonly templateService = inject(TemplateService);
   private readonly lang = inject(MnLanguageService);
 
   readonly workouts = signal<Workout[]>([]);
@@ -52,12 +58,9 @@ export class WorkoutsPage implements OnInit {
   /** i18n key explaining why loading failed; null when it worked. */
   readonly loadError = signal<string | null>(null);
 
-  /** Finished workouts with exercises — the ones worth running again. */
-  readonly rerunnable = computed(() =>
-    this.workouts()
-      .filter((w) => !!w.completedAt && (w.exercises?.length ?? 0) > 0)
-      .slice(0, 6),
-  );
+  /** The user's templates; the row stays hidden until they have loaded. */
+  readonly templates = signal<WorkoutTemplate[]>([]);
+  readonly templatesLoaded = signal(false);
 
   /**
    * The workout to offer as "Continue": unfinished and dated today or
@@ -84,12 +87,15 @@ export class WorkoutsPage implements OnInit {
     };
   });
 
-  // New-workout sheet; with `rerunSource` set it starts a re-run instead.
+  // New-workout sheet; with `rerunSource` set it starts a re-run, with
+  // `templateSource` set a workout from that template.
   readonly showNew = signal(false);
   readonly rerunSource = signal<Workout | null>(null);
+  readonly templateSource = signal<WorkoutTemplate | null>(null);
 
   // template helpers
   readonly setCount = workoutSetCount;
+  readonly templateSets = templateSetCount;
   readonly plural = plural;
   readonly volumeText = (kg: number) => compactKg(kg, this.lang.locale);
   readonly rel = (d: string) =>
@@ -112,6 +118,14 @@ export class WorkoutsPage implements OnInit {
         this.loadError.set(errorHintKey(err));
       },
     });
+    this.templateService.getAll().subscribe({
+      next: (list) => {
+        this.templates.set(list);
+        this.templatesLoaded.set(true);
+      },
+      // Home still works without the row; the Templates page reports errors.
+      error: () => this.templatesLoaded.set(false),
+    });
     this.progressService.getSummary().subscribe({
       next: (s) => this.summary.set(s),
       error: () => this.summary.set(null),
@@ -123,18 +137,23 @@ export class WorkoutsPage implements OnInit {
     return (w.exercises ?? []).reduce((n, ex) => n + (ex.sets?.length ?? 0), 0);
   }
 
-  exerciseCount(w: Workout): number {
-    return w.exercises?.length ?? 0;
-  }
-
   openNew(): void {
     this.rerunSource.set(null);
+    this.templateSource.set(null);
     this.showNew.set(true);
   }
 
   /** Re-run: the normal new-workout sheet, prefilled from an earlier workout. */
   reRun(w: Workout): void {
+    this.templateSource.set(null);
     this.rerunSource.set(w);
+    this.showNew.set(true);
+  }
+
+  /** Start from a template: the same sheet, listing the planned exercises. */
+  startTemplate(t: WorkoutTemplate): void {
+    this.rerunSource.set(null);
+    this.templateSource.set(t);
     this.showNew.set(true);
   }
 }

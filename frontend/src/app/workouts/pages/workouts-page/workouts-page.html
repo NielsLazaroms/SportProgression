@@ -81,44 +81,63 @@
     }
   </section>
 
-  <!-- Re-run a recent workout -->
-  @if (rerunnable().length) {
+  <!-- Templates: start a planned workout with one tap -->
+  @if (templatesLoaded()) {
     <section class="mb-8">
       <div class="mb-4 flex items-center justify-between gap-3">
-        <h2 class="font-display text-lg font-bold text-on-surface">
-          {{ 'home.rerun' | mnTranslate }}
+        <h2 class="min-w-0 font-display text-lg font-bold text-on-surface">
+          {{ 'home.templates' | mnTranslate }}
         </h2>
-        <a routerLink="/history" class="-my-2 flex min-h-11 shrink-0 items-center text-sm font-semibold text-primary">
-          {{ 'home.seeAll' | mnTranslate }}
-        </a>
-      </div>
-
-      <div class="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
-        @for (w of rerunnable(); track w.id) {
-          <div class="glass-card flex w-56 shrink-0 snap-start flex-col rounded-xl">
-            <a
-              [routerLink]="['/workouts', w.id]"
-              class="block min-w-0 flex-1 rounded-t-xl p-4 pb-3 transition-colors hover:bg-surface-variant/20"
-            >
-              <span class="block text-xs font-semibold text-primary">{{ rel(w.date) }}</span>
-              <span class="mt-0.5 block truncate font-bold text-on-surface">{{ w.name }}</span>
-              <span class="tnum mt-1 block text-sm text-on-surface-variant">
-                {{ exerciseCount(w) }} {{ plural(exerciseCount(w), 'unit.exercises') | mnTranslate }}
-                · {{ setCount(w) }} {{ plural(setCount(w), 'unit.sets') | mnTranslate }}
-              </span>
-            </a>
-            <button
-              type="button"
-              (click)="reRun(w)"
-              [attr.aria-label]="'action.rerunNamed' | mnTranslate: { name: w.name }"
-              class="mx-3 mb-3 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-outline-variant/60 px-3 text-sm font-bold text-primary transition-colors hover:bg-primary/15 active:bg-primary/25"
-            >
-              <app-icon [data]="{ name: 'rotate-ccw', size: 18 }" />
-              {{ 'action.rerun' | mnTranslate }}
-            </button>
-          </div>
+        @if (templates().length) {
+          <a routerLink="/templates" class="-my-2 flex min-h-11 shrink-0 items-center text-sm font-semibold text-primary">
+            {{ 'home.templates.manage' | mnTranslate }}
+          </a>
         }
       </div>
+
+      @if (templates().length) {
+        <!-- Bleeds to the screen edge while scrolling; `scroll-px-4` keeps the
+             snap position (and so the first card) on the page's content edge. -->
+        <ul class="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2">
+          @for (t of templates(); track t.id) {
+            <li class="glass-card flex w-56 shrink-0 snap-start flex-col rounded-xl">
+              <div class="min-w-0 flex-1 p-4 pb-3">
+                <span class="block truncate font-bold text-on-surface" [title]="t.name">{{ t.name }}</span>
+                <span class="tnum mt-1 block text-sm text-on-surface-variant">
+                  {{ t.exercises.length }} {{ plural(t.exercises.length, 'unit.exercises') | mnTranslate }}
+                  · {{ templateSets(t) }} {{ plural(templateSets(t), 'unit.sets') | mnTranslate }}
+                </span>
+              </div>
+              <button
+                type="button"
+                (click)="startTemplate(t)"
+                [attr.aria-label]="'templates.startNamed' | mnTranslate: { name: t.name }"
+                class="mx-3 mb-3 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary/60 bg-primary/10 px-3 text-sm font-bold text-primary transition-colors hover:bg-primary/20 active:bg-primary/30"
+              >
+                <app-icon [data]="{ name: 'play', size: 18 }" />
+                {{ 'templates.start' | mnTranslate }}
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <div class="glass-card rounded-xl p-4">
+          <div class="flex items-start gap-3">
+            <span class="mt-0.5 shrink-0 text-outline"><app-icon [data]="{ name: 'clipboard-list', size: 28 }" /></span>
+            <div class="min-w-0 flex-1">
+              <p class="font-bold text-on-surface">{{ 'home.templates.empty.title' | mnTranslate }}</p>
+              <p class="mt-1 text-sm text-on-surface-variant">{{ 'home.templates.empty.hint' | mnTranslate }}</p>
+            </div>
+          </div>
+          <a
+            routerLink="/templates/new"
+            class="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-outline-variant/60 px-3 text-center text-sm font-bold text-primary transition-colors hover:bg-primary/15 active:bg-primary/25"
+          >
+            <app-icon [data]="{ name: 'plus', size: 18 }" />
+            {{ 'home.templates.create' | mnTranslate }}
+          </a>
+        </div>
+      }
     </section>
   }
 
@@ -173,5 +192,5 @@
 </main>
 
 @if (showNew()) {
-  <app-new-workout-sheet [source]="rerunSource()" (closed)="showNew.set(false)" />
+  <app-new-workout-sheet [source]="rerunSource()" [template]="templateSource()" (closed)="showNew.set(false)" />
 }

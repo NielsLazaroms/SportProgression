@@ -45,6 +45,9 @@ import {
   LucideMonitor,
   LucideMoon,
   LucideSun,
+  LucideArrowUp,
+  LucideArrowDown,
+  LucideClipboardList,
 } from '@lucide/angular';
 
 /**
@@ -56,6 +59,9 @@ import {
   selector: 'app-icon',
   standalone: true,
   imports: [
+    LucideClipboardList,
+    LucideArrowDown,
+    LucideArrowUp,
     LucideMonitor,
     LucideMoon,
     LucideSun,
@@ -148,6 +154,9 @@ import {
       @case ('monitor') { <svg lucideMonitor [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('moon') { <svg lucideMoon [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('sun') { <svg lucideSun [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('arrow-up') { <svg lucideArrowUp [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('arrow-down') { <svg lucideArrowDown [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('clipboard-list') { <svg lucideClipboardList [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('zap') { <svg lucideZap [style.width.px]="size()" [style.height.px]="size()"></svg> }
     }
   `,

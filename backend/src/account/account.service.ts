@@ -6,6 +6,10 @@ import { WorkoutExercise } from '../exercises/workout-exercise.entity';
 import { ExerciseSet } from '../sets/set.entity';
 import { ExerciseDefinition } from '../exercise-definitions/exercise-definition.entity';
 import { RefreshToken } from '../auth/refresh-token.entity';
+import {
+  TemplateExercise,
+  WorkoutTemplate,
+} from '../templates/template.entity';
 
 const chunk = <T>(items: T[], size = 500): T[][] => {
   const out: T[][] = [];
@@ -37,6 +41,12 @@ export class AccountService {
       .getRepository(ExerciseDefinition)
       .find({ where: { createdByUserId: userId }, order: { name: 'ASC' } });
 
+    const templates = await this.dataSource.getRepository(WorkoutTemplate).find({
+      where: { userId },
+      relations: { exercises: true },
+      order: { name: 'ASC', exercises: { orderInTemplate: 'ASC' } },
+    });
+
     return {
       exportedAt: new Date().toISOString(),
       profile: {
@@ -48,6 +58,14 @@ export class AccountService {
       myExercises: exercises.map((e) => ({
         name: e.name,
         muscleGroup: e.muscleGroup ?? null,
+      })),
+      templates: templates.map((t) => ({
+        name: t.name,
+        exercises: t.exercises.map((e) => ({
+          name: e.name,
+          targetSets: e.targetSets,
+          targetReps: e.targetReps,
+        })),
       })),
       workouts: workouts.map((w) => ({
         date: w.date,
@@ -93,6 +111,16 @@ export class AccountService {
           await manager.delete(WorkoutExercise, { id: In(exIds) });
         }
         await manager.delete(Workout, { id: In(ids) });
+      }
+      const templateIds = (
+        await manager.find(WorkoutTemplate, {
+          where: { userId },
+          select: { id: true },
+        })
+      ).map((t) => t.id);
+      for (const ids of chunk(templateIds)) {
+        await manager.delete(TemplateExercise, { templateId: In(ids) });
+        await manager.delete(WorkoutTemplate, { id: In(ids) });
       }
       await manager.delete(RefreshToken, { userId });
       await manager.update(

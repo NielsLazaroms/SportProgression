@@ -1,10 +1,10 @@
-@let titleKey = source() ? 'dialog.rerunWorkout' : 'dialog.newWorkout';
+@let sheetTitle = titleKey();
 
-<mn-bottom-sheet [maxHeightVh]="90" [ariaLabel]="titleKey | mnTranslate" (dismiss)="closed.emit()">
+<mn-bottom-sheet [maxHeightVh]="90" [ariaLabel]="sheetTitle | mnTranslate" (dismiss)="closed.emit()">
   <!-- Scrolls on its own, so Create stays reachable on short (landscape) screens. -->
-  <div #body class="mx-auto max-h-[80dvh] w-full max-w-xl overflow-y-auto overscroll-contain px-5 pb-6 pt-2">
+  <div #body class="mx-auto max-h-[80dvh] w-full max-w-xl overflow-y-auto overscroll-contain px-5 pt-2">
     <div class="mb-5 flex items-center justify-between gap-3">
-      <h2 class="min-w-0 font-display text-xl font-bold text-on-surface">{{ titleKey | mnTranslate }}</h2>
+      <h2 class="min-w-0 font-display text-xl font-bold text-on-surface">{{ sheetTitle | mnTranslate }}</h2>
       <button
         type="button"
         (click)="close()"
@@ -45,7 +45,26 @@
         ></textarea>
       </div>
 
-      @if (source(); as src) {
+      @if (template(); as tpl) {
+        <div>
+          <p class="mb-2 text-sm font-semibold text-on-surface-variant">
+            {{ 'dialog.template.exercises' | mnTranslate }}
+          </p>
+          @if (tpl.exercises.length) {
+            <ul class="divide-y divide-outline-variant/20 rounded-lg border border-outline-variant/30">
+              @for (ex of tpl.exercises; track ex.id) {
+                <li class="flex items-baseline justify-between gap-3 px-3 py-2 text-sm">
+                  <span class="min-w-0 break-words font-semibold text-on-surface">{{ ex.name }}</span>
+                  <span class="tnum shrink-0 font-semibold text-on-surface-variant">{{ ex.targetSets }} × {{ ex.targetReps }}</span>
+                </li>
+              }
+            </ul>
+            <p class="mt-2 text-sm text-on-surface-variant">{{ 'dialog.template.note' | mnTranslate }}</p>
+          } @else {
+            <p class="text-sm text-on-surface-variant">{{ 'dialog.template.noExercises' | mnTranslate }}</p>
+          }
+        </div>
+      } @else if (source(); as src) {
         <div>
           <p class="mb-2 text-sm font-semibold text-on-surface-variant">
             {{ 'dialog.rerun.exercises' | mnTranslate }}
@@ -59,9 +78,10 @@
         </div>
       }
 
-      <div>
-        <div class="mt-6 flex gap-3">
-          <button mnButton type="button" [data]="{ color: 'gray', size: 'lg', wrap: true }" class="flex-1" (click)="close()">
+      <!-- Sticks to the bottom of the sheet so Create stays in reach under a long plan. -->
+      <div class="sticky bottom-0 -mx-5 bg-base-100 px-5 pb-6 pt-3">
+        <div class="flex gap-3">
+          <button mnButton type="button" [data]="{ color: 'gray', size: 'lg', wrap: true }" class="min-w-0 flex-1" (click)="close()">
             {{ 'action.cancel' | mnTranslate }}
           </button>
           <button
@@ -69,7 +89,7 @@
             type="submit"
             [data]="{ color: 'primary', size: 'lg', wrap: true, disabled: !canCreate() }"
             [attr.aria-describedby]="name().trim() ? null : 'wname-hint'"
-            class="flex-1"
+            class="min-w-0 flex-1"
           >
             {{ (saving() ? 'action.creating' : 'action.create') | mnTranslate }}
           </button>

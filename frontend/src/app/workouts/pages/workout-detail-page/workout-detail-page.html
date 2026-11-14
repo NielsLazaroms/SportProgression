@@ -79,8 +79,19 @@
             [style.width.%]="(finishedCount() / exercises().length) * 100"
           ></div>
         </div>
-        <p class="mt-1.5 text-right text-[11px] font-semibold text-on-surface-variant">
-          {{ 'detail.progress' | mnTranslate: { done: finishedCount(), total: exercises().length } }}
+        <p class="tnum mt-1.5 flex flex-wrap justify-between gap-x-3 text-[11px] font-semibold text-on-surface-variant">
+          @if (planned()) {
+            <span class="flex items-center gap-1">
+              <span class="shrink-0"><app-icon [data]="{ name: 'target', size: 12 }" /></span>
+              {{ plannedText() }}
+            </span>
+          }
+          <span class="ml-auto">{{ 'detail.progress' | mnTranslate: { done: finishedCount(), total: exercises().length } }}</span>
+        </p>
+      } @else if (planned()) {
+        <p class="tnum mt-3 flex items-center justify-center gap-1 text-[11px] font-semibold text-on-surface-variant">
+          <span class="shrink-0"><app-icon [data]="{ name: 'target', size: 12 }" /></span>
+          {{ plannedText() }}
         </p>
       }
     </section>
@@ -111,6 +122,7 @@
                   <span> · {{ muscleLabel(ex.muscleGroup) }}</span>
                 }
               </span>
+              <ng-container [ngTemplateOutlet]="planMark" [ngTemplateOutletContext]="{ $implicit: ex }" />
             </span>
             <span
               class="shrink-0 text-on-surface-variant transition-transform duration-200"
@@ -126,15 +138,27 @@
         </section>
       }
 
-      <button
-        type="button"
-        (click)="reopenWorkout()"
-        [disabled]="reopening()"
-        class="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-outline-variant/50 px-3 font-bold text-on-surface transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <app-icon [data]="{ name: 'lock-open', size: 18 }" />
-        {{ (reopening() ? 'action.saving' : 'detail.reopen') | mnTranslate }}
-      </button>
+      <div class="mt-2 flex flex-wrap gap-2">
+        <button
+          type="button"
+          (click)="reopenWorkout()"
+          [disabled]="reopening()"
+          class="flex min-h-12 min-w-[9rem] flex-1 items-center justify-center gap-2 rounded-xl border border-outline-variant/50 px-3 py-1 text-center font-bold leading-tight text-on-surface transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <span class="shrink-0"><app-icon [data]="{ name: 'lock-open', size: 18 }" /></span>
+          {{ (reopening() ? 'action.saving' : 'detail.reopen') | mnTranslate }}
+        </button>
+        @if (totalSets() > 0) {
+          <button
+            type="button"
+            (click)="openSaveTemplate()"
+            class="flex min-h-12 min-w-[9rem] flex-1 items-center justify-center gap-2 rounded-xl border border-outline-variant/50 px-3 py-1 text-center font-bold leading-tight text-on-surface transition-colors hover:border-primary hover:text-primary"
+          >
+            <span class="shrink-0"><app-icon [data]="{ name: 'list-plus', size: 18 }" /></span>
+            {{ 'detail.saveTemplate' | mnTranslate }}
+          </button>
+        }
+      </div>
     } @else {
       <!-- ============ EDITABLE / focused accordion ============ -->
       @for (ex of exercises(); track ex.id) {
@@ -159,6 +183,7 @@
               <span class="min-w-0 flex-1">
                 <span class="block truncate font-bold text-on-surface">{{ ex.name }}</span>
                 <span class="tnum block text-xs text-on-surface-variant">{{ exerciseMeta(ex) }}</span>
+                <ng-container [ngTemplateOutlet]="planMark" [ngTemplateOutletContext]="{ $implicit: ex }" />
               </span>
               <span class="shrink-0 text-on-surface-variant transition-transform duration-200" [class.rotate-90]="isExpanded(ex.id)">
                 <app-icon [data]="{ name: 'chevron-right', size: 20 }" />
@@ -191,6 +216,8 @@
                 <span class="tnum block text-xs text-on-surface-variant">
                   @if (ex.sets.length) {
                     {{ exerciseMeta(ex) }} · {{ 'detail.tapToContinue' | mnTranslate }}
+                  } @else if (targetSets(ex)) {
+                    {{ planText(ex, 'detail.plan.planned') }}
                   } @else {
                     {{ 'detail.tapToLog' | mnTranslate }}
                   }
@@ -210,6 +237,12 @@
                   }
                 </div>
                 <h3 class="mt-1 break-words font-display text-lg font-bold leading-snug text-on-surface">{{ ex.name }}</h3>
+                @if (targetSets(ex)) {
+                  <p class="tnum mt-1 flex items-center gap-1.5 text-sm font-bold text-primary">
+                    <span class="shrink-0"><app-icon [data]="{ name: 'target', size: 16 }" /></span>
+                    {{ planText(ex, 'detail.plan.target') }}
+                  </p>
+                }
               </div>
               <button
                 type="button"
@@ -414,6 +447,25 @@
               }
             }
 
+            @if (targetSets(ex); as target) {
+              <!-- Progress against the plan: below the log form, so it never moves the button -->
+              @let reached = targetReached(ex);
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant/20 px-4 py-2" role="status">
+                <span class="tnum text-xs font-bold text-on-surface">{{ planSetsText(ex) }}</span>
+                <span class="flex min-w-12 flex-1 gap-1" aria-hidden="true">
+                  @for (n of planSegments(ex); track $index) {
+                    <span class="h-1.5 min-w-0 flex-1 rounded-full" [class]="n ? 'bg-success' : 'bg-surface-container-high'"></span>
+                  }
+                </span>
+                @if (reached) {
+                  <span class="flex shrink-0 items-center gap-1 text-xs font-bold text-success">
+                    <app-icon [data]="{ name: 'check', size: 14 }" />
+                    {{ 'detail.plan.reached' | mnTranslate }}
+                  </span>
+                }
+              </div>
+            }
+
             <div class="divide-y divide-outline-variant/20">
               @for (set of ex.sets; track set.setId) {
                 @if (editingSetId() === set.setId) {
@@ -526,7 +578,20 @@
                     </button>
                   </div>
                 }
-              } @empty {
+              }
+              <!-- Planned sets still to do: quiet placeholders that vanish as sets get logged -->
+              @for (n of remainingPlan(ex); track n) {
+                <div class="flex min-h-11 items-center gap-2 py-1 pl-4 pr-3">
+                  <span class="tnum flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-dashed border-outline-variant text-xs font-bold text-on-surface-variant">{{ n }}</span>
+                  <span class="tnum min-w-0 pl-1 text-sm text-on-surface-variant">
+                    {{ 'detail.plan.row' | mnTranslate: { n: n } }}
+                    @if (planRepsText(ex); as reps) {
+                      <span> · {{ reps }}</span>
+                    }
+                  </span>
+                </div>
+              }
+              @if (!ex.sets.length && !targetSets(ex)) {
                 <p class="px-4 py-3 text-sm text-on-surface-variant">{{ 'detail.noSets' | mnTranslate }}</p>
               }
             </div>
@@ -589,9 +654,21 @@
 
       <!-- Finish workout (blocked until every exercise has a set) -->
       @if (finishBlock(); as block) {
-        <p class="mb-2 text-center text-xs font-semibold text-on-surface-variant">
+        <p class="text-center text-xs font-semibold text-on-surface-variant" [class.mb-2]="!block.exercise">
           {{ block.key | mnTranslate: { name: block.name || '' } }}
         </p>
+        @if (block.exercise; as skipped) {
+          <!-- Planned but skipped: one tap takes it out of the workout -->
+          <button
+            type="button"
+            (click)="deleteExercise(skipped)"
+            [attr.aria-label]="'detail.aria.removeExercise' | mnTranslate: { name: skipped.name }"
+            class="mx-auto mb-1 flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-bold text-on-surface-variant underline decoration-outline-variant underline-offset-4 transition-colors hover:text-error"
+          >
+            <span class="shrink-0"><app-icon [data]="{ name: 'trash-2', size: 14 }" /></span>
+            {{ 'detail.finish.remove' | mnTranslate }}
+          </button>
+        }
       }
       <button
         type="button"
@@ -620,6 +697,17 @@
       <span class="text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
     }
   </span>
+</ng-template>
+
+<!-- Done vs planned marker on a finished row: only when it fell short or went beyond -->
+<ng-template #planMark let-ex>
+  @let delta = planDelta(ex);
+  @if (delta) {
+    <span
+      class="tnum mt-1 block w-fit rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+      [class]="delta < 0 ? 'bg-warning/15 text-warning' : 'bg-primary-container/20 text-primary'"
+    >{{ (delta < 0 ? 'detail.plan.short' : 'detail.plan.extra') | mnTranslate: { n: delta < 0 ? -delta : delta } }}</span>
+  }
 </ng-template>
 
 <!-- Read-only set list (+ notes) shared by finished exercises and the finished view -->
@@ -652,6 +740,71 @@
   }
 </ng-template>
 
+
+<!-- Save as template bottom sheet (finished workouts) -->
+@if (showSaveTemplate()) {
+  <mn-bottom-sheet
+    [maxHeightVh]="90"
+    [ariaLabel]="'detail.saveTemplate' | mnTranslate"
+    (dismiss)="showSaveTemplate.set(false)"
+  >
+    <div class="max-h-[80dvh] overflow-y-auto overscroll-contain px-5 pb-6 pt-2">
+      <div class="mb-4 flex items-center justify-between gap-2">
+        <h2 class="min-w-0 font-display text-xl font-bold text-on-surface">{{ 'detail.saveTemplate' | mnTranslate }}</h2>
+        <button
+          type="button"
+          (click)="showSaveTemplate.set(false)"
+          [attr.aria-label]="'action.cancel' | mnTranslate"
+          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/50"
+        >
+          <app-icon [data]="{ name: 'x', size: 22 }" />
+        </button>
+      </div>
+
+      <label for="tplname" class="mb-1 block text-sm font-semibold text-on-surface-variant">
+        {{ 'detail.saveTemplate.name' | mnTranslate }}
+      </label>
+      <input
+        id="tplname"
+        type="text"
+        maxlength="100"
+        autocomplete="off"
+        [ngModel]="templateName()"
+        (ngModelChange)="templateName.set($event)"
+        [ngModelOptions]="{ standalone: true }"
+        (keydown.enter)="saveTemplate()"
+        class="h-12 w-full min-w-0 rounded-lg border border-base-300 bg-base-100 px-3 text-base text-base-content outline-none transition-colors focus:ring-1 focus:ring-primary"
+      />
+      <p class="mt-2 text-xs text-on-surface-variant">{{ 'detail.saveTemplate.hint' | mnTranslate }}</p>
+
+      @if (!templateName().trim()) {
+        <p class="mt-4 text-xs font-semibold text-on-surface-variant" aria-live="polite">
+          {{ 'detail.saveTemplate.needName' | mnTranslate }}
+        </p>
+      }
+      <div class="flex gap-3" [class]="templateName().trim() ? 'mt-6' : 'mt-2'">
+        <button
+          mnButton
+          type="button"
+          [data]="{ color: 'gray', size: 'lg', wrap: true }"
+          class="min-w-0 flex-1"
+          (click)="showSaveTemplate.set(false)"
+        >
+          {{ 'action.cancel' | mnTranslate }}
+        </button>
+        <button
+          mnButton
+          type="button"
+          [data]="{ color: 'primary', size: 'lg', wrap: true, disabled: !templateName().trim() || savingTemplate() }"
+          class="min-w-0 flex-1"
+          (click)="saveTemplate()"
+        >
+          {{ (savingTemplate() ? 'action.saving' : 'detail.saveTemplate.submit') | mnTranslate }}
+        </button>
+      </div>
+    </div>
+  </mn-bottom-sheet>
+}
 
 <!-- Edit workout details bottom sheet -->
 @if (showEdit()) {

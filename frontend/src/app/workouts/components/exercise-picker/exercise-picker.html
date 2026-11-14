@@ -116,7 +116,7 @@
                   {{ muscleLabel(d.muscleGroup) }}
                   @if (usedIds().has(d.id)) {
                     @if (d.muscleGroup) { <span> · </span> }
-                    <span class="font-semibold text-primary">{{ 'picker.inWorkout' | mnTranslate }}</span>
+                    <span class="font-semibold text-primary">{{ usedLabel() | mnTranslate }}</span>
                   }
                 </span>
               </span>

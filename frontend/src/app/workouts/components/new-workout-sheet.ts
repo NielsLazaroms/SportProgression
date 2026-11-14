@@ -21,6 +21,8 @@ import {
 } from 'mn-angular-lib';
 import { AppIcon } from '../../shared/app-icon';
 import { errorHintKey, todayIso } from '../../shared/format';
+import { TemplateService } from '../../templates/data-access/template.service';
+import { WorkoutTemplate } from '../../templates/models/template.model';
 import { WorkoutService } from '../data-access/workout.service';
 import { Workout } from '../models/workout.model';
 
@@ -29,13 +31,16 @@ const NAME_MAX = 100;
 const NOTES_MAX = 255;
 
 /**
- * The one "New workout" bottom sheet. With `source` set it starts a re-run
- * instead: same form, prefilled name, and the exercises of that workout are
- * copied into the new one. Creates the workout and opens it; emits `closed`
- * when the sheet should be removed.
+ * The one "New workout" bottom sheet. Three modes, same form:
+ *  - blank (no inputs): an empty workout;
+ *  - `source` set: a re-run, the exercises of that workout are copied;
+ *  - `template` set: a workout started from a template, its exercises come
+ *    with their target sets × reps.
+ * Creates the workout and opens it; emits `closed` when the sheet should be
+ * removed.
  *
  *   @if (sheetOpen()) {
- *     <app-new-workout-sheet [source]="rerunSource()" (closed)="sheetOpen.set(false)" />
+ *     <app-new-workout-sheet [source]="rerunSource()" [template]="startTemplate()" (closed)="sheetOpen.set(false)" />
  *   }
  */
 @Component({
@@ -47,12 +52,15 @@ const NOTES_MAX = 255;
 })
 export class NewWorkoutSheet implements OnInit {
   private readonly workoutService = inject(WorkoutService);
+  private readonly templateService = inject(TemplateService);
   private readonly router = inject(Router);
   private readonly alerts = inject(MnAlertService);
   private readonly lang = inject(MnLanguageService);
 
   /** Workout to re-run; null for a blank new workout. */
   readonly source = input<Workout | null>(null);
+  /** Template to start from; wins over `source` when both are set. */
+  readonly template = input<WorkoutTemplate | null>(null);
   readonly closed = output<void>();
 
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
@@ -66,17 +74,24 @@ export class NewWorkoutSheet implements OnInit {
 
   constructor() {
     // The kit's input has no maxlength prop: set it on the real <input>, and
-    // put the cursor in the name field so typing can start right away.
+    // put the cursor in the name field so typing can start right away. A
+    // prefilled name (re-run, template) is left alone so the keyboard does not
+    // cover the plan on a phone.
     afterNextRender(() => {
       const input = this.body()?.nativeElement.querySelector<HTMLInputElement>('#wname');
       if (!input) return;
       input.maxLength = NAME_MAX;
-      input.focus({ preventScroll: true });
+      if (!this.template()) input.focus({ preventScroll: true });
     });
   }
 
   ngOnInit(): void {
-    this.name.set(this.source()?.name ?? '');
+    this.name.set(this.template()?.name ?? this.source()?.name ?? '');
+  }
+
+  titleKey(): string {
+    if (this.template()) return 'dialog.startTemplate';
+    return this.source() ? 'dialog.rerunWorkout' : 'dialog.newWorkout';
   }
 
   canCreate(): boolean {
@@ -96,10 +111,13 @@ export class NewWorkoutSheet implements OnInit {
       date: this.date(),
       description: this.notes().trim().slice(0, NOTES_MAX) || undefined,
     };
+    const template = this.template();
     const source = this.source();
-    const request = source
-      ? this.workoutService.duplicateWorkout(source.id, details)
-      : this.workoutService.createWorkout(details);
+    const request = template
+      ? this.templateService.start(template.id, details)
+      : source
+        ? this.workoutService.duplicateWorkout(source.id, details)
+        : this.workoutService.createWorkout(details);
     request.subscribe({
       next: (created) => {
         this.saving.set(false);
@@ -108,9 +126,16 @@ export class NewWorkoutSheet implements OnInit {
       },
       error: (err) => {
         this.saving.set(false);
+        const title = template
+          ? 'templates.toast.start.err'
+          : source
+            ? 'toast.rerun.err'
+            : 'toast.create.workout.err';
         this.alerts.error(
-          this.lang.t(source ? 'toast.rerun.err' : 'toast.create.workout.err'),
-          this.lang.t(errorHintKey(err)),
+          this.lang.t(title),
+          this.lang.t(
+            template && err?.status === 404 ? 'templates.toast.gone' : errorHintKey(err),
+          ),
         );
       },
     });

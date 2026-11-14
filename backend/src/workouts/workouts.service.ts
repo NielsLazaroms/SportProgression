@@ -87,6 +87,7 @@ export class WorkoutsService {
         name: overrides.name?.trim() || source.name,
         // A note describes one session, so it is not carried over.
         description: overrides.description?.trim() || undefined,
+        templateId: source.templateId,
         userId,
       });
       const savedWorkout = await manager.save(workout);
@@ -101,6 +102,9 @@ export class WorkoutsService {
             type: exercise.type,
             muscleGroup: exercise.muscleGroup,
             orderInWorkout: order++,
+            // A re-run keeps the plan the original was following.
+            targetSets: exercise.targetSets,
+            targetReps: exercise.targetReps,
           }),
         );
       }

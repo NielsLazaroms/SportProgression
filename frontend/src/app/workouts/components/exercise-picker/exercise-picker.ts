@@ -47,6 +47,8 @@ export class ExercisePicker implements AfterViewInit {
   readonly usedIds = input<Set<number>>(new Set());
   /** True while the parent is adding/creating — blocks repeat taps. */
   readonly busy = input(false);
+  /** i18n key of the marker on entries that are already in the list. */
+  readonly usedLabel = input('picker.inWorkout');
 
   readonly pick = output<ExerciseDefinition>();
   readonly create = output<{ name: string; muscleGroup: string }>();

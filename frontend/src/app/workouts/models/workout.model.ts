@@ -9,6 +9,8 @@ export interface Workout {
   updatedAt?: string;
   /** Set once the workout is finished; null/absent while in progress. */
   completedAt?: string | null;
+  /** The template this workout was started from, if any. */
+  templateId?: string | null;
   /** Present when fetched via the detail endpoint (findOne tree). */
   exercises?: WorkoutExercise[];
 }

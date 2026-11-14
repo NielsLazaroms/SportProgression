@@ -42,6 +42,7 @@ On an empty database the API seeds a starter catalog of common exercises.
 - Workouts with exercises, sets (reps × kg), exercise notes and workout notes
 - Fast logging: searchable exercise picker, "last time" reference with set-by-set prefill, warm-up sets that never count, undo after removing a set
 - Personal records for the heaviest lift and for the most reps at a weight (also for bodyweight exercises)
+- Templates: reusable workout plans with target sets × reps per exercise; start a workout from one, see the plan while logging, save a finished workout as a template
 - Finish (lock) / reopen workouts, re-run a finished workout through the normal new-workout flow
 - Progress: weekly consistency, streak, muscle-group balance, per-exercise charts (estimated 1RM, top weight, volume, reps) and records
 - Shared exercise catalog (rename/delete your own entries), history with search, English + Dutch, sidebar layout on desktop
