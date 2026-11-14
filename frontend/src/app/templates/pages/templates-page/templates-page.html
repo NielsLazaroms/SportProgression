@@ -76,7 +76,7 @@
 
           <p class="mt-2 line-clamp-2 text-sm text-on-surface-variant [overflow-wrap:anywhere]">
             @if (t.exercises.length) {
-              {{ preview(t) }}
+              @for (piece of preview(t); track $index) {<span>@if (piece.superset) {<span class="font-semibold text-on-surface">{{ 'templates.superset' | mnTranslate }}:</span>{{ ' ' }}}{{ piece.text }}</span>}
             } @else {
               {{ 'templates.noExercises' | mnTranslate }}
             }

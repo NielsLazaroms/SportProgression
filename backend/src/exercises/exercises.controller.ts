@@ -7,12 +7,14 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { ExercisesService } from './exercises.service';
 import { CreateWorkoutExerciseDto } from './dto/create-exercise.dto';
 import { UpdateWorkoutExerciseDto } from './dto/update-exercise.dto';
+import { ArrangeExercisesDto } from './dto/arrange-exercises.dto';
 import {
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -75,6 +77,23 @@ export class ExercisesController {
     @Req() req,
   ) {
     return this.exercisesService.create(dto, workoutId, req.user.userId);
+  }
+
+  @ApiOperation({
+    summary: 'Reorder the exercises of a workout and group them into supersets',
+  })
+  @ApiParam({
+    name: 'workoutId',
+    description: 'The unique identifier of the workout',
+  })
+  @ApiOkResponse({ type: [WorkoutExercise] })
+  @Put('arrangement')
+  arrange(
+    @Param('workoutId') workoutId: string,
+    @Body() dto: ArrangeExercisesDto,
+    @Req() req,
+  ) {
+    return this.exercisesService.arrange(dto, workoutId, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Update a logged exercise' })

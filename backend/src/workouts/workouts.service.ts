@@ -105,6 +105,7 @@ export class WorkoutsService {
             // A re-run keeps the plan the original was following.
             targetSets: exercise.targetSets,
             targetReps: exercise.targetReps,
+            supersetGroup: exercise.supersetGroup,
           }),
         );
       }

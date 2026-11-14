@@ -66,6 +66,11 @@ export class WorkoutExercise {
   @Column({ nullable: true })
   notes?: string;
 
+  /** Members of one superset share this number (see common/superset.ts).
+   *  Null for an exercise done on its own. */
+  @Column({ type: 'int', nullable: true })
+  supersetGroup?: number | null;
+
   /** Planned working sets × reps, copied from the template when the workout
    *  was started from one. Null for exercises added by hand. */
   @ApiProperty({ example: 4, required: false, nullable: true })

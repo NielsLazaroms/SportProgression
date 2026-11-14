@@ -103,8 +103,20 @@
         <span class="min-w-0">{{ 'detail.completed.banner' | mnTranslate }}</span>
       </div>
 
-      @for (ex of exercises(); track ex.id) {
-        <section class="mb-3 overflow-hidden rounded-2xl glass-card">
+      @for (b of blocks(); track b.key) {
+        <div
+          class="mb-3"
+          [class]="b.superset ? 'relative pl-4' : ''"
+          [attr.role]="b.superset ? 'group' : null"
+          [attr.aria-label]="b.superset ? b.aria : null"
+        >
+          @if (b.superset) {
+            <ng-container [ngTemplateOutlet]="supersetMark" [ngTemplateOutletContext]="{ $implicit: b }" />
+          }
+          <div class="space-y-2">
+          @for (it of b.items; track it.ex.id) {
+          @let ex = it.ex;
+        <section class="overflow-hidden rounded-2xl glass-card">
           <button
             type="button"
             (click)="toggleExpanded(ex.id)"
@@ -115,7 +127,7 @@
               <app-icon [data]="{ name: 'check', size: 18 }" />
             </span>
             <span class="min-w-0 flex-1">
-              <span class="block truncate font-bold text-on-surface">{{ ex.name }}</span>
+              <span class="block truncate font-bold text-on-surface"><ng-container [ngTemplateOutlet]="letterBadge" [ngTemplateOutletContext]="{ $implicit: it.letter }" />{{ ex.name }}</span>
               <span class="tnum block text-xs text-on-surface-variant">
                 {{ exerciseMeta(ex) }}
                 @if (ex.muscleGroup) {
@@ -136,6 +148,9 @@
             <ng-container [ngTemplateOutlet]="readonlySets" [ngTemplateOutletContext]="{ $implicit: ex }" />
           }
         </section>
+          }
+          </div>
+        </div>
       }
 
       <div class="mt-2 flex flex-wrap gap-2">
@@ -161,11 +176,152 @@
       </div>
     } @else {
       <!-- ============ EDITABLE / focused accordion ============ -->
-      @for (ex of exercises(); track ex.id) {
+      @if (exercises().length > 1) {
+        <div class="mb-2 flex items-center justify-between gap-2">
+          <h2 class="min-w-0 text-xs font-semibold uppercase tracking-[0.15em] text-on-surface-variant">
+            {{ 'detail.exercises' | mnTranslate }}
+          </h2>
+          <button
+            type="button"
+            (click)="toggleReorder()"
+            [attr.aria-pressed]="reordering()"
+            class="-my-1 flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-bold transition-colors"
+            [class]="reordering()
+              ? 'border-primary bg-primary text-on-primary-container'
+              : 'border-control text-on-surface hover:border-primary hover:text-primary'"
+          >
+            @if (reordering()) {
+              <app-icon [data]="{ name: 'check', size: 16 }" />
+              {{ 'detail.reorder.done' | mnTranslate }}
+            } @else {
+              <span class="flex shrink-0 -space-x-1.5" aria-hidden="true">
+                <app-icon [data]="{ name: 'arrow-up', size: 16 }" />
+                <app-icon [data]="{ name: 'arrow-down', size: 16 }" />
+              </span>
+              {{ 'detail.reorder' | mnTranslate }}
+            }
+          </button>
+        </div>
+      }
+
+      @if (reordering()) {
+        <!-- ============ REORDER mode: compact rows with move / superset controls ============ -->
+        <p class="mb-3 text-xs text-on-surface-variant">{{ 'detail.reorder.hint' | mnTranslate }}</p>
+        <p class="sr-only" role="status" aria-live="polite">{{ moveAnnouncement() }}</p>
+        @for (b of blocks(); track b.key) {
+          <div
+            class="mb-3"
+            [class]="b.superset ? 'relative pl-4' : ''"
+            [attr.role]="b.superset ? 'group' : null"
+            [attr.aria-label]="b.superset ? b.aria : null"
+          >
+            @if (b.superset) {
+              <ng-container [ngTemplateOutlet]="supersetMark" [ngTemplateOutletContext]="{ $implicit: b }" />
+            }
+            <div class="space-y-2">
+              @for (it of b.items; track it.ex.id) {
+                @let ex = it.ex;
+                @let linked = it.role === 'first' || it.role === 'middle';
+                <section
+                  [id]="'ro-' + ex.id"
+                  class="scroll-mb-24 scroll-mt-20 rounded-2xl glass-card py-2 pl-4 pr-2"
+                  [class.border-primary-container]="activeId() === ex.id"
+                >
+                  <div class="flex items-center gap-2">
+                    <div class="min-w-0 flex-1">
+                      <p class="break-words font-bold leading-snug text-on-surface">
+                        <ng-container [ngTemplateOutlet]="letterBadge" [ngTemplateOutletContext]="{ $implicit: it.letter }" />{{ ex.name }}
+                      </p>
+                      <p class="tnum break-words text-xs text-on-surface-variant">
+                        @if (activeId() === ex.id) {
+                          <span class="font-bold uppercase tracking-wide text-primary">{{ 'detail.active' | mnTranslate }}</span>
+                          @if (reorderMeta(ex)) {
+                            <span> · </span>
+                          }
+                        }
+                        {{ reorderMeta(ex) }}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      [id]="'ro-up-' + ex.id"
+                      (click)="moveExercise(it.index, -1)"
+                      [disabled]="it.index === 0"
+                      [attr.aria-label]="'detail.aria.moveUp' | mnTranslate: { name: ex.name }"
+                      [attr.title]="'detail.aria.moveUp' | mnTranslate: { name: ex.name }"
+                      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-control text-on-surface transition-colors hover:border-primary hover:text-primary active:bg-surface-variant/40 disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      <app-icon [data]="{ name: 'arrow-up', size: 20 }" />
+                    </button>
+                    <button
+                      type="button"
+                      [id]="'ro-down-' + ex.id"
+                      (click)="moveExercise(it.index, 1)"
+                      [disabled]="it.index === exercises().length - 1"
+                      [attr.aria-label]="'detail.aria.moveDown' | mnTranslate: { name: ex.name }"
+                      [attr.title]="'detail.aria.moveDown' | mnTranslate: { name: ex.name }"
+                      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-control text-on-surface transition-colors hover:border-primary hover:text-primary active:bg-surface-variant/40 disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      <app-icon [data]="{ name: 'arrow-down', size: 20 }" />
+                    </button>
+                  </div>
+                  @if (it.role || it.index < exercises().length - 1) {
+                    <div class="-ml-2 mt-1 flex flex-wrap gap-x-1">
+                      @if (!linked && it.index < exercises().length - 1) {
+                        <button
+                          type="button"
+                          (click)="linkNext(it.index)"
+                          [attr.aria-label]="'detail.aria.supersetLink' | mnTranslate: { name: ex.name, next: exercises()[it.index + 1].name }"
+                          class="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-left text-sm font-bold text-primary transition-colors hover:bg-primary-container/15"
+                        >
+                          <span class="shrink-0"><app-icon [data]="{ name: 'link', size: 16 }" /></span>
+                          {{ 'detail.superset.link' | mnTranslate }}
+                        </button>
+                      }
+                      @if (it.role) {
+                        <button
+                          type="button"
+                          (click)="unlinkExercise(it.index)"
+                          [attr.aria-label]="'detail.aria.supersetUnlink' | mnTranslate: { name: ex.name }"
+                          class="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-left text-sm font-bold text-on-surface-variant transition-colors hover:bg-surface-variant/40 hover:text-on-surface"
+                        >
+                          <span class="shrink-0"><app-icon [data]="{ name: 'x', size: 16 }" /></span>
+                          {{ 'detail.superset.unlink' | mnTranslate }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </section>
+              }
+            </div>
+          </div>
+        }
+        <button
+          type="button"
+          (click)="toggleReorder()"
+          class="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 font-display text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+        >
+          <app-icon [data]="{ name: 'check', size: 22 }" />
+          {{ 'detail.reorder.done' | mnTranslate }}
+        </button>
+      } @else {
+      @for (b of blocks(); track b.key) {
+        <div
+          class="mb-3"
+          [class]="b.superset ? 'relative pl-4' : ''"
+          [attr.role]="b.superset ? 'group' : null"
+          [attr.aria-label]="b.superset ? b.aria : null"
+        >
+          @if (b.superset) {
+            <ng-container [ngTemplateOutlet]="supersetMark" [ngTemplateOutletContext]="{ $implicit: b }" />
+          }
+          <div class="space-y-2">
+          @for (it of b.items; track it.ex.id) {
+          @let ex = it.ex;
         @let st = state(ex);
         <section
           [id]="'ex-' + ex.id"
-          class="mb-3 scroll-mt-20 overflow-hidden rounded-2xl glass-card transition-colors"
+          class="scroll-mt-20 overflow-hidden rounded-2xl glass-card transition-colors"
           [class.border-primary-container]="st === 'active'"
           [class.active-glow]="st === 'active'"
         >
@@ -181,7 +337,7 @@
                 <app-icon [data]="{ name: 'check', size: 18 }" />
               </span>
               <span class="min-w-0 flex-1">
-                <span class="block truncate font-bold text-on-surface">{{ ex.name }}</span>
+                <span class="block truncate font-bold text-on-surface"><ng-container [ngTemplateOutlet]="letterBadge" [ngTemplateOutletContext]="{ $implicit: it.letter }" />{{ ex.name }}</span>
                 <span class="tnum block text-xs text-on-surface-variant">{{ exerciseMeta(ex) }}</span>
                 <ng-container [ngTemplateOutlet]="planMark" [ngTemplateOutletContext]="{ $implicit: ex }" />
               </span>
@@ -212,7 +368,7 @@
                 <app-icon [data]="{ name: 'dumbbell', size: 16 }" />
               </span>
               <span class="min-w-0 flex-1">
-                <span class="block truncate font-bold text-on-surface">{{ ex.name }}</span>
+                <span class="block truncate font-bold text-on-surface"><ng-container [ngTemplateOutlet]="letterBadge" [ngTemplateOutletContext]="{ $implicit: it.letter }" />{{ ex.name }}</span>
                 <span class="tnum block text-xs text-on-surface-variant">
                   @if (ex.sets.length) {
                     {{ exerciseMeta(ex) }} · {{ 'detail.tapToContinue' | mnTranslate }}
@@ -236,7 +392,7 @@
                     <span class="text-[11px] font-semibold text-on-surface-variant">{{ muscleLabel(ex.muscleGroup) }}</span>
                   }
                 </div>
-                <h3 class="mt-1 break-words font-display text-lg font-bold leading-snug text-on-surface">{{ ex.name }}</h3>
+                <h3 class="mt-1 break-words font-display text-lg font-bold leading-snug text-on-surface"><ng-container [ngTemplateOutlet]="letterBadge" [ngTemplateOutletContext]="{ $implicit: it.letter }" />{{ ex.name }}</h3>
                 @if (targetSets(ex)) {
                   <p class="tnum mt-1 flex items-center gap-1.5 text-sm font-bold text-primary">
                     <span class="shrink-0"><app-icon [data]="{ name: 'target', size: 16 }" /></span>
@@ -423,6 +579,12 @@
               @if (d.warmup) {
                 <p class="mt-2 text-xs font-semibold text-warning" role="status">
                   {{ 'detail.warmup.on' | mnTranslate }}
+                </p>
+              } @else if (supersetNext(ex); as upNext) {
+                <!-- Superset: who is up after this set -->
+                <p class="mt-2 flex items-start gap-1.5 text-xs font-semibold text-on-surface-variant">
+                  <span class="mt-px shrink-0 text-primary"><app-icon [data]="{ name: 'skip-forward', size: 14 }" /></span>
+                  <span class="min-w-0 break-words">{{ upNext }}</span>
                 </p>
               }
             </div>
@@ -623,6 +785,9 @@
             </div>
           }
         </section>
+          }
+          </div>
+        </div>
       } @empty {
         <div class="mb-4 glass-card flex flex-col items-center gap-3 rounded-2xl px-6 py-10 text-center">
           <span class="text-outline"><app-icon [data]="{ name: 'dumbbell', size: 36 }" /></span>
@@ -680,9 +845,26 @@
         <app-icon [data]="{ name: 'check', size: 22 }" />
         {{ (finishing() ? 'action.saving' : 'detail.finishWorkout') | mnTranslate }}
       </button>
+      }
     }
   }
 </main>
+
+<!-- Superset marker: a bracket down the left side plus a label above the members -->
+<ng-template #supersetMark let-b>
+  <span aria-hidden="true" class="pointer-events-none absolute inset-y-0 left-0 w-2.5 rounded-l-lg border-y-2 border-l-2 border-primary"></span>
+  <p class="mb-1.5 flex min-h-5 items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
+    <span class="shrink-0"><app-icon [data]="{ name: 'link', size: 14 }" /></span>
+    <span class="min-w-0 break-words">{{ b.label }}</span>
+  </p>
+</ng-template>
+
+<!-- A / B / C in front of the name of a superset member -->
+<ng-template #letterBadge let-letter>
+  @if (letter) {
+    <span class="mr-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded border border-primary px-1 align-[2px] font-sans text-[11px] font-bold leading-none text-primary">{{ letter }}</span>
+  }
+</ng-template>
 
 <!-- One set as text: "10 reps × 67.5 kg" / "12 reps × BW" -->
 <ng-template #setLine let-set>

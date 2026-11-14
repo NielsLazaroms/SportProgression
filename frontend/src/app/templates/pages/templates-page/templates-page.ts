@@ -13,9 +13,14 @@ import {
 import { AppHeader } from '../../../layout/app-header';
 import { AppIcon } from '../../../shared/app-icon';
 import { errorHintKey, plural } from '../../../shared/format';
+import { supersetRuns } from '../../../shared/superset';
 import { NewWorkoutSheet } from '../../../workouts/components/new-workout-sheet';
 import { TemplateService } from '../../data-access/template.service';
-import { WorkoutTemplate, templateSetCount } from '../../models/template.model';
+import {
+  TemplateExercise,
+  WorkoutTemplate,
+  templateSetCount,
+} from '../../models/template.model';
 
 /** All templates of the user: start, edit or delete one, or make a new one. */
 @Component({
@@ -62,9 +67,18 @@ export class TemplatesPage implements OnInit {
     });
   }
 
-  /** "Bench Press, Squat, Row" as a preview of what is in the plan. */
-  preview(t: WorkoutTemplate): string {
-    return t.exercises.map((e) => e.name).join(', ');
+  /**
+   * What is in the plan, in order: one piece per exercise, and one piece per
+   * superset ("Superset: Bench Press + Barbell Row").
+   */
+  preview(t: WorkoutTemplate): { superset: boolean; text: string }[] {
+    const runs = supersetRuns<TemplateExercise>(
+      [...t.exercises].sort((a, b) => a.orderInTemplate - b.orderInTemplate),
+    );
+    return runs.map((run, i) => ({
+      superset: run.length > 1,
+      text: run.map((e) => e.name).join(' + ') + (i < runs.length - 1 ? ', ' : ''),
+    }));
   }
 
   remove(t: WorkoutTemplate): void {

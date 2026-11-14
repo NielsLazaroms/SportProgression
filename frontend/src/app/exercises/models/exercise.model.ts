@@ -31,6 +31,8 @@ export interface WorkoutExercise {
   muscleGroup?: string;
   orderInWorkout: number;
   notes?: string;
+  /** Neighbouring exercises with the same number form one superset. */
+  supersetGroup?: number | null;
   /** Planned working sets × reps when the workout came from a template. */
   targetSets?: number | null;
   targetReps?: number | null;

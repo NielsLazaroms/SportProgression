@@ -75,6 +75,11 @@ export class TemplateExercise {
   @Column()
   orderInTemplate: number;
 
+  /** Members of one superset share this number (see common/superset.ts).
+   *  Null for an exercise done on its own. */
+  @Column({ type: 'int', nullable: true })
+  supersetGroup?: number | null;
+
   /** The plan: this many working sets of this many reps. No weight on
    *  purpose — that comes from what the lifter did last time. */
   @Column()

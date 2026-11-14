@@ -37,6 +37,22 @@ export class ExerciseService {
     );
   }
 
+  /**
+   * Saves the order of ALL exercises of the workout plus their superset
+   * grouping (same `supersetGroup` on neighbours = one superset; the server
+   * drops groups that are not at least two adjacent exercises and renumbers).
+   * Returns the exercises in their new order.
+   */
+  arrange(
+    workoutId: string,
+    exercises: { id: number; supersetGroup?: number | null }[],
+  ): Observable<WorkoutExercise[]> {
+    return this.http.put<WorkoutExercise[]>(
+      `${this.baseUrl(workoutId)}/arrangement`,
+      { exercises },
+    );
+  }
+
   deleteExercise(
     workoutId: string,
     exerciseId: number,

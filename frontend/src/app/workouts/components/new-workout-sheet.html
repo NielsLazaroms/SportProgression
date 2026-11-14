@@ -51,11 +51,36 @@
             {{ 'dialog.template.exercises' | mnTranslate }}
           </p>
           @if (tpl.exercises.length) {
-            <ul class="divide-y divide-outline-variant/20 rounded-lg border border-outline-variant/30">
-              @for (ex of tpl.exercises; track ex.id) {
-                <li class="flex items-baseline justify-between gap-3 px-3 py-2 text-sm">
-                  <span class="min-w-0 break-words font-semibold text-on-surface">{{ ex.name }}</span>
-                  <span class="tnum shrink-0 font-semibold text-on-surface-variant">{{ ex.targetSets }} × {{ ex.targetReps }}</span>
+            <ul class="overflow-hidden rounded-lg border border-outline-variant/30">
+              @for (item of plan(); track item.ex.id; let firstItem = $first) {
+                <!-- Superset members share a rail on the left and have no line between them. -->
+                <li
+                  class="relative flex items-end justify-between gap-3 px-3 py-2 text-sm"
+                  [class.pl-5]="item.role"
+                  [class.border-t]="!firstItem && (item.role === null || item.role === 'first')"
+                  [class.border-outline-variant/20]="!firstItem"
+                >
+                  @if (item.role) {
+                    <span
+                      aria-hidden="true"
+                      class="absolute left-1.5 w-2 border-l-[3px] border-primary"
+                      [class]="item.role === 'first' ? 'top-2.5 bottom-0' : item.role === 'last' ? 'top-0 bottom-2.5' : 'inset-y-0'"
+                      [class.border-t-[3px]]="item.role === 'first'"
+                      [class.rounded-tl-md]="item.role === 'first'"
+                      [class.border-b-[3px]]="item.role === 'last'"
+                      [class.rounded-bl-md]="item.role === 'last'"
+                    ></span>
+                  }
+                  <span class="min-w-0 break-words font-semibold text-on-surface">
+                    @if (item.role === 'first') {
+                      <span class="mb-0.5 block text-xs font-bold text-primary">{{ 'templates.superset' | mnTranslate }}</span>
+                    }
+                    @if (item.letter) {
+                      <span class="tnum mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded border border-primary px-1 align-middle text-xs font-bold leading-none text-primary">{{ item.letter }}</span>
+                    }
+                    {{ item.ex.name }}
+                  </span>
+                  <span class="tnum shrink-0 font-semibold text-on-surface-variant">{{ item.ex.targetSets }} × {{ item.ex.targetReps }}</span>
                 </li>
               }
             </ul>

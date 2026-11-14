@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -10,6 +11,8 @@ import { ExerciseDefinitionsService } from '../exercise-definitions/exercise-def
 import { CreateWorkoutExerciseDto } from './dto/create-exercise.dto';
 import { UpdateWorkoutExerciseDto } from './dto/update-exercise.dto';
 import { WorkoutsService } from '../workouts/workouts.service';
+import { ArrangeExercisesDto } from './dto/arrange-exercises.dto';
+import { normalizeSupersets } from '../common/superset';
 
 @Injectable()
 export class ExercisesService {
@@ -97,6 +100,40 @@ export class ExercisesService {
     return this.findOne(id, workoutId, userId);
   }
 
+  /**
+   * Sets the order of ALL exercises of a workout and their superset grouping
+   * in one go. The list must name every exercise of the workout exactly once.
+   */
+  async arrange(dto: ArrangeExercisesDto, workoutId: string, userId: string) {
+    await this.workoutsService.assertEditable(workoutId, userId);
+    const current = await this.workoutExerciseRepository.find({
+      where: { workoutId },
+      select: { id: true },
+    });
+    const ids = dto.exercises.map((e) => e.id);
+    const known = new Set(current.map((e) => e.id));
+    if (
+      ids.length !== known.size ||
+      new Set(ids).size !== ids.length ||
+      ids.some((id) => !known.has(id))
+    ) {
+      throw new BadRequestException(
+        'The arrangement must list every exercise of the workout exactly once',
+      );
+    }
+    const groups = normalizeSupersets(dto.exercises.map((e) => e.supersetGroup));
+    await this.workoutExerciseRepository.manager.transaction(async (manager) => {
+      for (let index = 0; index < ids.length; index++) {
+        await manager.update(
+          WorkoutExercise,
+          { id: ids[index], workoutId },
+          { orderInWorkout: index + 1, supersetGroup: groups[index] },
+        );
+      }
+    });
+    return this.findAll(workoutId, userId);
+  }
+
   async remove(id: number, workoutId: string, userId: string) {
     await this.workoutsService.assertEditable(workoutId, userId);
     const result = await this.workoutExerciseRepository.delete({
@@ -105,6 +142,20 @@ export class ExercisesService {
     });
     if (result.affected === 0) {
       throw new NotFoundException(`Workout exercise with ID ${id} not found`);
+    }
+    // Removing a member can leave a "superset" of one: tidy the grouping.
+    const rest = await this.workoutExerciseRepository.find({
+      where: { workoutId },
+      order: { orderInWorkout: 'ASC', id: 'ASC' },
+    });
+    const groups = normalizeSupersets(rest.map((e) => e.supersetGroup));
+    for (let i = 0; i < rest.length; i++) {
+      if ((rest[i].supersetGroup ?? null) !== groups[i]) {
+        await this.workoutExerciseRepository.update(
+          { id: rest[i].id },
+          { supersetGroup: groups[i] },
+        );
+      }
     }
     return { deleted: true };
   }

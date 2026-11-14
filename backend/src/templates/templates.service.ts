@@ -11,6 +11,7 @@ import { ExerciseDefinition } from '../exercise-definitions/exercise-definition.
 import { Workout } from '../workouts/workouts.entity';
 import { WorkoutExercise } from '../exercises/workout-exercise.entity';
 import { WorkoutsService } from '../workouts/workouts.service';
+import { normalizeSupersets } from '../common/superset';
 
 @Injectable()
 export class TemplatesService {
@@ -48,6 +49,7 @@ export class TemplatesService {
           .findBy({ id: In(ids) })
       : [];
     const byId = new Map(definitions.map((d) => [d.id, d]));
+    const groups = normalizeSupersets(items.map((i) => i.supersetGroup));
     return items.map((item, index) => {
       const def = byId.get(item.exerciseDefinitionId);
       if (!def) {
@@ -63,6 +65,7 @@ export class TemplatesService {
         orderInTemplate: index + 1,
         targetSets: item.targetSets,
         targetReps: item.targetReps,
+        supersetGroup: groups[index],
       };
     });
   }
@@ -124,6 +127,7 @@ export class TemplatesService {
         exerciseDefinitionId: defId,
         targetSets: Math.min(working.length, 20),
         targetReps,
+        supersetGroup: ex.supersetGroup,
       });
     }
     return this.create({ name: name ?? workout.name, exercises }, userId);
@@ -154,6 +158,7 @@ export class TemplatesService {
             orderInWorkout: order++,
             targetSets: ex.targetSets,
             targetReps: ex.targetReps,
+            supersetGroup: ex.supersetGroup,
           }),
         );
       }

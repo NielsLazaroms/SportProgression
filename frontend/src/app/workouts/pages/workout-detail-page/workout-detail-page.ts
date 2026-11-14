@@ -62,6 +62,14 @@ import {
   relativeDay,
 } from '../../../shared/format';
 import { ExercisePicker } from '../../components/exercise-picker/exercise-picker';
+import {
+  SupersetRole,
+  linkWithNext,
+  normalizeSupersets,
+  supersetMembers,
+  supersetRole,
+  unlink,
+} from '../../../shared/superset';
 
 interface SetDraft {
   /** null while the input is cleared mid-typing. */
@@ -106,6 +114,31 @@ const UNDO_MS = 6000;
 const APP_TITLE = 'Iron Pulse';
 
 type ExState = 'finished' | 'active' | 'pending';
+
+/** One exercise as rendered: where it sits and, inside a superset, its letter. */
+interface ExItem {
+  ex: WorkoutExercise;
+  /** Position in the whole workout. */
+  index: number;
+  role: SupersetRole;
+  /** "A" / "B" / "C" inside a superset, else null. */
+  letter: string | null;
+}
+
+/** A stand-alone exercise, or the members of one superset. */
+interface ExBlock {
+  key: string;
+  superset: boolean;
+  /** "Superset · 2 exercises" */
+  label: string;
+  /** "Superset: Bench Press + Barbell Row" */
+  aria: string;
+  items: ExItem[];
+}
+
+type Arrangement = { id: number; supersetGroup: number | null }[];
+
+const letterAt = (i: number) => String.fromCharCode(65 + (i % 26));
 
 @Component({
   selector: 'app-workout-detail-page',
@@ -158,6 +191,45 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
 
   readonly exercises = computed(() => this.workout()?.exercises ?? []);
   readonly completed = computed(() => !!this.workout()?.completedAt);
+
+  /** Exercises grouped for display: supersets become one block with lettered members. */
+  readonly blocks = computed<ExBlock[]>(() => {
+    const list = this.exercises();
+    const out: ExBlock[] = [];
+    let i = 0;
+    while (i < list.length) {
+      const members = supersetMembers(list, i);
+      const superset = members.length > 1;
+      const items = members.map((index, k) => ({
+        ex: list[index],
+        index,
+        role: supersetRole(list, index),
+        letter: superset ? letterAt(k) : null,
+      }));
+      out.push({
+        key: (superset ? 's' : 'n') + list[i].id,
+        superset,
+        label: superset
+          ? `${this.t('detail.superset')} · ${members.length} ${this.t('unit.exercises')}`
+          : '',
+        aria: superset
+          ? this.t('detail.aria.superset', { names: items.map((it) => it.ex.name).join(' + ') })
+          : '',
+        items,
+      });
+      i += members.length;
+    }
+    return out;
+  });
+
+  // Reorder mode: every exercise is a compact row with move / superset controls.
+  readonly reordering = signal(false);
+  /** Screen-reader announcement after a move. */
+  readonly moveAnnouncement = signal('');
+  private arrangeInFlight = false;
+  private arrangeDirty = false;
+  /** Last arrangement the server confirmed, to fall back on when a save fails. */
+  private arrangeBase: Arrangement | null = null;
 
   /** A workout can be finished only when every exercise has at least one set. */
   readonly canFinish = computed(() => {
@@ -397,6 +469,10 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   private loadWorkout(opts: { initFocus?: boolean; then?: () => void } = {}): void {
     this.workoutService.getWorkout(this.workoutId).subscribe({
       next: (w) => {
+        if (this.arrangeInFlight && w.exercises) {
+          // A reorder is still being saved: keep showing the order on screen.
+          w = { ...w, exercises: this.arrangedLike(w.exercises, this.snapshot()) };
+        }
         this.workout.set(w);
         for (const ex of w.exercises ?? []) {
           if (!this.noteDrafts.has(ex.id)) this.noteDrafts.set(ex.id, ex.notes ?? '');
@@ -756,6 +832,203 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     );
   }
 
+  // ------------------------------------------------------------ supersets
+
+  /** The superset member that is up after `exerciseId` (round-robin, skipping finished ones). */
+  private nextMember(exerciseId: number): { ex: WorkoutExercise; letter: string } | null {
+    const list = this.exercises();
+    const i = list.findIndex((e) => e.id === exerciseId);
+    if (i < 0) return null;
+    const members = supersetMembers(list, i);
+    if (members.length < 2) return null;
+    const pos = members.indexOf(i);
+    const finished = this.finishedIds();
+    for (let k = 1; k < members.length; k++) {
+      const at = (pos + k) % members.length;
+      const ex = list[members[at]];
+      if (!finished.has(ex.id)) return { ex, letter: letterAt(at) };
+    }
+    return null;
+  }
+
+  /** "Next: B · Barbell Row" for the active card, or '' outside a superset. */
+  supersetNext(ex: WorkoutExercise): string {
+    const next = this.nextMember(ex.id);
+    return next
+      ? this.t('detail.superset.next', { letter: next.letter, name: next.ex.name })
+      : '';
+  }
+
+  /** After a working set: hand over to the next member of the superset. */
+  private rotateSuperset(exerciseId: number): number | null {
+    if (this.activeId() !== exerciseId || this.reordering()) return null;
+    const next = this.nextMember(exerciseId);
+    if (!next) return null;
+    this.editingSetId.set(null);
+    this.activeId.set(next.ex.id);
+    this.scrollToExercise(next.ex.id);
+    return next.ex.id;
+  }
+
+  // -------------------------------------------------------------- reorder
+
+  toggleReorder(): void {
+    if (this.reordering()) {
+      this.reordering.set(false);
+      this.moveAnnouncement.set('');
+      const active = this.activeId();
+      if (active != null) this.scrollToExercise(active);
+      return;
+    }
+    if (this.completed() || this.exercises().length < 2) return;
+    this.editingSetId.set(null);
+    this.closeAddExercise();
+    this.reordering.set(true);
+  }
+
+  private snapshot(): Arrangement {
+    return this.exercises().map((e) => ({ id: e.id, supersetGroup: e.supersetGroup ?? null }));
+  }
+
+  /** `list` in the order (and with the grouping) of `order`; unknown exercises go last. */
+  private arrangedLike(list: WorkoutExercise[], order: Arrangement): WorkoutExercise[] {
+    const byId = new Map(list.map((e) => [e.id, e]));
+    const out: WorkoutExercise[] = [];
+    for (const o of order) {
+      const ex = byId.get(o.id);
+      if (!ex) continue;
+      byId.delete(o.id);
+      out.push({ ...ex, supersetGroup: o.supersetGroup });
+    }
+    for (const ex of list) if (byId.has(ex.id)) out.push(ex);
+    return out.map((e, i) => ({ ...e, orderInWorkout: i + 1 }));
+  }
+
+  /** Show the new order/grouping right away, then save it. */
+  private applyArrangement(order: Arrangement): void {
+    if (!this.arrangeInFlight) this.arrangeBase = this.snapshot();
+    this.workout.update((w) =>
+      w ? { ...w, exercises: this.arrangedLike(w.exercises ?? [], order) } : w,
+    );
+    this.saveArrangement();
+  }
+
+  /** One save at a time; changes made meanwhile go out in a follow-up save. */
+  private saveArrangement(): void {
+    if (this.arrangeInFlight) {
+      this.arrangeDirty = true;
+      return;
+    }
+    this.arrangeInFlight = true;
+    this.exerciseService.arrange(this.workoutId, this.snapshot()).subscribe({
+      next: (saved) => {
+        this.arrangeInFlight = false;
+        const confirmed = saved.map((e) => ({
+          id: e.id,
+          supersetGroup: e.supersetGroup ?? null,
+        }));
+        if (this.arrangeDirty) {
+          this.arrangeDirty = false;
+          this.arrangeBase = confirmed;
+          this.saveArrangement();
+          return;
+        }
+        this.arrangeBase = null;
+        this.workout.update((w) =>
+          w ? { ...w, exercises: this.arrangedLike(w.exercises ?? [], confirmed) } : w,
+        );
+      },
+      error: (err) => {
+        this.arrangeInFlight = false;
+        this.arrangeDirty = false;
+        const base = this.arrangeBase;
+        this.arrangeBase = null;
+        if (base) {
+          this.workout.update((w) =>
+            w ? { ...w, exercises: this.arrangedLike(w.exercises ?? [], base) } : w,
+          );
+        }
+        this.moveAnnouncement.set('');
+        this.alerts.error(this.t('toast.arrange.err'), this.t(errorHintKey(err)));
+        // The server may know better (finished on another device, removed exercise).
+        this.loadWorkout();
+      },
+    });
+  }
+
+  /**
+   * Move an exercise one step. Inside its superset it swaps places with a
+   * partner; stepping out of the superset takes it out; a stand-alone
+   * exercise hops over a whole superset instead of splitting it.
+   */
+  moveExercise(index: number, dir: -1 | 1): void {
+    const list = this.exercises();
+    const target = index + dir;
+    if (this.completed() || index < 0 || target < 0 || target >= list.length) return;
+    const groups = normalizeSupersets(list.map((e) => e.supersetGroup));
+    const order: Arrangement = list.map((e, i) => ({ id: e.id, supersetGroup: groups[i] }));
+    const theirs = supersetMembers(order, target);
+    const staysInside = supersetMembers(order, index).includes(target);
+    const [item] = order.splice(index, 1);
+    if (staysInside) {
+      order.splice(target, 0, item);
+    } else {
+      item.supersetGroup = null;
+      const dest = theirs.length > 1 ? (dir > 0 ? theirs[theirs.length - 1] : theirs[0]) : target;
+      order.splice(dest, 0, item);
+    }
+    const normalized = normalizeSupersets(order.map((o) => o.supersetGroup));
+    order.forEach((o, i) => (o.supersetGroup = normalized[i]));
+    const moved = list[index];
+    this.applyArrangement(order);
+    this.moveAnnouncement.set(
+      this.t('detail.reorder.moved', {
+        name: moved.name,
+        n: order.findIndex((o) => o.id === moved.id) + 1,
+        total: order.length,
+      }),
+    );
+    // Keep the moved row in view and the same arrow under the thumb / in focus.
+    afterNextRender(
+      () => {
+        const pick = (d: -1 | 1) =>
+          document.getElementById(`ro-${d < 0 ? 'up' : 'down'}-${moved.id}`) as
+            | HTMLButtonElement
+            | null;
+        let btn = pick(dir);
+        if (!btn || btn.disabled) btn = pick(dir < 0 ? 1 : -1);
+        btn?.focus({ preventScroll: true });
+        document
+          .getElementById('ro-' + moved.id)
+          ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** Tie the exercise to the one below it (joining whatever superset that one is in). */
+  linkNext(index: number): void {
+    const list = this.exercises();
+    if (this.completed() || index < 0 || index >= list.length - 1) return;
+    const groups = linkWithNext(list, index);
+    this.applyArrangement(list.map((e, i) => ({ id: e.id, supersetGroup: groups[i] })));
+  }
+
+  /** Take the exercise out of its superset (it keeps its place in the workout). */
+  unlinkExercise(index: number): void {
+    const list = this.exercises();
+    if (this.completed() || !list[index]) return;
+    const groups = unlink(list, index);
+    this.applyArrangement(list.map((e, i) => ({ id: e.id, supersetGroup: groups[i] })));
+  }
+
+  /** Second line of a row in reorder mode. */
+  reorderMeta(ex: WorkoutExercise): string {
+    if (ex.sets?.length) return this.exerciseMeta(ex);
+    if (this.targetSets(ex)) return this.planText(ex, 'detail.plan.planned');
+    return this.muscleLabel(ex.muscleGroup);
+  }
+
   // --------------------------------------------------------------- drafts
 
   draft(exerciseId: number): SetDraft {
@@ -952,6 +1225,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     this.exerciseService.deleteExercise(this.workoutId, ex.id).subscribe({
       next: () => {
         this.removingExercise = false;
+        if (this.exercises().length <= 2) this.reordering.set(false);
         const finished = new Set(this.finishedIds());
         finished.delete(ex.id);
         this.finishedIds.set(finished);
@@ -1011,7 +1285,9 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
           this.loadWorkout({
             then: () => {
               this.logging.set(false);
-              if (fromKeyboard) this.focusReps(ex.id);
+              // Superset: a working set hands over to the next member.
+              const next = warmup ? null : this.rotateSuperset(ex.id);
+              if (fromKeyboard) this.focusReps(next ?? ex.id);
             },
           });
           if (kind) {
@@ -1185,7 +1461,17 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
         finished.add(ex.id);
         this.finishedIds.set(finished);
 
-        const next = this.exercises().find((e) => !finished.has(e.id));
+        // Superset: on to the next unfinished member; once all are done, to
+        // whatever comes after the superset.
+        const list = this.exercises();
+        const at = list.findIndex((e) => e.id === ex.id);
+        const members = at >= 0 ? supersetMembers(list, at) : [];
+        const next =
+          this.nextMember(ex.id)?.ex ??
+          (members.length > 1
+            ? list.find((e, i) => i > members[members.length - 1] && !finished.has(e.id))
+            : undefined) ??
+          list.find((e) => !finished.has(e.id));
         this.activeId.set(next ? next.id : null);
         if (next) this.scrollToExercise(next.id);
       },
@@ -1203,6 +1489,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     this.workoutService.finishWorkout(this.workoutId).subscribe({
       next: (w) => {
         this.finishing.set(false);
+        this.reordering.set(false);
         this.editingSetId.set(null);
         this.clearUndo();
         this.closeAddExercise();
@@ -1267,6 +1554,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   }
 
   onEscape(): void {
+    if (this.reordering() && !this.showEdit()) this.toggleReorder();
     if (this.showEdit() && !this.savingEdit()) this.showEdit.set(false);
     if (this.showSaveTemplate() && !this.savingTemplate()) this.showSaveTemplate.set(false);
   }

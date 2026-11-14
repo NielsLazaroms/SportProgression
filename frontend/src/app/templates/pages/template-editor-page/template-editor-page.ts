@@ -28,6 +28,15 @@ import {
   ExerciseDefinition,
   ExerciseType,
 } from '../../../exercises/models/exercise.model';
+import {
+  SupersetRole,
+  linkWithNext,
+  normalizeSupersets,
+  supersetLetter,
+  supersetMembers,
+  supersetRole,
+  unlink,
+} from '../../../shared/superset';
 import { ExercisePicker } from '../../../workouts/components/exercise-picker/exercise-picker';
 import { TargetStepper } from '../../components/target-stepper';
 import { TemplateService } from '../../data-access/template.service';
@@ -52,6 +61,20 @@ interface Row {
   muscleGroup: string | null;
   targetSets: number;
   targetReps: number;
+  /** Neighbouring rows with the same number are one superset; always normalised. */
+  supersetGroup: number | null;
+}
+
+/** Applies new group numbers to the rows (same order). */
+function withGroups(rows: Row[], groups: (number | null)[]): Row[] {
+  return rows.map((r, i) =>
+    r.supersetGroup === groups[i] ? r : { ...r, supersetGroup: groups[i] },
+  );
+}
+
+/** Same rule as the server, so the list always shows what will be saved. */
+function normalized(rows: Row[]): Row[] {
+  return withGroups(rows, normalizeSupersets(rows.map((r) => r.supersetGroup)));
 }
 
 /**
@@ -134,14 +157,24 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
   /** What Save would send: rows whose exercise no longer exists are dropped. */
   private readonly payload = computed<SaveTemplate>(() => ({
     name: this.name().trim().slice(0, NAME_MAX),
-    exercises: this.rows()
-      .filter((r) => r.definitionId != null)
-      .map((r) => ({
+    exercises: normalized(this.rows().filter((r) => r.definitionId != null)).map(
+      (r) => ({
         exerciseDefinitionId: r.definitionId as number,
         targetSets: r.targetSets,
         targetReps: r.targetReps,
-      })),
+        supersetGroup: r.supersetGroup,
+      }),
+    ),
   }));
+
+  /** Per row: its place in a superset (bracket shape + letter), or nulls. */
+  readonly supersets = computed<{ role: SupersetRole; letter: string | null }[]>(() => {
+    const rows = this.rows();
+    return rows.map((_, i) => ({
+      role: supersetRole(rows, i),
+      letter: supersetLetter(rows, i),
+    }));
+  });
 
   readonly dirty = computed(() => this.snapshot() !== this.saved());
 
@@ -189,16 +222,19 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
   private apply(t: WorkoutTemplate): void {
     this.name.set(t.name);
     this.rows.set(
-      [...t.exercises]
-        .sort((a, b) => a.orderInTemplate - b.orderInTemplate)
-        .map((e) => ({
-          key: this.nextKey++,
-          definitionId: e.exerciseDefinitionId ?? null,
-          name: e.name,
-          muscleGroup: e.muscleGroup ?? null,
-          targetSets: e.targetSets,
-          targetReps: e.targetReps,
-        })),
+      normalized(
+        [...t.exercises]
+          .sort((a, b) => a.orderInTemplate - b.orderInTemplate)
+          .map((e) => ({
+            key: this.nextKey++,
+            definitionId: e.exerciseDefinitionId ?? null,
+            name: e.name,
+            muscleGroup: e.muscleGroup ?? null,
+            targetSets: e.targetSets,
+            targetReps: e.targetReps,
+            supersetGroup: e.supersetGroup ?? null,
+          })),
+      ),
     );
     this.saved.set(this.snapshot());
   }
@@ -207,7 +243,13 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
   private snapshot(): string {
     return JSON.stringify([
       this.name().trim(),
-      this.rows().map((r) => [r.definitionId, r.name, r.targetSets, r.targetReps]),
+      this.rows().map((r) => [
+        r.definitionId,
+        r.name,
+        r.targetSets,
+        r.targetReps,
+        r.supersetGroup,
+      ]),
     ]);
   }
 
@@ -229,6 +271,7 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
         muscleGroup: def.muscleGroup ?? null,
         targetSets: DEFAULT_SETS,
         targetReps: DEFAULT_REPS,
+        supersetGroup: null,
       },
     ]);
   }
@@ -279,12 +322,16 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
   }
 
   move(index: number, delta: -1 | 1): void {
-    const target = index + delta;
     const rows = [...this.rows()];
-    if (target < 0 || target >= rows.length) return;
+    if (index + delta < 0 || index + delta >= rows.length) return;
     const key = rows[index].key;
-    [rows[index], rows[target]] = [rows[target], rows[index]];
-    this.rows.set(rows);
+    // A loose row steps over a whole superset instead of splitting it; a
+    // member that moves away from its partners leaves the superset.
+    const alone = supersetRole(rows, index) === null;
+    const steps = alone ? supersetMembers(rows, index + delta).length : 1;
+    const [row] = rows.splice(index, 1);
+    rows.splice(index + delta * steps, 0, row);
+    this.rows.set(normalized(rows));
     // Moving the row in the DOM drops focus: put it back on the same button,
     // or on its neighbour when the row reached the top/bottom.
     const dir = delta < 0 ? 'up' : 'down';
@@ -296,8 +343,25 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
   }
 
   remove(row: Row): void {
-    this.rows.update((rows) => rows.filter((r) => r.key !== row.key));
+    this.rows.update((rows) => normalized(rows.filter((r) => r.key !== row.key)));
     this.focusLater('[data-add-exercise]');
+  }
+
+  /** Superset this row with the one below it (merging with that row's superset). */
+  linkNext(index: number): void {
+    const rows = this.rows();
+    if (index >= rows.length - 1) return;
+    const key = rows[index].key;
+    this.rows.set(withGroups(rows, linkWithNext(rows, index)));
+    this.focusLater(`[data-ss="${key}-unlink"]`);
+  }
+
+  /** Take this row out of its superset; the others stay linked where still adjacent. */
+  unlinkRow(index: number): void {
+    const rows = this.rows();
+    const key = rows[index].key;
+    this.rows.set(withGroups(rows, unlink(rows, index)));
+    this.focusLater(`[data-ss="${key}-link"]`, `[data-move="${key}-up"]:not(:disabled)`, `[data-move="${key}-down"]`);
   }
 
   private focusLater(...selectors: string[]): void {

@@ -10,6 +10,8 @@ export interface TemplateExercise {
   orderInTemplate: number;
   targetSets: number;
   targetReps: number;
+  /** Neighbouring exercises with the same number form one superset. */
+  supersetGroup?: number | null;
 }
 
 /** A reusable workout plan. Weights are not part of it: they come from what
@@ -29,6 +31,7 @@ export interface SaveTemplate {
     exerciseDefinitionId: number;
     targetSets: number;
     targetReps: number;
+    supersetGroup?: number | null;
   }[];
 }
 

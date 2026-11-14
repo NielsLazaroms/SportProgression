@@ -3,6 +3,7 @@ import {
   ElementRef,
   OnInit,
   afterNextRender,
+  computed,
   inject,
   input,
   output,
@@ -21,8 +22,9 @@ import {
 } from 'mn-angular-lib';
 import { AppIcon } from '../../shared/app-icon';
 import { errorHintKey, todayIso } from '../../shared/format';
+import { SupersetRole, supersetLetter, supersetRole } from '../../shared/superset';
 import { TemplateService } from '../../templates/data-access/template.service';
-import { WorkoutTemplate } from '../../templates/models/template.model';
+import { TemplateExercise, WorkoutTemplate } from '../../templates/models/template.model';
 import { WorkoutService } from '../data-access/workout.service';
 import { Workout } from '../models/workout.model';
 
@@ -62,6 +64,20 @@ export class NewWorkoutSheet implements OnInit {
   /** Template to start from; wins over `source` when both are set. */
   readonly template = input<WorkoutTemplate | null>(null);
   readonly closed = output<void>();
+
+  /** The template's exercises in order, each with its place in a superset. */
+  readonly plan = computed<
+    { ex: TemplateExercise; role: SupersetRole; letter: string | null }[]
+  >(() => {
+    const list = [...(this.template()?.exercises ?? [])].sort(
+      (a, b) => a.orderInTemplate - b.orderInTemplate,
+    );
+    return list.map((ex, i) => ({
+      ex,
+      role: supersetRole(list, i),
+      letter: supersetLetter(list, i),
+    }));
+  });
 
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
 

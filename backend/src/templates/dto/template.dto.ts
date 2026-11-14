@@ -27,6 +27,12 @@ export class TemplateExerciseDto {
   @Min(1)
   @Max(1000)
   targetReps: number;
+
+  /** Same number on neighbouring exercises = one superset. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  supersetGroup?: number | null;
 }
 
 export class SaveTemplateDto {
