@@ -48,7 +48,6 @@
   "date.yesterday": "Yesterday",
   "date.daysAgo": "{{n}} days ago",
   "login.tagline": "Track your lifts. See your progress.",
-  "login.heading": "Sign in to continue",
   "login.tabTitle": "Sign in",
   "login.google": "Sign in with Google",
   "login.demo": "Continue as demo user",

@@ -283,3 +283,50 @@ body:has(mn-bottom-sheet) mn-alert-outlet > div {
 .set-flash {
   animation: set-flash 1.6s ease-out 1;
 }
+
+/* Confirmation dialogs (mn-angular-lib): its two buttons sit side by side and
+   push each other off a narrow phone. Stack them full width, the choice that
+   does something on top, in the app's own button shape. On wider screens they
+   share one row. Unlayered on purpose: these have to win over the kit's
+   utility classes. */
+mn-confirmation-body > div > div:last-child {
+  flex-direction: column-reverse;
+  gap: 0.5rem;
+}
+mn-confirmation-body > div > div:last-child > div:empty {
+  display: none;
+}
+mn-confirmation-body > div > div:last-child > button {
+  width: 100%;
+  min-height: 3.25rem;
+  border-radius: var(--radius-xl);
+  font-size: 1.125rem;
+  font-weight: 700;
+  white-space: normal;
+  gap: 0.5rem;
+}
+/* "Keep editing" / "Cancel": a quiet card-coloured button, not an outline. */
+mn-confirmation-body > div > div:last-child > button:first-child {
+  border-color: transparent;
+  background: var(--color-surface-container-high);
+  color: var(--color-on-surface);
+}
+@media (min-width: 40rem) {
+  mn-confirmation-body > div > div:last-child {
+    flex-direction: row;
+  }
+  mn-confirmation-body > div > div:last-child > button {
+    flex: 1 1 0;
+  }
+}
+/* The dialog's title bar: no dividing line, the title in the heading cut. */
+.modal-container > div:has(> div > #mn-modal-title) {
+  border-bottom: 0;
+  padding-bottom: 0.25rem;
+}
+#mn-modal-title {
+  font-family: var(--font-display);
+  font-stretch: 112%;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}

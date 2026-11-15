@@ -24,8 +24,8 @@
       </button>
     </div>
   } @else {
-    <!-- Name -->
-    <label for="tname" class="mb-1 block text-sm font-semibold text-on-surface-variant">
+    <!-- Name: the template's title, typed in place -->
+    <label for="tname" class="mb-2 block px-1 text-sm font-semibold text-on-surface-variant">
       {{ 'form.name' | mnTranslate }}
     </label>
     <input
@@ -37,22 +37,18 @@
       (ngModelChange)="name.set($event ?? '')"
       [ngModelOptions]="{ standalone: true }"
       [placeholder]="'templates.editor.name.ph' | mnTranslate"
-      class="h-12 w-full min-w-0 rounded-lg border border-control bg-surface-container px-3 text-base text-on-surface outline-none transition-colors placeholder:text-outline focus:border-primary"
+      class="glass-card h-14 w-full min-w-0 rounded-2xl px-4 font-display text-xl font-bold text-on-surface outline-none placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:text-outline focus:ring-2 focus:ring-primary"
     />
 
     <!-- Exercises, in the order they are done -->
-    <h2 class="mb-3 mt-6 font-display text-lg font-bold text-on-surface">
+    <h2 class="mb-2 mt-6 px-1 text-sm font-semibold text-on-surface-variant">
       {{ 'templates.editor.exercises' | mnTranslate }}
     </h2>
 
     @if (!rows().length) {
-      <p class="mb-3 text-sm text-on-surface-variant">{{ 'templates.editor.empty' | mnTranslate }}</p>
+      <p class="mb-3 px-1 text-on-surface-variant">{{ 'templates.editor.empty' | mnTranslate }}</p>
     } @else {
-      @if (rows().length > 1) {
-        <!-- What a superset is, in the same words as the workout's reorder mode -->
-        <p class="mb-3 text-xs leading-relaxed text-on-surface-variant">{{ 'detail.reorder.hint' | mnTranslate }}</p>
-      }
-      <ol class="mb-3 space-y-3">
+      <ol class="mb-3 space-y-2">
         @for (row of rows(); track row.key; let i = $index; let first = $first; let last = $last) {
           @let ss = supersets()[i];
           <li class="relative" [class.pl-4]="ss.role">
@@ -61,75 +57,103 @@
               <span
                 aria-hidden="true"
                 class="absolute left-0 top-0 w-2.5 border-l-[3px] border-primary"
-                [class]="ss.role === 'last' ? 'bottom-0' : '-bottom-3'"
+                [class]="ss.role === 'last' ? 'bottom-0' : '-bottom-2'"
                 [class.border-t-[3px]]="ss.role === 'first'"
                 [class.rounded-tl-lg]="ss.role === 'first'"
                 [class.border-b-[3px]]="ss.role === 'last'"
                 [class.rounded-bl-lg]="ss.role === 'last'"
               ></span>
             }
-            <div class="glass-card @container rounded-xl p-3">
-            @if (ss.role) {
-              <p class="mb-2 flex items-center gap-1.5 text-xs font-bold text-primary">
-                <app-icon [data]="{ name: 'link', size: 14 }" />
-                <span>{{ 'templates.superset' | mnTranslate }}</span>
-                <span class="tnum flex h-5 min-w-5 items-center justify-center rounded border border-primary px-1 leading-none">{{ ss.letter }}</span>
-              </p>
-            }
-            <div class="flex items-start gap-3">
-              <span class="tnum flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full bg-surface-container-high px-1.5 text-sm font-bold text-on-surface-variant" aria-hidden="true">{{ i + 1 }}</span>
-              <div class="min-w-0 flex-1">
-                <p class="font-bold leading-snug text-on-surface [overflow-wrap:anywhere]">{{ row.name }}</p>
-                <p class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-on-surface-variant">
-                  @if (row.muscleGroup) {
-                    <span>{{ muscleLabel(row.muscleGroup) }}</span>
+            <div class="glass-card @container rounded-2xl p-4">
+              <!-- Name, with move and remove as quiet icons -->
+              <div class="flex items-start gap-1">
+                <div class="min-w-0 flex-1">
+                  <p class="font-display text-lg font-bold leading-snug text-on-surface [overflow-wrap:anywhere]">
+                    @if (ss.role) {
+                      <span class="tnum mr-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded border border-primary px-1 align-[2px] font-sans text-[11px] font-bold leading-none text-primary" [attr.title]="'templates.superset' | mnTranslate">{{ ss.letter }}</span>
+                      <span class="sr-only">{{ 'templates.superset' | mnTranslate }} </span>
+                    }
+                    {{ row.name }}
+                  </p>
+                  @if (row.bodyweight || row.definitionId === null || (row.definitionId !== null && duplicateIds().has(row.definitionId))) {
+                    <p class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-on-surface-variant">
+                      @if (row.bodyweight) {
+                        <app-bw-tag />
+                      }
+                      @if (row.definitionId === null) {
+                        <span class="font-semibold text-on-surface">{{ 'templates.editor.gone' | mnTranslate }}</span>
+                      } @else if (duplicateIds().has(row.definitionId)) {
+                        <span class="font-semibold text-primary">{{ 'templates.editor.duplicate' | mnTranslate }}</span>
+                      }
+                    </p>
                   }
-                  @if (row.bodyweight) {
-                    <app-bw-tag />
-                  }
-                  @if (row.definitionId === null) {
-                    <span class="font-semibold text-warning">{{ 'templates.editor.gone' | mnTranslate }}</span>
-                  } @else if (duplicateIds().has(row.definitionId)) {
-                    @if (row.muscleGroup && !row.bodyweight) { <span aria-hidden="true">·</span> }
-                    <span class="font-semibold text-primary">{{ 'templates.editor.duplicate' | mnTranslate }}</span>
-                  }
-                </p>
+                </div>
+                <div class="-mr-2 -mt-2 flex shrink-0">
+                  <button
+                    type="button"
+                    (click)="move(i, -1)"
+                    [disabled]="first"
+                    [attr.data-move]="row.key + '-up'"
+                    [attr.aria-label]="'templates.editor.moveUp' | mnTranslate: { name: row.name }"
+                    class="flex h-11 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <app-icon [data]="{ name: 'arrow-up', size: 18 }" />
+                  </button>
+                  <button
+                    type="button"
+                    (click)="move(i, 1)"
+                    [disabled]="last"
+                    [attr.data-move]="row.key + '-down'"
+                    [attr.aria-label]="'templates.editor.moveDown' | mnTranslate: { name: row.name }"
+                    class="flex h-11 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <app-icon [data]="{ name: 'arrow-down', size: 18 }" />
+                  </button>
+                  <button
+                    type="button"
+                    (click)="remove(row)"
+                    [attr.aria-label]="'templates.editor.removeNamed' | mnTranslate: { name: row.name }"
+                    [attr.title]="'templates.editor.remove' | mnTranslate"
+                    class="flex h-11 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
+                  >
+                    <app-icon [data]="{ name: 'trash-2', size: 18 }" />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div class="mt-3 grid grid-cols-1 gap-3 @[19rem]:grid-cols-2">
-              <app-target-stepper
-                [value]="row.targetSets"
-                [min]="1"
-                [max]="setsMax"
-                [label]="'templates.editor.sets' | mnTranslate"
-                [inputLabel]="'templates.editor.setsFor' | mnTranslate: { name: row.name }"
-                [decLabel]="'templates.editor.fewerSets' | mnTranslate"
-                [incLabel]="'templates.editor.moreSets' | mnTranslate"
-                (valueChange)="setSets(row, $event)"
-              />
-              <app-target-stepper
-                [value]="row.targetReps"
-                [min]="1"
-                [max]="repsMax"
-                [label]="'templates.editor.reps' | mnTranslate"
-                [inputLabel]="'templates.editor.repsFor' | mnTranslate: { name: row.name }"
-                [decLabel]="'templates.editor.fewerReps' | mnTranslate"
-                [incLabel]="'templates.editor.moreReps' | mnTranslate"
-                (valueChange)="setReps(row, $event)"
-              />
-            </div>
+              <div class="mt-2 grid grid-cols-1 gap-2 @[17rem]:grid-cols-2">
+                <app-target-stepper
+                  [value]="row.targetSets"
+                  [min]="1"
+                  [max]="setsMax"
+                  [label]="'templates.editor.sets' | mnTranslate"
+                  [inputLabel]="'templates.editor.setsFor' | mnTranslate: { name: row.name }"
+                  [decLabel]="'templates.editor.fewerSets' | mnTranslate"
+                  [incLabel]="'templates.editor.moreSets' | mnTranslate"
+                  (valueChange)="setSets(row, $event)"
+                />
+                <app-target-stepper
+                  [value]="row.targetReps"
+                  [min]="1"
+                  [max]="repsMax"
+                  [label]="'templates.editor.reps' | mnTranslate"
+                  [inputLabel]="'templates.editor.repsFor' | mnTranslate: { name: row.name }"
+                  [decLabel]="'templates.editor.fewerReps' | mnTranslate"
+                  [incLabel]="'templates.editor.moreReps' | mnTranslate"
+                  (valueChange)="setReps(row, $event)"
+                />
+              </div>
 
-            <div class="mt-3 border-t border-outline-variant/30 pt-2">
+              <!-- Superset: link with the next exercise, or take this one out -->
               @if (!last && ss.role !== 'first' && ss.role !== 'middle') {
                 <button
                   type="button"
                   (click)="linkNext(i)"
                   [attr.data-ss]="row.key + '-link'"
                   [attr.aria-label]="'templates.editor.linkNamed' | mnTranslate: { name: row.name, next: rows()[i + 1].name }"
-                  class="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left text-sm font-semibold text-on-surface-variant transition-colors hover:bg-primary/15 hover:text-primary"
+                  class="-mb-2 -ml-1 mt-1 flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-left text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary"
                 >
-                  <app-icon [data]="{ name: 'link', size: 18 }" />
+                  <app-icon [data]="{ name: 'link', size: 16 }" />
                   <span class="min-w-0">{{ 'templates.editor.link' | mnTranslate }}</span>
                 </button>
               }
@@ -139,51 +163,20 @@
                   (click)="unlinkRow(i)"
                   [attr.data-ss]="row.key + '-unlink'"
                   [attr.aria-label]="'templates.editor.unlinkNamed' | mnTranslate: { name: row.name }"
-                  class="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left text-sm font-semibold text-on-surface-variant transition-colors hover:bg-primary/15 hover:text-primary"
+                  class="-mb-2 -ml-1 mt-1 flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-left text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary"
                 >
-                  <app-icon [data]="{ name: 'x', size: 18 }" />
+                  <app-icon [data]="{ name: 'x', size: 16 }" />
                   <span class="min-w-0">{{ 'templates.editor.unlink' | mnTranslate }}</span>
                 </button>
               }
             </div>
-
-            <div class="flex items-center justify-between gap-2">
-              <div class="flex items-center gap-1">
-                <button
-                  type="button"
-                  (click)="move(i, -1)"
-                  [disabled]="first"
-                  [attr.data-move]="row.key + '-up'"
-                  [attr.aria-label]="'templates.editor.moveUp' | mnTranslate: { name: row.name }"
-                  class="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-primary/15 hover:text-primary disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-                >
-                  <app-icon [data]="{ name: 'arrow-up', size: 20 }" />
-                </button>
-                <button
-                  type="button"
-                  (click)="move(i, 1)"
-                  [disabled]="last"
-                  [attr.data-move]="row.key + '-down'"
-                  [attr.aria-label]="'templates.editor.moveDown' | mnTranslate: { name: row.name }"
-                  class="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-primary/15 hover:text-primary disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-                >
-                  <app-icon [data]="{ name: 'arrow-down', size: 20 }" />
-                </button>
-              </div>
-              <button
-                type="button"
-                (click)="remove(row)"
-                [attr.aria-label]="'templates.editor.removeNamed' | mnTranslate: { name: row.name }"
-                class="flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
-              >
-                <app-icon [data]="{ name: 'trash-2', size: 18 }" />
-                {{ 'templates.editor.remove' | mnTranslate }}
-              </button>
-            </div>
-            </div>
           </li>
         }
       </ol>
+      @if (rows().length > 1) {
+        <!-- What a superset is, in the same words as the workout's reorder mode -->
+        <p class="mb-3 px-1 text-xs leading-relaxed text-on-surface-variant">{{ 'detail.reorder.hint' | mnTranslate }}</p>
+      }
     }
 
     @if (showPicker()) {
@@ -197,39 +190,41 @@
         (closed)="showPicker.set(false)"
       />
     } @else if (full()) {
-      <p class="text-sm text-on-surface-variant">{{ 'templates.editor.full' | mnTranslate: { n: exercisesMax } }}</p>
+      <p class="px-1 text-sm text-on-surface-variant">{{ 'templates.editor.full' | mnTranslate: { n: exercisesMax } }}</p>
     } @else {
       <button
         type="button"
         data-add-exercise
         (click)="showPicker.set(true)"
-        class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-control px-4 text-center font-bold text-primary transition-colors hover:bg-primary/10"
+        class="glass-card flex min-h-13 w-full items-center justify-center gap-2 rounded-xl px-4 text-lg font-bold text-on-surface transition-colors hover:text-primary"
       >
-        <app-icon [data]="{ name: 'plus', size: 20 }" />
+        <app-icon [data]="{ name: 'plus', size: 18 }" />
         {{ 'templates.editor.add' | mnTranslate }}
       </button>
     }
 
-    <!-- Save / cancel -->
-    <div class="mt-8 flex gap-3">
-      <button mnButton type="button" [data]="{ color: 'gray', size: 'lg', wrap: true }" class="min-w-0 flex-1" (click)="back()">
-        {{ 'action.cancel' | mnTranslate }}
-      </button>
-      <button
-        mnButton
-        type="button"
-        [data]="{ color: 'primary', size: 'lg', wrap: true, disabled: !!saveBlock() || saving() }"
-        [attr.aria-describedby]="saveBlock() ? 'tsave-hint' : null"
-        class="min-w-0 flex-1"
-        (click)="save()"
-      >
-        {{ (saving() ? 'action.saving' : 'action.save') | mnTranslate }}
-      </button>
-    </div>
+    <!-- Save: the one filled button. Leaving without saving is the back arrow. -->
+    <button
+      type="button"
+      (click)="save()"
+      [disabled]="!!saveBlock() || saving()"
+      [attr.aria-describedby]="saveBlock() ? 'tsave-hint' : null"
+      class="mt-6 flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      <app-icon [data]="{ name: 'check', size: 18 }" />
+      {{ (saving() ? 'action.saving' : 'action.save') | mnTranslate }}
+    </button>
     @if (saveBlock(); as block) {
       <p id="tsave-hint" class="mt-2 text-center text-sm text-on-surface-variant" aria-live="polite">
         {{ block | mnTranslate }}
       </p>
     }
+    <button
+      type="button"
+      (click)="back()"
+      class="mx-auto mt-1 flex min-h-11 items-center px-3 text-sm font-semibold text-on-surface-variant transition-colors hover:text-on-surface"
+    >
+      {{ 'action.cancel' | mnTranslate }}
+    </button>
   }
 </main>

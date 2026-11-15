@@ -17,13 +17,14 @@ import { AppIcon } from '../../shared/app-icon';
   host: { class: 'block min-w-0' },
   template: `
     <span class="mb-1 block text-xs font-semibold text-on-surface-variant" aria-hidden="true">{{ label() }}</span>
-    <div class="flex max-w-52 items-center gap-1">
+    <div class="flex items-stretch overflow-hidden rounded-lg border border-control bg-surface-container focus-within:border-primary">
       <button
         type="button"
+        tabindex="-1"
         (click)="step(-1)"
         [disabled]="value() <= min()"
         [attr.aria-label]="decLabel()"
-        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-control text-on-surface transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+        class="flex h-12 w-11 shrink-0 items-center justify-center text-on-surface-variant active:bg-surface-variant/40 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <app-icon [data]="{ name: 'minus', size: 18 }" />
       </button>
@@ -38,14 +39,15 @@ import { AppIcon } from '../../shared/app-icon';
         (change)="commit(field)"
         (keydown.enter)="field.blur()"
         [attr.aria-label]="inputLabel()"
-        class="tnum h-11 w-14 min-w-0 flex-1 rounded-lg border border-control bg-surface-container px-1 text-center text-base font-bold text-on-surface outline-none transition-colors focus:border-primary"
+        class="tnum h-12 w-10 min-w-0 flex-1 bg-transparent px-1 text-center text-lg font-bold text-on-surface outline-none"
       />
       <button
         type="button"
+        tabindex="-1"
         (click)="step(1)"
         [disabled]="value() >= max()"
         [attr.aria-label]="incLabel()"
-        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-control text-on-surface transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+        class="flex h-12 w-11 shrink-0 items-center justify-center text-on-surface-variant active:bg-surface-variant/40 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <app-icon [data]="{ name: 'plus', size: 18 }" />
       </button>
