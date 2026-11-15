@@ -36,6 +36,12 @@ export class PlannedExerciseDto {
   @Max(2000)
   targetWeightKg?: number;
 
+  /** Same number on neighbouring exercises = one superset. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  supersetGroup?: number | null;
+
   /** The planner's reason for this exercise; shown apart from the user's notes. */
   @IsOptional()
   @Trim()

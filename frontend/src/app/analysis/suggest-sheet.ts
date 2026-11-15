@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { MnAlertService, MnLanguageService, MnTranslatePipe } from 'mn-angular-lib';
 import { concatMap, from, map, switchMap, tap, toArray } from 'rxjs';
+import { supersetLetter, supersetRole } from '../shared/superset';
 import { AppIcon } from '../shared/app-icon';
 import { errorHintKey, formatKg, todayIso } from '../shared/format';
 import { TemplateService } from '../templates/data-access/template.service';
@@ -113,10 +114,36 @@ const TEMPLATE_NAME_MAX = 100;
               </p>
 
               <ul class="mt-3 overflow-hidden rounded-lg border border-outline-variant/30">
-                @for (ex of plan.exercises; track $index; let first = $first) {
-                  <li class="px-3 py-2 text-sm" [class.border-t]="!first" [class.border-outline-variant/20]="!first">
+                @for (ex of plan.exercises; track $index; let first = $first; let x = $index) {
+                  @let role = supersetRole(plan.exercises, x);
+                  <!-- Superset members share a rail on the left and have no line between them. -->
+                  <li
+                    class="relative px-3 py-2 text-sm"
+                    [class.pl-5]="role"
+                    [class.border-t]="!first && (role === null || role === 'first')"
+                    [class.border-outline-variant/20]="!first"
+                  >
+                    @if (role) {
+                      <span
+                        aria-hidden="true"
+                        class="absolute left-1.5 w-2 border-l-[3px] border-primary"
+                        [class]="role === 'first' ? 'top-2.5 bottom-0' : role === 'last' ? 'top-0 bottom-2.5' : 'inset-y-0'"
+                        [class.border-t-[3px]]="role === 'first'"
+                        [class.rounded-tl-md]="role === 'first'"
+                        [class.border-b-[3px]]="role === 'last'"
+                        [class.rounded-bl-md]="role === 'last'"
+                      ></span>
+                    }
+                    @if (role === 'first') {
+                      <span class="mb-0.5 block text-xs font-bold text-primary">{{ 'templates.superset' | mnTranslate }}</span>
+                    }
                     <div class="flex flex-wrap items-baseline justify-between gap-x-3">
-                      <span class="min-w-0 break-words font-semibold text-on-surface">{{ ex.name }}</span>
+                      <span class="min-w-0 break-words font-semibold text-on-surface">
+                        @if (supersetLetter(plan.exercises, x); as letter) {
+                          <span class="tnum mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded border border-primary px-1 align-middle text-xs font-bold leading-none text-primary">{{ letter }}</span>
+                        }
+                        {{ ex.name }}
+                      </span>
                       <span class="tnum shrink-0 whitespace-nowrap font-semibold text-on-surface-variant">{{ target(ex) }}</span>
                     </div>
                   </li>
@@ -222,6 +249,9 @@ export class SuggestSheet implements OnInit {
   readonly loading = signal(false);
   /** The answer on screen; the service keeps the same object, with what was saved from it. */
   private readonly suggestion = signal<Suggestion | null>(null);
+  readonly supersetRole = supersetRole;
+  readonly supersetLetter = supersetLetter;
+
   readonly plans = computed<SuggestedWorkout[]>(() => {
     const s = this.suggestion();
     return s?.days ?? (s?.plan ? [s.plan] : []);
@@ -342,6 +372,7 @@ export class SuggestSheet implements OnInit {
             targetSets: ex.sets,
             targetReps: ex.reps,
             ...(ex.weightKg != null && ex.weightKg > 0 ? { targetWeightKg: ex.weightKg } : {}),
+            ...(ex.supersetGroup != null ? { supersetGroup: ex.supersetGroup } : {}),
           };
         }),
       })
@@ -395,6 +426,7 @@ export class SuggestSheet implements OnInit {
                     exerciseDefinitionId: ex.exerciseDefinitionId,
                     targetSets: ex.sets,
                     targetReps: ex.reps,
+                    supersetGroup: ex.supersetGroup ?? null,
                   })),
                 })
                 .pipe(

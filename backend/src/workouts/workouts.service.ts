@@ -11,6 +11,7 @@ import { CreateWorkoutDto } from './dto/create-workout.dto';
 import { UpdateWorkoutDto } from './dto/update-workout.dto';
 import { WorkoutExercise } from '../exercises/workout-exercise.entity';
 import { ExerciseDefinition } from '../exercise-definitions/exercise-definition.entity';
+import { normalizeSupersets } from '../common/superset';
 import { PlannedWorkoutDto } from './dto/planned-workout.dto';
 
 @Injectable()
@@ -93,8 +94,8 @@ export class WorkoutsService {
           userId,
         }),
       );
-      let order = 1;
-      for (const item of dto.exercises) {
+      const groups = normalizeSupersets(dto.exercises.map((e) => e.supersetGroup));
+      for (const [index, item] of dto.exercises.entries()) {
         const def = byId.get(item.exerciseDefinitionId)!;
         await manager.save(
           manager.create(WorkoutExercise, {
@@ -103,9 +104,10 @@ export class WorkoutsService {
             name: def.name,
             type: def.type,
             muscleGroup: def.muscleGroup,
-            orderInWorkout: order++,
+            orderInWorkout: index + 1,
             targetSets: item.targetSets,
             targetReps: item.targetReps,
+            supersetGroup: groups[index],
             targetWeightKg: item.targetWeightKg ?? null,
             planNote: item.planNote || null,
             notes: item.notes || undefined,

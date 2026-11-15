@@ -24,6 +24,8 @@ export interface SuggestedExercise {
   reps: number;
   /** Suggested working weight; null when the exercise was never logged. */
   weightKg: number | null;
+  /** Same number on neighbouring exercises = one superset; null on its own. */
+  supersetGroup?: number | null;
 }
 
 export interface SuggestedWorkout {
@@ -79,6 +81,8 @@ export interface PlannedExercise {
   targetReps: number;
   /** Suggested working weight (for bodyweight exercises: the extra weight). */
   targetWeightKg?: number;
+  /** Same number on neighbouring exercises = one superset. */
+  supersetGroup?: number;
   /** The planner's one-line reason. Not the user's own note. */
   planNote?: string;
 }
