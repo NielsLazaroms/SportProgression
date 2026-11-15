@@ -2,7 +2,7 @@
 
 A personal strength-training tracker: log workouts (exercises → sets × reps × weight, with notes), and see your progression per exercise over time.
 
-- `backend/`: NestJS + TypeORM REST API (Swagger UI at `http://localhost:3000/api`)
+- `backend/`: NestJS + TypeORM REST API (Swagger UI at `http://localhost:3001/api`)
 - `frontend/`: Angular 21 app (Tailwind v4, mn-angular-lib), English + Dutch
 
 ## Quick start (no database or Google account needed)
@@ -11,16 +11,16 @@ A personal strength-training tracker: log workouts (exercises → sets × reps �
 cd backend
 cp .env.example .env   # defaults: SQLite file database + demo login
 npm install
-npm run start:dev      # http://localhost:3000
+npm run start:dev      # http://localhost:3001
 ```
 
 ```bash
 cd frontend
 npm install
-npm start              # http://localhost:4200
+npm start              # http://localhost:4201
 ```
 
-Open http://localhost:4200 and choose **Continue as demo user**. The demo account is created with eight weeks of sample training so the progress charts have data. All data lives in `backend/dev-data.sqlite`: delete that file to start fresh.
+Open http://localhost:4201 and choose **Continue as demo user**. The demo account is created with eight weeks of sample training so the progress charts have data. All data lives in `backend/dev-data.sqlite`: delete that file to start fresh.
 
 ## Configuration (`backend/.env`)
 

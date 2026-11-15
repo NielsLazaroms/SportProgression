@@ -26,7 +26,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         config.get<string>('GOOGLE_CLIENT_SECRET') || devFallback(config),
       callbackURL:
         config.get<string>('GOOGLE_CALLBACK_URL') ||
-        'http://localhost:3000/auth/google/callback',
+        'http://localhost:3001/auth/google/callback',
       scope: ['email', 'profile'],
       // The typings only know the session-based store; ours is cookie-based.
       store: new CookieStateStore(

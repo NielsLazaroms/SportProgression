@@ -83,7 +83,7 @@ export class AuthController {
 
     const frontend = this.config.get<string>(
       EnvKey.FRONTEND_URL,
-      'http://localhost:4200',
+      'http://localhost:4201',
     );
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
@@ -116,7 +116,7 @@ export class AuthController {
 
     const frontend = this.config.get<string>(
       EnvKey.FRONTEND_URL,
-      'http://localhost:4200',
+      'http://localhost:4201',
     );
     const isProduction = this.config.get<string>(EnvKey.NODE_ENV) === 'production';
 

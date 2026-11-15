@@ -29,7 +29,7 @@ async function bootstrap() {
     }),
   );
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:4200',
+    origin: process.env.FRONTEND_URL || 'http://localhost:4201',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
@@ -58,7 +58,7 @@ async function bootstrap() {
         'a backup) or apply the change with a migration.',
     );
   }
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 3001);
 }
 bootstrap().catch((err) => {
   console.error(err);
