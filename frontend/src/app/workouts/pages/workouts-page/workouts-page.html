@@ -1,252 +1,260 @@
 <app-header />
 
-<main class="mx-auto max-w-2xl px-4 pb-28 pt-20 lg:grid lg:max-w-6xl lg:grid-cols-2 lg:items-start lg:gap-x-8 lg:px-8">
-  <!-- Phone: one column. Desktop: start, templates and coach left, recent workouts right. -->
+<!-- Home answers one question: what am I lifting today? The week as seven
+     days on top, then the ways to start, then (quietly) the coach and the last
+     workouts. Phone: one column. Desktop: week and start left, the rest right. -->
+<main class="mx-auto max-w-xl px-5 pb-28 pt-20 lg:grid lg:max-w-5xl lg:grid-cols-[minmax(0,1fr)_minmax(0,21rem)] lg:items-start lg:gap-x-14 lg:px-8 lg:pt-24">
   <div class="min-w-0">
-  <!-- Continue today's/yesterday's unfinished workout -->
-  @if (unfinished(); as u) {
-    <section class="mb-4">
+    <section class="mb-8" aria-labelledby="home-week-title">
+      <p class="text-sm text-on-surface-variant">{{ todayLabel() }}</p>
+      <h2 id="home-week-title" class="mt-1 font-display text-[1.75rem] font-extrabold leading-[1.15] tracking-tight text-on-surface">
+        {{ weekHeadline() }}
+      </h2>
+      @if (weekLine(); as line) {
+        <p class="tnum mt-1 text-on-surface-variant">{{ line }}</p>
+      }
+
+      <!-- The week as seven days: a filled tick for a day trained, an outline for a training day still to come -->
+      <ol class="mt-4 grid grid-cols-7 gap-1.5" [attr.aria-label]="'home.week.title' | mnTranslate">
+        @for (d of weekDays(); track d.date) {
+          <li class="min-w-0">
+            @if (d.workoutId) {
+              <a
+                [routerLink]="['/workouts', d.workoutId]"
+                [attr.aria-label]="d.label"
+                class="glass-card flex flex-col items-center gap-1.5 rounded-xl py-2.5 transition-colors active:bg-surface-variant/40"
+                [class.active-glow]="d.today"
+              >
+                <span class="text-xs" [class]="d.today ? 'font-bold text-on-surface' : 'text-on-surface-variant'">{{ d.short }}</span>
+                <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-on-primary-container">
+                  <app-icon [data]="{ name: 'check', size: 16 }" />
+                </span>
+              </a>
+            } @else {
+              <div
+                class="glass-card flex flex-col items-center gap-1.5 rounded-xl py-2.5"
+                [class.active-glow]="d.today"
+                role="img"
+                [attr.aria-label]="d.label"
+              >
+                <span class="text-xs" [class]="d.today ? 'font-bold text-on-surface' : 'text-on-surface-variant'">{{ d.short }}</span>
+                @if (d.state === 'planned') {
+                  <span class="h-7 w-7 rounded-full border-2 border-primary/70"></span>
+                } @else if (d.state === 'missed') {
+                  <span class="h-7 w-7 rounded-full border-2 border-dashed border-outline-variant"></span>
+                } @else {
+                  <span class="flex h-7 w-7 items-center justify-center"><span class="h-1.5 w-1.5 rounded-full bg-outline-variant"></span></span>
+                }
+              </div>
+            }
+          </li>
+        }
+      </ol>
+    </section>
+
+    <!-- Continue: looks like the active exercise card on the workout page -->
+    @if (unfinished(); as u) {
       <a
         [routerLink]="['/workouts', u.id]"
-        class="glass-card active-glow flex w-full items-center gap-4 rounded-xl border-primary-container p-4 transition-transform active:scale-[0.98]"
+        class="glass-card active-glow mb-3 block rounded-2xl p-4 transition-transform active:scale-[0.99]"
       >
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
-          <app-icon [data]="{ name: 'play', size: 22 }" />
+        <span class="block text-sm font-semibold text-on-surface-variant">{{ 'home.continue' | mnTranslate }}</span>
+        <span class="block truncate font-display text-xl font-bold leading-snug text-on-surface">{{ u.name }}</span>
+        <span class="tnum block text-sm text-on-surface-variant">
+          {{ rel(u.date) }},
+          @if (setCount(u); as n) {
+            {{ n }} {{ plural(n, 'unit.sets') | mnTranslate }}
+          } @else {
+            {{ 'home.continue.noSets' | mnTranslate }}
+          }
         </span>
-        <span class="min-w-0 flex-1">
-          <span class="block text-sm font-bold text-primary">
-            {{ 'home.continue' | mnTranslate }}
-          </span>
-          <span class="block truncate font-display text-lg font-bold text-on-surface">{{ u.name }}</span>
-          <span class="tnum block text-sm text-on-surface-variant">
-            {{ rel(u.date) }} ·
-            @if (setCount(u); as n) {
-              {{ n }} {{ plural(n, 'unit.sets') | mnTranslate }}
-            } @else {
-              {{ 'home.continue.noSets' | mnTranslate }}
-            }
-          </span>
-        </span>
-        <span class="shrink-0 text-on-surface-variant">
-          <app-icon [data]="{ name: 'chevron-right', size: 22 }" />
+        <span class="mt-3 flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-lg font-bold text-on-primary-container">
+          <app-icon [data]="{ name: 'play', size: 18 }" />
+          {{ 'home.continue.go' | mnTranslate }}
         </span>
       </a>
-    </section>
-  }
-
-  <!-- Start: the one filled primary, unless a workout is waiting to be continued -->
-  <section class="mb-8">
-    @if (unfinished()) {
-      <button
-        type="button"
-        (click)="openNew()"
-        class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-primary/60 bg-primary/10 px-4 py-2 font-bold text-primary transition-colors hover:bg-primary/20 active:bg-primary/30"
-      >
-        <app-icon [data]="{ name: 'plus-circle', size: 20 }" />
-        {{ 'home.start' | mnTranslate }}
-      </button>
-    } @else {
-      <button
-        type="button"
-        (click)="openNew()"
-        class="active-glow flex min-h-16 w-full items-center justify-center gap-3 rounded-xl bg-primary px-4 py-3 font-display text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
-      >
-        <app-icon [data]="{ name: 'plus-circle', size: 24 }" />
-        {{ 'home.start' | mnTranslate }}
-      </button>
     }
-  </section>
 
-  <!-- Templates: start a planned workout with one tap -->
-  @if (templatesLoaded()) {
+    <!-- Start: one button. It is the filled one unless a workout is waiting. -->
     <section class="mb-8">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <h2 class="min-w-0 font-display text-lg font-bold text-on-surface">
-          {{ 'home.templates' | mnTranslate }}
-        </h2>
-        @if (templates().length) {
-          <a routerLink="/templates" class="-my-2 flex min-h-11 shrink-0 items-center text-sm font-semibold text-primary">
-            {{ 'home.templates.manage' | mnTranslate }}
-          </a>
-        }
-      </div>
+      @if (unfinished()) {
+        <button
+          type="button"
+          (click)="openNew()"
+          class="glass-card flex min-h-13 w-full items-center justify-center gap-2 rounded-xl px-4 text-lg font-bold text-on-surface transition-colors hover:text-primary active:scale-[0.98]"
+        >
+          <app-icon [data]="{ name: 'plus', size: 18 }" />
+          {{ 'home.startNew' | mnTranslate }}
+        </button>
+      } @else {
+        <button
+          type="button"
+          (click)="openNew()"
+          class="flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+        >
+          <app-icon [data]="{ name: 'plus', size: 18 }" />
+          {{ 'home.startNew' | mnTranslate }}
+        </button>
+      }
 
-      @if (templates().length) {
-        <!-- Bleeds to the screen edge while scrolling; `scroll-px-4` keeps the
-             snap position (and so the first card) on the page's content edge.
-             Desktop: a two-column grid inside the left column, no rail. -->
-        <ul class="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-2 lg:overflow-visible lg:px-0 lg:pb-0">
-          @for (t of templates(); track t.id) {
-            <li class="glass-card flex w-56 shrink-0 snap-start flex-col rounded-xl lg:w-auto">
-              <div class="min-w-0 flex-1 p-4 pb-3">
-                <span class="block truncate font-bold text-on-surface" [title]="t.name">{{ t.name }}</span>
-                <span class="tnum mt-1 block text-sm text-on-surface-variant">
-                  {{ t.exercises.length }} {{ plural(t.exercises.length, 'unit.exercises') | mnTranslate }}
-                  · {{ templateSets(t) }} {{ plural(templateSets(t), 'unit.sets') | mnTranslate }}
-                </span>
-              </div>
+      <!-- Templates: quiet one-line rows under the button, one tap to start -->
+      @if (templatesLoaded() && templates().length) {
+        <h2 id="home-templates-title" class="mb-2 mt-6 text-sm font-semibold text-on-surface-variant">
+          {{ 'home.templates.title' | mnTranslate }}
+        </h2>
+        <ul aria-labelledby="home-templates-title" class="space-y-2">
+          @for (t of shownTemplates(); track t.id) {
+            <li>
               <button
                 type="button"
                 (click)="startTemplate(t)"
                 [attr.aria-label]="'templates.startNamed' | mnTranslate: { name: t.name }"
                 [attr.aria-busy]="startingTemplateId() === t.id"
-                class="mx-3 mb-3 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary/60 bg-primary/10 px-3 text-sm font-bold text-primary transition-colors hover:bg-primary/20 active:bg-primary/30"
+                class="glass-card flex min-h-14 w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-left transition-colors active:bg-surface-variant/30"
               >
-                <app-icon [data]="{ name: 'play', size: 18 }" />
-                {{ (startingTemplateId() === t.id ? 'templates.starting' : 'templates.start') | mnTranslate }}
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate font-bold text-on-surface">{{ t.name }}</span>
+                  <span class="tnum block text-xs text-on-surface-variant">
+                    @if (startingTemplateId() === t.id) {
+                      {{ 'templates.starting' | mnTranslate }}
+                    } @else {
+                      {{ t.exercises.length }} {{ plural(t.exercises.length, 'unit.exercises') | mnTranslate }}
+                    }
+                  </span>
+                </span>
+                <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'play', size: 18 }" /></span>
               </button>
             </li>
           }
         </ul>
-      } @else {
-        <div class="glass-card rounded-xl p-4">
-          <div class="flex items-start gap-3">
-            <span class="mt-0.5 shrink-0 text-outline"><app-icon [data]="{ name: 'clipboard-list', size: 28 }" /></span>
-            <div class="min-w-0 flex-1">
-              <p class="font-bold text-on-surface">{{ 'home.templates.empty.title' | mnTranslate }}</p>
-              <p class="mt-1 text-sm text-on-surface-variant">{{ 'home.templates.empty.hint' | mnTranslate }}</p>
-            </div>
-          </div>
-          <a
-            routerLink="/templates/new"
-            class="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-outline-variant/60 px-3 text-center text-sm font-bold text-primary transition-colors hover:bg-primary/15 active:bg-primary/25"
-          >
-            <app-icon [data]="{ name: 'plus', size: 18 }" />
-            {{ 'home.templates.create' | mnTranslate }}
-          </a>
-        </div>
-      }
-    </section>
-  }
-
-  <!-- Coach: this week's numbers and, with the AI role, the three AI actions -->
-  @let wk = week();
-  @if (wk || canUseAi()) {
-    <section class="mb-8" aria-labelledby="home-coach-title">
-      <h2 id="home-coach-title" class="mb-4 font-display text-lg font-bold text-on-surface">
-        {{ (canUseAi() ? 'coach.title' : 'home.week.title') | mnTranslate }}
-      </h2>
-      <div class="glass-card rounded-xl p-4">
-        @if (wk) {
-          @if (canUseAi()) {
-            <h3 class="mb-2 text-sm font-semibold text-on-surface-variant">{{ 'home.week.title' | mnTranslate }}</h3>
-          }
-          <dl class="-mx-2 grid grid-cols-3 divide-x divide-outline-variant/30 text-center">
-            <div class="flex min-w-0 flex-col-reverse px-1.5">
-              <dt class="hyphens-auto break-words text-xs font-semibold leading-tight text-on-surface-variant">{{ plural(wk.workouts, 'home.week.workouts') | mnTranslate }}</dt>
-              <dd class="tnum flex items-center justify-center gap-1.5 font-display text-xl font-extrabold text-on-surface">
-                <span class="text-primary"><app-icon [data]="{ name: 'dumbbell', size: 16 }" /></span>
-                {{ wk.workouts }}
-              </dd>
-            </div>
-            <div class="flex min-w-0 flex-col-reverse px-1.5">
-              <dt class="hyphens-auto break-words text-xs font-semibold leading-tight text-on-surface-variant">{{ plural(wk.streakWeeks, 'home.week.streak') | mnTranslate }}</dt>
-              <dd class="tnum flex items-center justify-center gap-1.5 font-display text-xl font-extrabold text-on-surface">
-                <span class="text-primary"><app-icon [data]="{ name: 'flame', size: 16 }" /></span>
-                {{ wk.streakWeeks }}
-              </dd>
-            </div>
-            <div class="flex min-w-0 flex-col-reverse px-1.5">
-              @if (wk.showReps) {
-                <!-- A bodyweight-only week has no kilos to add up: count reps. -->
-                <dt class="hyphens-auto break-words text-xs font-semibold leading-tight text-on-surface-variant">{{ plural(wk.reps, 'home.week.reps') | mnTranslate }}</dt>
-                <dd class="tnum font-display text-xl font-extrabold text-primary">{{ wk.reps }}</dd>
-              } @else {
-                <dt class="hyphens-auto break-words text-xs font-semibold leading-tight text-on-surface-variant">{{ 'home.week.volume' | mnTranslate }}</dt>
-                <dd class="tnum font-display text-xl font-extrabold text-primary">{{ volumeText(wk.volumeKg) }}</dd>
-              }
-            </div>
-          </dl>
-        }
-
-        @if (canUseAi()) {
-          <!-- One family of AI buttons: outline, sparkles in primary, one line. -->
-          <ul class="space-y-2" [class.mt-4]="!!wk">
-            <li>
-              @if (wk && wk.workouts > 0) {
-                <button type="button" (click)="showAnalysis.set(true)" class="{{ aiButton }}">
-                  <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'sparkles', size: 16 }" /></span>
-                  <span class="min-w-0 flex-1 text-left">{{ 'analysis.week' | mnTranslate }}</span>
-                  <span class="shrink-0 text-outline"><app-icon [data]="{ name: 'chevron-right', size: 18 }" /></span>
-                </button>
-              } @else {
-                <p class="px-1 text-sm leading-relaxed text-on-surface-variant">{{ 'coach.analyse.empty' | mnTranslate }}</p>
-              }
-            </li>
-            <li>
-              <button type="button" (click)="suggestMode.set('workout')" class="{{ aiButton }}">
-                <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'sparkles', size: 16 }" /></span>
-                <span class="min-w-0 flex-1 text-left">{{ 'suggest.workout' | mnTranslate }}</span>
-                <span class="shrink-0 text-outline"><app-icon [data]="{ name: 'chevron-right', size: 18 }" /></span>
-              </button>
-            </li>
-            <li>
-              <button type="button" (click)="suggestMode.set('week')" class="{{ aiButton }}">
-                <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'sparkles', size: 16 }" /></span>
-                <span class="min-w-0 flex-1 text-left">{{ 'suggest.week' | mnTranslate }}</span>
-                <span class="shrink-0 text-outline"><app-icon [data]="{ name: 'chevron-right', size: 18 }" /></span>
-              </button>
-            </li>
-          </ul>
-          <p class="mt-3 text-xs leading-relaxed text-on-surface-variant">{{ 'coach.disclosure' | mnTranslate }}</p>
-        }
-      </div>
-    </section>
-  }
-  </div>
-
-  <!-- Recent workouts -->
-  <section class="min-w-0">
-    <div class="mb-4 flex items-center justify-between gap-3">
-      <h2 class="font-display text-lg font-bold text-on-surface">
-        {{ 'home.recent' | mnTranslate }}
-      </h2>
-      @if (workouts().length > latest().length) {
-        <a routerLink="/history" class="flex min-h-11 items-center text-sm font-semibold text-primary">
-          {{ 'home.seeAllCount' | mnTranslate: { n: workouts().length } }}
+        <a routerLink="/templates" class="inline-flex min-h-11 items-center text-sm font-semibold text-primary">
+          {{ (templates().length > shownTemplates().length ? 'home.templates.all' : 'home.templates.manage') | mnTranslate: { n: templates().length } }}
         </a>
       }
-    </div>
+    </section>
+  </div>
 
-    @if (loading()) {
-      <div class="space-y-3">
-        @for (i of [1, 2, 3]; track i) {
-          <mn-skeleton [data]="{ shape: 'rectangle', height: '92px' }" class="rounded-xl" />
-        }
-      </div>
-    } @else if (loadError(); as hint) {
-      <div class="glass-card flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center" role="alert">
-        <span class="text-outline"><app-icon [data]="{ name: 'search-x', size: 40 }" /></span>
-        <p class="font-bold text-on-surface">{{ 'home.error.title' | mnTranslate }}</p>
-        <p class="max-w-xs text-sm text-on-surface-variant">{{ hint | mnTranslate }}</p>
+  <div class="min-w-0">
+    <!-- Coach: one quiet row; the three AI actions live behind it -->
+    @if (canUseAi()) {
+      <section class="mb-8">
         <button
+          #coachButton
           type="button"
-          (click)="load()"
-          class="mt-2 flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 font-bold text-on-primary-container transition-transform active:scale-95"
+          (click)="showCoach.set(true)"
+          class="glass-card flex min-h-14 w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-left transition-colors active:bg-surface-variant/30"
         >
-          {{ 'action.retry' | mnTranslate }}
+          <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'sparkles', size: 22 }" /></span>
+          <span class="min-w-0 flex-1">
+            <span class="block font-bold text-on-surface">{{ 'coach.title' | mnTranslate }}</span>
+            <span class="block text-xs text-on-surface-variant">{{ 'coach.row.hint' | mnTranslate }}</span>
+          </span>
+          <span class="shrink-0 text-outline"><app-icon [data]="{ name: 'chevron-right', size: 20 }" /></span>
         </button>
-      </div>
-    } @else if (!workouts().length) {
-      <div class="glass-card flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center">
-        <span class="text-outline"><app-icon [data]="{ name: 'dumbbell', size: 40 }" /></span>
-        <p class="font-bold text-on-surface">{{ 'home.empty.title' | mnTranslate }}</p>
-        <p class="max-w-xs text-sm text-on-surface-variant">
-          {{ 'home.empty.hint' | mnTranslate }}
-        </p>
-      </div>
-    } @else {
-      <ul class="space-y-3">
-        @for (w of latest(); track w.id) {
-          <li><app-workout-row [workout]="w" (rerun)="reRun($event)" /></li>
-        }
-      </ul>
+      </section>
     }
-  </section>
+
+    <!-- Last workouts: plain rows, the full list lives in History -->
+    <section aria-labelledby="home-recent-title">
+      <h2 id="home-recent-title" class="mb-2 text-sm font-semibold text-on-surface-variant">
+        {{ 'home.recent' | mnTranslate }}
+      </h2>
+
+      @if (loading()) {
+        <div class="space-y-2">
+          @for (i of [1, 2, 3]; track i) {
+            <mn-skeleton [data]="{ shape: 'rectangle', height: '56px' }" class="rounded-lg" />
+          }
+        </div>
+      } @else if (loadError(); as hint) {
+        <div class="glass-card flex flex-col items-start gap-2 rounded-2xl p-4" role="alert">
+          <p class="font-bold text-on-surface">{{ 'home.error.title' | mnTranslate }}</p>
+          <p class="text-sm text-on-surface-variant">{{ hint | mnTranslate }}</p>
+          <button
+            type="button"
+            (click)="load()"
+            class="mt-1 flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 font-bold text-on-primary-container transition-transform active:scale-95"
+          >
+            {{ 'action.retry' | mnTranslate }}
+          </button>
+        </div>
+      } @else if (!workouts().length) {
+        <p class="glass-card rounded-2xl p-4 text-on-surface-variant">{{ 'home.empty.hint' | mnTranslate }}</p>
+      } @else {
+        <ul class="space-y-2">
+          @for (w of latest(); track w.id) {
+            <li class="glass-card flex items-center gap-1 rounded-2xl pr-2">
+              <a
+                [routerLink]="['/workouts', w.id]"
+                class="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-2xl py-2.5 pl-4 pr-1 transition-colors active:bg-surface-variant/30"
+              >
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate font-bold text-on-surface">{{ w.name }}</span>
+                  <span class="block text-xs text-on-surface-variant">
+                    {{ rel(w.date) }}@if (!w.completedAt) {<span>, {{ 'badge.inProgress' | mnTranslate }}</span>}
+                  </span>
+                </span>
+                <span class="tnum shrink-0 text-sm font-semibold text-on-surface-variant">{{ load_(w) }}</span>
+              </a>
+              @if (w.completedAt && (w.exercises?.length ?? 0) > 0) {
+                <button
+                  type="button"
+                  (click)="reRun(w)"
+                  [attr.aria-label]="'action.rerunNamed' | mnTranslate: { name: w.name }"
+                  [title]="'action.rerun' | mnTranslate"
+                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/15 active:bg-primary/25"
+                >
+                  <app-icon [data]="{ name: 'rotate-ccw', size: 18 }" />
+                </button>
+              } @else {
+                <span class="w-9 shrink-0"></span>
+              }
+            </li>
+          }
+        </ul>
+        @if (workouts().length > latest().length) {
+          <a routerLink="/history" class="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary">
+            {{ 'home.seeAllCount' | mnTranslate: { n: workouts().length } }}
+          </a>
+        }
+      }
+    </section>
+  </div>
 </main>
 
 @if (showNew()) {
   <app-new-workout-sheet [source]="rerunSource()" (closed)="showNew.set(false)" />
+}
+
+<!-- The coach menu: what the AI can do, with what it costs in privacy and time -->
+@if (showCoach() && canUseAi()) {
+  <app-ai-sheet [title]="'coach.title' | mnTranslate" (closed)="showCoach.set(false)">
+    <ul class="border-y border-outline-variant/40">
+      @for (o of coachOptions; track o.id; let last = $last) {
+        <li [class.border-b]="!last" [class.border-outline-variant/25]="!last">
+          @if (o.id === 'analyse' && !weekHasWorkouts()) {
+            <div class="px-1 py-3">
+              <span class="block font-semibold text-on-surface-variant">{{ o.title | mnTranslate }}</span>
+              <span class="block text-sm text-on-surface-variant">{{ 'coach.analyse.empty' | mnTranslate }}</span>
+            </div>
+          } @else {
+            <button
+              type="button"
+              (click)="pickCoach(o.id)"
+              class="-mx-1 flex min-h-16 w-[calc(100%+0.5rem)] items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-surface-variant/30"
+            >
+              <span class="min-w-0 flex-1">
+                <span class="block font-semibold text-on-surface">{{ o.title | mnTranslate }}</span>
+                <span class="block text-sm text-on-surface-variant">{{ o.hint | mnTranslate }}</span>
+              </span>
+              <span class="shrink-0 text-outline"><app-icon [data]="{ name: 'chevron-right', size: 20 }" /></span>
+            </button>
+          }
+        </li>
+      }
+    </ul>
+    <p class="mt-3 text-xs leading-relaxed text-on-surface-variant">{{ 'coach.disclosure' | mnTranslate }}</p>
+  </app-ai-sheet>
 }
 
 @if (showAnalysis() && canUseAi()) {

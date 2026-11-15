@@ -99,7 +99,7 @@ const TEMPLATE_NAME_MAX = 100;
             >
               <h3 class="min-w-0">
                 @if (week) {
-                  <span class="mb-0.5 block text-xs font-bold uppercase tracking-[0.12em] text-primary">{{ dayLabel(plan, i) }}<span class="sr-only">: </span></span>
+                  <span class="mb-0.5 block text-xs font-bold text-primary">{{ dayLabel(plan, i) }}<span class="sr-only">: </span></span>
                 }
                 <span class="block hyphens-auto break-words font-display text-lg font-bold leading-snug text-on-surface">{{ plan.title }}</span>
               </h3>

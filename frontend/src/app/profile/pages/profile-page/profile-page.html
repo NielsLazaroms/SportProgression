@@ -1,200 +1,101 @@
 <app-header [title]="'profile.title' | mnTranslate" [showBack]="false" />
 
+<!-- Who you are in one line, then three groups: how you train, the app, your data. -->
 <main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
   <!-- Identity -->
-  <div class="flex flex-col items-center py-4 text-center">
-    <div class="rounded-full p-1 ring-2 ring-primary-container">
-      @if (profile()?.picture) {
-        <img
-          [src]="profile()!.picture"
-          alt=""
-          class="h-24 w-24 rounded-full object-cover"
-          referrerpolicy="no-referrer"
-        />
-      } @else {
-        <div
-          aria-hidden="true"
-          class="flex h-24 w-24 items-center justify-center rounded-full bg-surface-container-high font-display text-2xl font-extrabold text-primary"
-        >
-          {{ initials() || '-' }}
-        </div>
-      }
-    </div>
-    <h2 class="mt-4 max-w-full break-words font-display text-2xl font-bold text-on-surface">
-      {{ displayName() || ('profile.athlete' | mnTranslate) }}
-    </h2>
-    @if (profile()?.email; as email) {
-      @if (email !== displayName()) {
-        <p class="max-w-full break-all text-sm text-on-surface-variant">{{ email }}</p>
-      }
+  <section class="mb-8 flex items-center gap-4 px-1">
+    @if (profile()?.picture) {
+      <img
+        [src]="profile()!.picture"
+        alt=""
+        class="h-14 w-14 shrink-0 rounded-full object-cover"
+        referrerpolicy="no-referrer"
+      />
+    } @else {
+      <div
+        aria-hidden="true"
+        class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/15 font-display text-lg font-extrabold text-primary"
+      >
+        {{ initials() || '-' }}
+      </div>
     }
-  </div>
-
-  <!-- All-time totals (same numbers as Progress) -->
-  <dl class="mb-8 mt-4 grid grid-cols-2 gap-3">
-    <div class="glass-card flex flex-col-reverse rounded-xl p-4 text-center">
-      <dt class="mt-1 text-xs font-semibold text-on-surface-variant">
-        {{ 'profile.workouts' | mnTranslate }}
-      </dt>
-      <dd class="tnum font-display text-[clamp(1.125rem,6.5vw,1.5rem)] font-extrabold text-primary">
-        {{ workoutCount() === null ? '-' : countText(workoutCount()!) }}
-      </dd>
-    </div>
-    <div class="glass-card flex flex-col-reverse rounded-xl p-4 text-center">
-      <dt class="mt-1 text-xs font-semibold text-on-surface-variant">
-        {{ 'profile.volumeKg' | mnTranslate }}
-      </dt>
-      <dd class="tnum font-display text-[clamp(1.125rem,6.5vw,1.5rem)] font-extrabold text-primary">
-        {{ lifetimeVolume() === null ? '-' : volumeText(lifetimeVolume()!) }}
-      </dd>
-    </div>
-  </dl>
-
-  <!-- Settings -->
-  <h2 class="mb-2 font-display text-lg font-bold text-on-surface">
-    {{ 'profile.settings' | mnTranslate }}
-  </h2>
-  <div class="glass-card mb-8 overflow-hidden rounded-xl">
-    <!-- Language switch -->
-    <div class="px-4 py-4">
-      <p id="lang-label" class="mb-3 flex items-center gap-3 text-on-surface">
-        <app-icon [data]="{ name: 'languages', size: 20 }" />
-        {{ 'profile.language' | mnTranslate }}
-      </p>
-      <div
-        role="group"
-        aria-labelledby="lang-label"
-        class="grid grid-cols-2 gap-1 rounded-xl border border-outline-variant p-1"
-      >
-        @for (l of languages; track l.code) {
-          <button
-            type="button"
-            (click)="setLanguage(l.code)"
-            [attr.aria-pressed]="locale() === l.code"
-            [attr.lang]="l.code"
-            class="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-1 text-[clamp(0.625rem,3.6vw,0.875rem)] font-bold transition-colors"
-            [class.bg-primary-container]="locale() === l.code"
-            [class.text-on-primary-container]="locale() === l.code"
-            [class.text-on-surface-variant]="locale() !== l.code"
-            [class.hover:bg-surface-variant/40]="locale() !== l.code"
-          >
-            @if (locale() === l.code) {
-              <app-icon [data]="{ name: 'check', size: 16 }" />
-            }
-            {{ l.label }}
-          </button>
+    <div class="min-w-0">
+      <h2 class="break-words font-display text-2xl font-extrabold leading-tight tracking-tight text-on-surface">
+        {{ displayName() || ('profile.athlete' | mnTranslate) }}
+      </h2>
+      @if (totalsLine(); as line) {
+        <p class="tnum text-on-surface-variant">{{ line }}</p>
+      } @else if (profile()?.email; as email) {
+        @if (email !== displayName()) {
+          <p class="break-all text-sm text-on-surface-variant">{{ email }}</p>
         }
-      </div>
+      }
     </div>
-    <div class="h-px bg-outline-variant/30"></div>
-    <!-- Theme -->
-    <div class="px-4 py-4">
-      <p id="theme-label" class="mb-3 flex items-center gap-3 text-on-surface">
-        <app-icon [data]="{ name: 'sun', size: 20 }" />
-        {{ 'profile.theme' | mnTranslate }}
-      </p>
-      <div
-        role="group"
-        aria-labelledby="theme-label"
-        class="grid grid-cols-3 gap-1 rounded-xl border border-outline-variant p-1"
-      >
-        @for (t of themes; track t.id) {
-          <button
-            type="button"
-            (click)="setTheme(t.id)"
-            [attr.aria-pressed]="themeChoice() === t.id"
-            class="flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[clamp(0.625rem,3.6vw,0.875rem)] font-bold transition-colors min-[360px]:flex-row min-[360px]:gap-1.5"
-            [class.bg-primary-container]="themeChoice() === t.id"
-            [class.text-on-primary-container]="themeChoice() === t.id"
-            [class.text-on-surface-variant]="themeChoice() !== t.id"
-            [class.hover:bg-surface-variant/40]="themeChoice() !== t.id"
-          >
-            <app-icon [data]="{ name: t.icon, size: 16 }" />
-            <span class="min-w-0 break-words">{{ t.label | mnTranslate }}</span>
-          </button>
-        }
-      </div>
-    </div>
-    <div class="h-px bg-outline-variant/30"></div>
-    <a
-      routerLink="/exercise-definitions"
-      class="flex min-h-14 items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-variant/30"
-    >
-      <app-icon [data]="{ name: 'list-checks', size: 20 }" />
-      <span class="flex-1 text-on-surface">{{ 'profile.catalog' | mnTranslate }}</span>
-      <span class="text-on-surface-variant"><app-icon [data]="{ name: 'chevron-right', size: 20 }" /></span>
-    </a>
-  </div>
+  </section>
 
-  <!-- Muscle groups the analysis should judge -->
-  @if (muscleGroups().length) {
-    <h2 id="muscles-label" class="mb-2 mt-8 font-display text-lg font-bold text-on-surface">
-      {{ 'profile.muscles' | mnTranslate }}
-    </h2>
-    <div class="glass-card rounded-xl px-4 py-4">
-      <p class="mb-3 text-sm text-on-surface-variant">{{ 'profile.muscles.hint' | mnTranslate }}</p>
-      <!-- Never disabled while saving: a disabled button drops the keyboard focus. -->
-      <div
-        role="group"
-        aria-labelledby="muscles-label"
-        [attr.aria-busy]="savingMuscles()"
-        class="flex flex-wrap gap-2"
-      >
-        @for (g of muscleGroups(); track g.name) {
-          <!-- Same look as the Language / Theme toggles: solid = on, outline + struck through = off -->
-          <button
-            type="button"
-            (click)="toggleMuscle(g.name)"
-            [attr.aria-pressed]="g.trained"
-            class="flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-sm font-bold transition-colors"
-            [class.border-primary-container]="g.trained"
-            [class.bg-primary-container]="g.trained"
-            [class.text-on-primary-container]="g.trained"
-            [class.border-control]="!g.trained"
-            [class.text-on-surface-variant]="!g.trained"
-            [class.hover:bg-surface-variant/40]="!g.trained"
-          >
-            @if (g.trained) {
-              <app-icon [data]="{ name: 'check', size: 16 }" />
-            }
-            <span [class.line-through]="!g.trained">{{ muscleLabel(g.name) }}</span>
-          </button>
-        }
-      </div>
-      <p class="sr-only" role="status" aria-live="polite">{{ muscleAnnouncement() }}</p>
-    </div>
-  }
-
-  <!-- What the AI coach should take into account (only for users with the AI role) -->
+  <!-- ============ How you train: what the coach works with ============ -->
   @if (canUseAi() && coachLoaded()) {
-    <h2 id="days-label" class="mb-2 mt-8 font-display text-lg font-bold text-on-surface">
-      {{ 'profile.days' | mnTranslate }}
-    </h2>
-    <div class="glass-card rounded-xl px-4 py-4">
-      <p class="mb-3 text-sm text-on-surface-variant">{{ 'profile.days.hint' | mnTranslate }}</p>
-      <div role="group" aria-labelledby="days-label" class="grid grid-cols-7 gap-1">
+    <section class="mb-8">
+      <h2 id="days-label" class="mb-2 px-1 text-sm font-semibold text-on-surface-variant">
+        {{ 'profile.days' | mnTranslate }}
+      </h2>
+      <div role="group" aria-labelledby="days-label" class="grid grid-cols-7 gap-1.5">
         @for (d of weekdays; track d) {
+          @let on = trainingDays().includes(d);
           <button
             type="button"
             (click)="toggleDay(d)"
-            [attr.aria-pressed]="trainingDays().includes(d)"
+            [attr.aria-pressed]="on"
             [attr.aria-label]="'profile.day.' + d | mnTranslate"
-            class="flex min-h-11 min-w-0 items-center justify-center rounded-lg border text-sm font-bold transition-colors"
-            [class.border-primary-container]="trainingDays().includes(d)"
-            [class.bg-primary-container]="trainingDays().includes(d)"
-            [class.text-on-primary-container]="trainingDays().includes(d)"
-            [class.border-control]="!trainingDays().includes(d)"
-            [class.text-on-surface-variant]="!trainingDays().includes(d)"
+            class="flex min-h-12 min-w-0 items-center justify-center rounded-xl text-sm font-bold transition-colors"
+            [class]="on ? 'bg-primary text-on-primary-container' : 'glass-card text-on-surface-variant'"
           >
             {{ 'profile.day.short.' + d | mnTranslate }}
           </button>
         }
       </div>
+      <p class="mt-2 px-1 text-xs text-on-surface-variant">{{ 'profile.days.hint' | mnTranslate }}</p>
+    </section>
+  }
 
-      <label for="coach-note" class="mb-1 mt-5 block text-sm font-semibold text-on-surface">
+  @if (muscleGroups().length) {
+    <section class="mb-8">
+      <h2 id="muscles-label" class="mb-2 px-1 text-sm font-semibold text-on-surface-variant">
+        {{ 'profile.muscles' | mnTranslate }}
+      </h2>
+      <!-- Never disabled while saving: a disabled button drops the keyboard focus. -->
+      <div
+        role="group"
+        aria-labelledby="muscles-label"
+        [attr.aria-busy]="savingMuscles()"
+        class="grid grid-cols-2 gap-1.5 min-[380px]:grid-cols-3 sm:grid-cols-4"
+      >
+        @for (g of muscleGroups(); track g.name) {
+          <!-- Equal tiles in an even grid, like the days above: a tick and a teal tint when on, plain and quiet when off -->
+          <button
+            type="button"
+            (click)="toggleMuscle(g.name)"
+            [attr.aria-pressed]="g.trained"
+            class="flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-semibold transition-colors"
+            [class]="g.trained ? 'bg-primary/15 text-primary' : 'glass-card text-on-surface-variant'"
+          >
+            @if (g.trained) {
+              <app-icon [data]="{ name: 'check', size: 14 }" />
+            }
+            <span class="min-w-0 truncate">{{ muscleLabel(g.name) }}</span>
+          </button>
+        }
+      </div>
+      <p class="mt-2 px-1 text-xs text-on-surface-variant">{{ 'profile.muscles.hint' | mnTranslate }}</p>
+      <p class="sr-only" role="status" aria-live="polite">{{ muscleAnnouncement() }}</p>
+    </section>
+  }
+
+  @if (canUseAi() && coachLoaded()) {
+    <section class="mb-8">
+      <label for="coach-note" class="mb-2 block px-1 text-sm font-semibold text-on-surface-variant">
         {{ 'profile.coachNote' | mnTranslate }}
       </label>
-      <p id="coach-note-hint" class="mb-2 text-sm text-on-surface-variant">{{ 'profile.coachNote.hint' | mnTranslate }}</p>
       <textarea
         id="coach-note"
         rows="3"
@@ -204,62 +105,110 @@
         (input)="coachNote.set($any($event.target).value)"
         (blur)="saveCoach()"
         [placeholder]="'profile.coachNote.ph' | mnTranslate"
-        class="w-full rounded-lg border border-base-300 bg-base-100 p-3 text-sm text-base-content"
+        class="glass-card w-full rounded-2xl p-4 text-base text-on-surface outline-none placeholder:text-outline focus:ring-2 focus:ring-primary"
       ></textarea>
+      <p id="coach-note-hint" class="mt-1 px-1 text-xs text-on-surface-variant">{{ 'profile.coachNote.hint' | mnTranslate }}</p>
       <p class="sr-only" role="status" aria-live="polite">{{ coachAnnouncement() }}</p>
-    </div>
+    </section>
   }
 
-  <!-- Your data -->
-  <h2 class="mb-2 mt-8 font-display text-lg font-bold text-on-surface">
-    {{ 'profile.data' | mnTranslate }}
-  </h2>
-  <div class="mb-8 overflow-hidden rounded-xl glass-card">
-    <div class="px-4 py-3" role="group" aria-labelledby="export-title" aria-describedby="export-hint">
-      <div class="flex items-center gap-3">
-        <app-icon [data]="{ name: 'save', size: 20 }" />
-        <span class="flex-1">
-          <span id="export-title" class="block text-on-surface">{{ 'profile.export' | mnTranslate }}</span>
-          <span id="export-hint" class="block text-xs text-on-surface-variant">{{ 'profile.export.hint' | mnTranslate }}</span>
-        </span>
+  <!-- ============ The app ============ -->
+  <section class="mb-8">
+    <h2 class="mb-2 px-1 text-sm font-semibold text-on-surface-variant">
+      {{ 'profile.settings' | mnTranslate }}
+    </h2>
+    <div class="space-y-2">
+      <!-- Language -->
+      <div class="glass-card flex flex-col gap-2 rounded-2xl px-4 py-2.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-4">
+        <span id="lang-label" class="font-bold text-on-surface">{{ 'profile.language' | mnTranslate }}</span>
+        <div role="group" aria-labelledby="lang-label" class="grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-xl bg-surface-container-high p-1 sm:max-w-64">
+          @for (l of languages; track l.code) {
+            <button
+              type="button"
+              (click)="setLanguage(l.code)"
+              [attr.aria-pressed]="locale() === l.code"
+              [attr.lang]="l.code"
+              class="min-h-10 min-w-0 rounded-lg px-2 text-sm font-semibold transition-colors"
+              [class]="locale() === l.code ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant'"
+            >
+              {{ l.label }}
+            </button>
+          }
+        </div>
       </div>
-      <div class="mt-3 grid grid-cols-2 gap-2">
-        @for (f of exportFormats; track f) {
-          <button
-            type="button"
-            (click)="exportData(f)"
-            [disabled]="exporting() !== null"
-            [attr.aria-busy]="exporting() === f"
-            [attr.data-format]="f"
-            class="min-h-11 rounded-lg border border-outline-variant px-2 text-sm font-bold text-on-surface transition-colors hover:bg-surface-variant/30 disabled:opacity-60"
-          >
-            {{ (exporting() === f ? 'profile.export.busy' : 'profile.export.' + f) | mnTranslate }}
-          </button>
-        }
+      <!-- Theme -->
+      <div class="glass-card flex flex-col gap-2 rounded-2xl px-4 py-2.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-4">
+        <span id="theme-label" class="font-bold text-on-surface">{{ 'profile.theme' | mnTranslate }}</span>
+        <div role="group" aria-labelledby="theme-label" class="grid min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl bg-surface-container-high p-1 sm:max-w-64">
+          @for (t of themes; track t.id) {
+            <button
+              type="button"
+              (click)="setTheme(t.id)"
+              [attr.aria-pressed]="themeChoice() === t.id"
+              class="min-h-10 min-w-0 rounded-lg px-1 text-sm font-semibold transition-colors"
+              [class]="themeChoice() === t.id ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant'"
+            >
+              {{ t.label | mnTranslate }}
+            </button>
+          }
+        </div>
       </div>
+      <a
+        routerLink="/exercise-definitions"
+        class="glass-card flex min-h-14 items-center gap-3 rounded-2xl px-4 py-2.5 transition-colors active:bg-surface-variant/30"
+      >
+        <span class="flex-1 font-bold text-on-surface">{{ 'profile.catalog' | mnTranslate }}</span>
+        <span class="text-outline"><app-icon [data]="{ name: 'chevron-right', size: 20 }" /></span>
+      </a>
     </div>
-    <div class="h-px bg-outline-variant/30"></div>
-    <button
-      type="button"
-      (click)="deleteAccount()"
-      [disabled]="deleting()"
-      class="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left text-error transition-colors hover:bg-error/10 disabled:opacity-60"
-    >
-      <app-icon [data]="{ name: 'trash-2', size: 20 }" />
-      <span class="flex-1">
-        <span class="block">{{ 'profile.delete' | mnTranslate }}</span>
-        <span class="block text-xs text-on-surface-variant">{{ 'profile.delete.hint' | mnTranslate }}</span>
-      </span>
-    </button>
-  </div>
+  </section>
 
-  <!-- Sign out -->
+  <!-- ============ Your data ============ -->
+  <section class="mb-8">
+    <h2 class="mb-2 px-1 text-sm font-semibold text-on-surface-variant">
+      {{ 'profile.data' | mnTranslate }}
+    </h2>
+    <div class="space-y-2">
+      <div class="glass-card rounded-2xl px-4 py-3" role="group" aria-labelledby="export-title" aria-describedby="export-hint">
+        <span id="export-title" class="block font-bold text-on-surface">{{ 'profile.export' | mnTranslate }}</span>
+        <span id="export-hint" class="block text-xs text-on-surface-variant">{{ 'profile.export.hint' | mnTranslate }}</span>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          @for (f of exportFormats; track f) {
+            <button
+              type="button"
+              (click)="exportData(f)"
+              [disabled]="exporting() !== null"
+              [attr.aria-busy]="exporting() === f"
+              [attr.data-format]="f"
+              class="min-h-11 rounded-xl bg-surface-container-high px-2 text-sm font-bold text-on-surface transition-colors hover:text-primary disabled:opacity-60"
+            >
+              {{ (exporting() === f ? 'profile.export.busy' : 'profile.export.' + f) | mnTranslate }}
+            </button>
+          }
+        </div>
+      </div>
+      <button
+        type="button"
+        (click)="deleteAccount()"
+        [disabled]="deleting()"
+        class="glass-card flex min-h-14 w-full flex-col justify-center rounded-2xl px-4 py-2.5 text-left transition-colors active:bg-error/10 disabled:opacity-60"
+      >
+        <span class="block font-bold text-error">{{ 'profile.delete' | mnTranslate }}</span>
+        <span class="block text-xs text-on-surface-variant">{{ 'profile.delete.hint' | mnTranslate }}</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Sign out: quiet, at the very end -->
   <button
     type="button"
     (click)="logout()"
-    class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-error/40 px-4 font-semibold text-error transition-colors hover:bg-error/10"
+    class="glass-card flex min-h-13 w-full items-center justify-center gap-2 rounded-xl px-4 text-lg font-bold text-on-surface transition-colors hover:text-error"
   >
-    <app-icon [data]="{ name: 'log-out', size: 20, color: 'danger' }" />
+    <app-icon [data]="{ name: 'log-out', size: 18 }" />
     {{ 'profile.signOut' | mnTranslate }}
   </button>
+  @if (profile()?.email; as email) {
+    <p class="mt-3 break-all text-center text-xs text-on-surface-variant">{{ email }}</p>
+  }
 </main>

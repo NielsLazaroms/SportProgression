@@ -29,7 +29,7 @@ import { AuthService } from '../../data-access/auth.service';
             <app-logo [size]="52" />
           </div>
           <h1
-            class="mb-2 font-display text-4xl font-extrabold uppercase tracking-tight text-primary"
+            class="mb-2 font-display text-4xl font-extrabold text-primary"
           >
             Iron Pulse
           </h1>

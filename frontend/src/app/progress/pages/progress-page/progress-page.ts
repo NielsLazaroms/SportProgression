@@ -25,8 +25,10 @@ type TrendDir = 'up' | 'down' | 'flat';
 
 interface WeekBar {
   week: ProgressWeek;
-  /** Bar height in % of the tallest bar (0 for an empty week). */
+  /** Height in % of the tallest week (0 for an empty week). */
   pct: number;
+  /** Plate height in px on the bar. */
+  height: number;
   isCurrent: boolean;
   selected: boolean;
   /** Short date under the bar, only for a few weeks to keep the axis readable. */
@@ -50,15 +52,14 @@ export class ProgressPage implements OnInit {
   readonly loading = signal(true);
   readonly failed = signal(false);
 
+  /** The 12-week bar counts workouts per week. */
   readonly weekMetric = signal<WeekMetric>('workouts');
+  /** The list starts with the lifts trained most recently; the rest is one tap away. */
+  readonly previewCount = 6;
+  readonly showAll = signal(false);
   /** Index into `weekly`; null means "the current week". */
   readonly selectedWeek = signal<number | null>(null);
   readonly query = signal('');
-
-  readonly weekMetrics: { id: WeekMetric; label: string }[] = [
-    { id: 'workouts', label: 'progress.metric.workouts' },
-    { id: 'volume', label: 'progress.metric.volume' },
-  ];
 
   /** Brand-new account: nothing logged at all. */
   readonly isEmpty = computed(() => {
@@ -86,12 +87,40 @@ export class ProgressPage implements OnInit {
       const v = value(week);
       return {
         week,
-        pct: max > 0 && v > 0 ? Math.max(6, (v / max) * 100) : 0,
+        pct: max > 0 && v > 0 ? (v / max) * 100 : 0,
+        // 24px for the lightest week up to 68px for the busiest
+        height: max > 0 && v > 0 ? 24 + Math.round((v / max) * 44) : 0,
         isCurrent: i === last,
         selected: i === active,
         label: i % 4 === 0 && i < last - 1 ? shortDate(week.weekStart, locale) : null,
       };
     });
+  });
+
+  /**
+   * The 12 weeks as one smooth line (volume, or workouts for someone who only
+   * trains with bodyweight), in a 0..100 box: x per week column, y from the top.
+   * Null until there is something to draw.
+   */
+  readonly chart = computed(() => {
+    const bars = this.bars();
+    if (bars.length < 2 || !bars.some((b) => b.pct > 0)) return null;
+    const n = bars.length;
+    // Leave air above the highest point and keep empty weeks on the floor.
+    const pts = bars.map((b, i) => ({ x: ((i + 0.5) / n) * 100, y: 100 - b.pct * 0.86 }));
+    let line = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 1; i < n; i++) {
+      const mid = (pts[i - 1].x + pts[i].x) / 2;
+      line += ` C ${mid} ${pts[i - 1].y} ${mid} ${pts[i].y} ${pts[i].x} ${pts[i].y}`;
+    }
+    const area = `${line} L ${pts[n - 1].x} 100 L ${pts[0].x} 100 Z`;
+    return {
+      metric: this.weekMetric(),
+      line,
+      area,
+      selected: pts[this.activeWeekIndex()] ?? pts[n - 1],
+      first: bars[0].week.weekStart,
+    };
   });
 
   readonly activeWeek = computed<ProgressWeek | null>(() => {
@@ -140,6 +169,64 @@ export class ProgressPage implements OnInit {
     );
   });
 
+  /**
+   * The latest records worth showing: a heavier weight than ever before. For a
+   * bodyweight exercise (no weight to beat) a reps record counts instead.
+   */
+  readonly weightRecords = computed<RecentRecord[]>(() =>
+    (this.summary()?.recentRecords ?? [])
+      .filter((r) => r.kind === 'weight' || this.bodyweightIds().has(r.exerciseDefinitionId))
+      .slice(0, 3),
+  );
+
+  readonly shownExercises = computed<ExerciseOverview[]>(() => {
+    const list = this.filteredExercises();
+    return this.showAll() ? list : list.slice(0, this.previewCount);
+  });
+
+  toggleAll(): void {
+    this.showAll.update((v) => !v);
+    if (!this.showAll()) this.query.set('');
+  }
+
+  // Plain methods (not computed): they must follow a language switch.
+  /** The answer to "am I getting stronger?": how many lifts are going up. */
+  headline(): string {
+    const compared = (this.summary()?.exercises ?? []).filter((e) => this.trendDir(e) !== null);
+    if (!compared.length) return this.lang.t('progress.head.early');
+    const up = compared.filter((e) => this.trendDir(e) === 'up').length;
+    if (up === compared.length) return this.lang.t('progress.head.all', { total: compared.length });
+    if (up === 0) return this.lang.t('progress.head.none');
+    return this.lang.t('progress.head.up', { n: up, total: compared.length });
+  }
+
+  /** "8 weeks in a row, avg 3 workouts / week". */
+  headlineSub(): string {
+    const s = this.summary();
+    if (!s) return '';
+    const parts = [this.streakText(s.streakWeeks)];
+    const avg = this.avgWorkouts();
+    if (avg) parts.push(this.avgText(avg));
+    return parts.join(', ');
+  }
+
+  weekName(w: ProgressWeek): string {
+    return this.activeWeekIsCurrent()
+      ? this.lang.t('progress.thisWeek')
+      : this.lang.t('progress.week.of', { date: this.day(w.weekStart) });
+  }
+
+  /** "Heaviest lift 32.5 kg" / "Best set 12 reps, up to +10 kg". */
+  bestText(e: ExerciseOverview): string {
+    if (!e.bodyweight) {
+      return `${this.lang.t('progress.bestLift')} ${this.kg(e.bestWeightKg)} ${this.lang.t('unit.kg')}`;
+    }
+    const reps = `${this.lang.t('progress.bestSet')} ${e.bestReps} ${this.lang.t(plural(e.bestReps, 'unit.reps'))}`;
+    return e.bestWeightKg > 0
+      ? `${reps}, ${this.lang.t('bw.upTo', { weight: this.extraText(e.bestWeightKg) })}`
+      : reps;
+  }
+
   readonly plural = plural;
   /** "12.4k" style volume in the user's locale (no unit). */
   readonly volume = (n: number) => compactKg(n, this.lang.locale);
@@ -159,6 +246,8 @@ export class ProgressPage implements OnInit {
     this.progress.getSummary().subscribe({
       next: (s) => {
         this.summary.set(s);
+        // The line follows kilos moved; someone who only does bodyweight work gets workouts.
+        this.weekMetric.set(s.weekly.some((w) => w.volumeKg > 0) ? 'volume' : 'workouts');
         this.loading.set(false);
       },
       error: () => {

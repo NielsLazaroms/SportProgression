@@ -26,30 +26,25 @@ interface Tab {
     <div class="min-h-dvh bg-surface text-on-surface lg:pl-60">
       <router-outlet />
 
-      <!-- Phones and tablets: bottom tab bar -->
+      <!-- Phones and tablets: a floating tab bar, clear of the screen edges -->
       <nav
         [attr.aria-label]="'nav.label' | mnTranslate"
-        class="fixed inset-x-0 bottom-0 z-50 border-t border-outline-variant/40 bg-surface-container/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+        class="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 mx-auto max-w-md rounded-[1.75rem] border border-outline-variant/25 bg-surface-container-high/85 shadow-[0_10px_30px_rgb(0_0_0/0.35)] backdrop-blur-xl lg:hidden"
       >
-        <div class="mx-auto flex max-w-2xl items-stretch justify-around px-1 py-2">
+        <div class="flex items-stretch justify-around gap-1 p-1.5">
           @for (tab of tabs; track tab.path) {
             @let on = isActive(tab);
             <a
               [routerLink]="tab.path"
               [attr.aria-current]="on ? 'page' : null"
-              class="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-1 py-1.5 transition-colors"
-              [class.text-primary-container]="on"
+              class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] px-1 py-1.5 transition-colors"
+              [class.bg-primary/15]="on"
+              [class.text-primary]="on"
               [class.text-on-surface-variant]="!on"
             >
-              <span
-                class="flex h-8 items-center rounded-full px-3 transition-colors"
-                [class.bg-primary-container]="on"
-                [class.text-on-primary-container]="on"
-              >
-                <app-icon [data]="{ name: tab.icon, size: 22 }" />
-              </span>
+              <app-icon [data]="{ name: tab.icon, size: 20 }" />
               <!-- Shrinks on narrow screens and wraps as a last resort: never cut off (large text, 320px) -->
-              <span class="max-w-full text-center text-[clamp(0.625rem,3.75vw,0.75rem)] font-semibold leading-tight [overflow-wrap:anywhere]">{{ tab.labelKey | mnTranslate }}</span>
+              <span class="max-w-full text-center text-[clamp(0.625rem,3.5vw,0.6875rem)] font-semibold leading-tight [overflow-wrap:anywhere]">{{ tab.labelKey | mnTranslate }}</span>
             </a>
           }
         </div>
@@ -58,11 +53,11 @@ interface Tab {
       <!-- Desktop: left sidebar -->
       <nav
         [attr.aria-label]="'nav.label' | mnTranslate"
-        class="fixed inset-y-0 left-0 z-50 hidden w-60 flex-col border-r border-outline-variant/40 bg-surface-container-low lg:flex"
+        class="fixed inset-y-0 left-0 z-50 hidden w-60 flex-col bg-surface-container-low lg:flex"
       >
-        <a routerLink="/workouts" class="flex h-16 shrink-0 items-center gap-2 px-5 text-primary">
-          <app-logo [size]="32" />
-          <span class="font-display text-2xl font-extrabold tracking-tight">IRON PULSE</span>
+        <a routerLink="/workouts" class="flex h-16 shrink-0 items-center gap-2 px-5">
+          <span class="text-primary"><app-logo [size]="26" /></span>
+          <span class="font-display text-lg font-extrabold text-on-surface">Iron Pulse</span>
         </a>
         <ul class="flex flex-col gap-1 overflow-y-auto px-3 py-4">
           @for (tab of tabs; track tab.path) {
@@ -72,8 +67,8 @@ interface Tab {
                 [routerLink]="tab.path"
                 [attr.aria-current]="on ? 'page' : null"
                 class="flex min-h-11 items-center gap-3 rounded-xl px-3 font-semibold transition-colors"
-                [class.bg-primary-container]="on"
-                [class.text-on-primary-container]="on"
+                [class.bg-primary/15]="on"
+                [class.text-primary]="on"
                 [class.text-on-surface-variant]="!on"
                 [class.hover:bg-surface-variant/40]="!on"
               >

@@ -202,6 +202,16 @@ export class ProfilePage implements OnInit {
       });
   }
 
+  /** "38 workouts, 245k kg moved": the all-time totals as one line under the name. */
+  totalsLine(): string {
+    const n = this.workoutCount();
+    if (n === null) return '';
+    const parts = [this.lang.t(n === 1 ? 'profile.totals.workouts.one' : 'profile.totals.workouts', { n: this.countText(n) })];
+    const kg = this.lifetimeVolume();
+    if (kg) parts.push(this.lang.t('profile.totals.volume', { v: this.volumeText(kg) }));
+    return parts.join(', ');
+  }
+
   countText(n: number): string {
     return formatNumber(n, this.lang.locale, 0);
   }

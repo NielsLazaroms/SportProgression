@@ -107,14 +107,14 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
   /** A bodyweight exercise: logged weights are extra weight. */
   readonly bodyweight = computed(() => !!this.history()?.bodyweight);
 
-  /** kg-based metrics are hidden when they would all be zero. */
+  /**
+   * One line per exercise, no switch: the top weight of each session. Where
+   * there is no weight to follow (bodyweight work), the reps.
+   */
   readonly metrics = computed<MetricOption[]>(() => {
-    if (this.bodyweight()) {
-      return this.bodyweightOnly()
-        ? BODYWEIGHT_METRICS.filter((m) => m.id !== 'weight')
-        : BODYWEIGHT_METRICS;
-    }
-    return this.bodyweightOnly() ? ALL_METRICS.filter((m) => m.id === 'reps') : ALL_METRICS;
+    if (this.bodyweight()) return [BODYWEIGHT_METRICS[0]];
+    const id: Metric = this.bodyweightOnly() ? 'reps' : 'weight';
+    return ALL_METRICS.filter((m) => m.id === id);
   });
 
   readonly metricOption = computed<MetricOption>(() => {
@@ -262,6 +262,45 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
     return this.bodyweight() && this.metric() === 'weight' && !(value > 0);
   }
 
+  /** The log starts with the latest sessions; the rest is one tap away. */
+  readonly historyPreview = 6;
+  readonly showAllHistory = signal(false);
+
+  /**
+   * One row per session, newest first: its sets on one line, its top weight
+   * (reps for bodyweight work) and the change against the session before.
+   */
+  readonly shownHistory = computed(() => {
+    const all = this.sessionsNewestFirst();
+    const byReps = this.bodyweight() || this.bodyweightOnly();
+    const rows = all.map((s, i) => {
+      const older = all[i + 1];
+      const now = byReps ? s.topReps : s.topWeightKg;
+      const diff = older ? now - (byReps ? older.topReps : older.topWeightKg) : 0;
+      const amount = byReps
+        ? `${formatNumber(Math.abs(diff), this.lang.locale, 0)}`
+        : `${formatKg(Math.abs(diff), this.lang.locale)} ${this.lang.t('unit.kg')}`;
+      return {
+        s,
+        sets: this.setsLine(s.sets),
+        value: byReps ? this.repsText(s.topReps) : this.weightText(s.topWeightKg),
+        delta: diff ? `${diff > 0 ? '+' : '−'}${amount}` : '',
+        up: diff > 0,
+      };
+    });
+    return this.showAllHistory() ? rows : rows.slice(0, this.historyPreview);
+  });
+
+  /** "9, 9, 8 × 70 kg" when every set used the same weight, else each set on its own. */
+  private setsLine(sets: { reps: number; weightKg: number }[]): string {
+    if (!sets.length) return '';
+    const same = sets.every((x) => Number(x.weightKg) === Number(sets[0].weightKg));
+    if (!same || this.bodyweight() || !(Number(sets[0].weightKg) > 0)) {
+      return sets.map((x) => this.chipText(x)).join(', ');
+    }
+    return `${sets.map((x) => x.reps).join(', ')} × ${this.weightText(sets[0].weightKg)}`;
+  }
+
   readonly rel = (d: string) =>
     relativeDay(d, (k, p) => this.lang.t(k, p), this.lang.locale);
   readonly day = (d: string) => shortDate(d, this.lang.locale);
@@ -285,7 +324,18 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
     this.state.set('loading');
     this.progress.getExerciseHistory(this.definitionId).subscribe({
       next: (h) => {
-        this.history.set(h);
+        // Only a heavier weight is a record; a reps record is kept for bodyweight
+        // exercises, which have no weight to beat.
+        this.history.set(
+          h.bodyweight
+            ? h
+            : {
+                ...h,
+                sessions: h.sessions.map((s) =>
+                  s.record && s.record.kind !== 'weight' ? { ...s, isPr: false, record: null } : s,
+                ),
+              },
+        );
         this.selected.set(null);
         if (h.name) this.title.setTitle(`${h.name} · ${APP_TITLE}`);
         // The API 404s without history, but stay safe if it ever sends [].
@@ -338,6 +388,13 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
   }
 
   /** "+10 kg": extra weight on top of body weight. */
+  /** A record set in the words used everywhere else: "9 × 70 kg", "12 reps", "8 reps, +10 kg". */
+  recordSet(reps: number, weightKg: number, bodyweight: boolean): string {
+    const count = this.repsText(reps);
+    if (!(weightKg > 0)) return count;
+    return bodyweight ? `${count}, ${this.extraText(weightKg)}` : `${reps} × ${this.weightText(weightKg)}`;
+  }
+
   extraText(weightKg: number): string {
     return extraWeightText(weightKg, (k, p) => this.lang.t(k, p), this.lang.locale);
   }

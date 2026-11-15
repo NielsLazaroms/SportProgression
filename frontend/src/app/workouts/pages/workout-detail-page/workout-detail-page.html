@@ -20,13 +20,14 @@
     </div>
   } @else if (workout(); as w) {
     <!-- Summary -->
-    <section class="mb-5 glass-card rounded-2xl p-5">
+    <!-- While logging this is a slim strip (date, note, progress); the stats card is for the finished workout. -->
+    <section [class]="completed() ? 'mb-5 glass-card rounded-2xl p-5' : 'mb-4 px-1'">
       <div class="flex items-center justify-between gap-2">
-        <p class="min-w-0 text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+        <p class="min-w-0 text-sm font-semibold" [class]="completed() ? 'text-primary' : 'text-on-surface-variant'">
           {{ rel(w.date) }}
         </p>
         @if (completed()) {
-          <span class="flex shrink-0 items-center gap-1 rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-success">
+          <span class="flex shrink-0 items-center gap-1 rounded-full bg-success/15 px-2.5 py-1 text-xs font-bold text-success">
             <app-icon [data]="{ name: 'check', size: 14 }" />
             {{ 'detail.completed.badge' | mnTranslate }}
           </span>
@@ -47,33 +48,25 @@
           <span class="mt-0.5 shrink-0 text-outline"><app-icon [data]="{ name: 'sticky-note', size: 16 }" /></span>
           <span class="min-w-0 whitespace-pre-line break-words">{{ w.description }}</span>
         </p>
-      } @else if (!completed()) {
-        <button
-          type="button"
-          (click)="openEdit()"
-          class="-ml-1 mt-1 flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-left text-sm font-semibold text-primary"
-        >
-          <app-icon [data]="{ name: 'sticky-note', size: 16 }" />
-          {{ 'detail.note.add' | mnTranslate }}
-        </button>
       }
+      @if (completed()) {
       <div class="mt-4 grid grid-cols-3 gap-2 text-center">
         <div class="min-w-0">
           <p class="tnum font-display text-xl font-extrabold text-on-surface">{{ exercises().length }}</p>
-          <p class="break-words text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.exercises' | mnTranslate }}</p>
+          <p class="break-words text-xs font-semibold text-on-surface-variant">{{ 'detail.exercises' | mnTranslate }}</p>
         </div>
         <div class="min-w-0">
           <p class="tnum font-display text-xl font-extrabold text-on-surface">{{ totalSets() }}</p>
-          <p class="break-words text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.sets' | mnTranslate }}</p>
+          <p class="break-words text-xs font-semibold text-on-surface-variant">{{ 'detail.sets' | mnTranslate }}</p>
         </div>
         <div class="min-w-0">
           <!-- Bodyweight only: no volume to show, so total reps instead. -->
           @if (volume() === 0 && totalReps() > 0) {
             <p class="tnum font-display text-xl font-extrabold text-primary">{{ num(totalReps()) }}</p>
-            <p class="break-words text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.reps' | mnTranslate }}</p>
+            <p class="break-words text-xs font-semibold text-on-surface-variant">{{ 'detail.reps' | mnTranslate }}</p>
           } @else {
             <p class="tnum font-display text-xl font-extrabold text-primary">{{ volumeText() }}</p>
-            <p class="break-words text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.volumeKg' | mnTranslate }}</p>
+            <p class="break-words text-xs font-semibold text-on-surface-variant">{{ 'detail.volumeKg' | mnTranslate }}</p>
             @if (bodyweightReps() > 0) {
               <!-- Mixed workout: the bodyweight work is not in the kg total -->
               <p
@@ -87,23 +80,19 @@
           }
         </div>
       </div>
+      }
 
       @if (!completed() && exercises().length) {
-        <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-surface-container-high" aria-hidden="true">
+        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-container-high" aria-hidden="true">
           <div
             class="h-full rounded-full bg-success transition-all duration-300"
             [style.width.%]="progressPct()"
           ></div>
         </div>
         <!-- The bar follows the planned sets when there is a plan; "finished" exercises are counted apart -->
-        <p class="tnum mt-1.5 flex flex-wrap justify-between gap-x-3 text-[11px] font-semibold text-on-surface-variant">
-          @if (planned()) {
-            <span class="flex items-center gap-1 text-on-surface">
-              <span class="shrink-0"><app-icon [data]="{ name: 'target', size: 12 }" /></span>
-              {{ plannedText() }}
-            </span>
-          }
-          <span class="ml-auto">{{ progressText() }}</span>
+        <!-- One line: the planned sets when there is a plan, else the exercises finished -->
+        <p class="tnum mt-1.5 text-xs font-semibold text-on-surface-variant">
+          {{ planned() ? plannedText() : progressText() }}
         </p>
       } @else if (planned()) {
         <p class="tnum mt-3 flex items-center justify-center gap-1 text-[11px] font-semibold text-on-surface-variant">
@@ -207,18 +196,15 @@
     } @else {
       <!-- ============ EDITABLE / focused accordion ============ -->
       @if (exercises().length > 1) {
-        <div class="mb-2 flex items-center justify-between gap-2">
-          <h2 class="min-w-0 font-display text-lg font-bold text-on-surface">
-            {{ 'detail.exercises' | mnTranslate }}
-          </h2>
+        <div class="mb-1 flex items-center justify-end gap-2">
           <button
             type="button"
             (click)="toggleReorder()"
             [attr.aria-pressed]="reordering()"
-            class="-my-1 flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-bold transition-colors"
+            class="-my-1 flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors"
             [class]="reordering()
-              ? 'border-primary bg-primary text-on-primary-container'
-              : 'border-control text-on-surface hover:border-primary hover:text-primary'"
+              ? 'bg-primary text-on-primary-container'
+              : 'text-on-surface-variant hover:text-primary'"
           >
             @if (reordering()) {
               <app-icon [data]="{ name: 'check', size: 16 }" />
@@ -264,7 +250,7 @@
                       </p>
                       <p class="tnum break-words text-xs text-on-surface-variant">
                         @if (activeId() === ex.id) {
-                          <span class="font-bold uppercase tracking-wide text-primary">{{ 'detail.active' | mnTranslate }}</span>
+                          <span class="font-bold text-primary">{{ 'detail.active' | mnTranslate }}</span>
                           @if (reorderMeta(ex)) {
                             <span> · </span>
                           }
@@ -394,11 +380,8 @@
             <button
               type="button"
               (click)="setActive(ex)"
-              class="flex w-full items-center gap-3 p-4 text-left transition-colors active:bg-surface-variant/30"
+              class="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors active:bg-surface-variant/30"
             >
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 text-on-surface-variant">
-                <app-icon [data]="{ name: 'dumbbell', size: 16 }" />
-              </span>
               <span class="min-w-0 flex-1">
                 <span class="block truncate font-bold text-on-surface"><ng-container [ngTemplateOutlet]="letterBadge" [ngTemplateOutletContext]="{ $implicit: it.letter }" />{{ ex.name }}</span>
                 <span class="tnum block text-xs text-on-surface-variant">
@@ -414,98 +397,68 @@
             </button>
           } @else {
             @let d = draft(ex.id);
-            <header class="flex items-start justify-between gap-3 border-b border-outline-variant/30 p-4">
+            <header class="flex items-start justify-between gap-3 px-4 pb-2 pt-4">
               <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-x-2">
-                  <span class="rounded-full bg-primary-container/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
-                    {{ 'detail.active' | mnTranslate }}
-                  </span>
-                  @if (ex.muscleGroup) {
-                    <span class="text-[11px] font-semibold text-on-surface-variant">{{ muscleLabel(ex.muscleGroup) }}</span>
-                  }
-                  @if (isBw(ex)) {
-                    <app-bw-tag />
-                  }
-                </div>
-                <h3 class="mt-1 break-words font-display text-lg font-bold leading-snug text-on-surface"><ng-container [ngTemplateOutlet]="letterBadge" [ngTemplateOutletContext]="{ $implicit: it.letter }" />{{ ex.name }}</h3>
-                <ng-container [ngTemplateOutlet]="planLine" [ngTemplateOutletContext]="{ $implicit: ex, hint: showTargetHint() }" />
+                <h3 class="break-words font-display text-xl font-bold leading-snug text-on-surface"><ng-container [ngTemplateOutlet]="letterBadge" [ngTemplateOutletContext]="{ $implicit: it.letter }" />{{ ex.name }}</h3>
+                @if (isBw(ex)) {
+                  <app-bw-tag />
+                }
+                <ng-container [ngTemplateOutlet]="planLine" [ngTemplateOutletContext]="{ $implicit: ex, hint: false }" />
               </div>
-              <button
-                type="button"
-                (click)="deleteExercise(ex)"
-                [attr.aria-label]="'detail.aria.removeExercise' | mnTranslate: { name: ex.name }"
-                [attr.title]="'detail.aria.removeExercise' | mnTranslate: { name: ex.name }"
-                class="-mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
-              >
-                <app-icon [data]="{ name: 'trash-2', size: 18 }" />
-              </button>
+              <div class="-mr-1 -mt-1 flex shrink-0">
+                @if (!note(ex.id) && !noteOpen().has(ex.id)) {
+                  <button
+                    type="button"
+                    (click)="openNote(ex.id)"
+                    [attr.aria-label]="'detail.note.add' | mnTranslate"
+                    [attr.title]="'detail.note.add' | mnTranslate"
+                    class="flex h-11 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-primary"
+                  >
+                    <app-icon [data]="{ name: 'sticky-note', size: 18 }" />
+                  </button>
+                }
+                <button
+                  type="button"
+                  (click)="deleteExercise(ex)"
+                  [attr.aria-label]="'detail.aria.removeExercise' | mnTranslate: { name: ex.name }"
+                  [attr.title]="'detail.aria.removeExercise' | mnTranslate: { name: ex.name }"
+                  class="flex h-11 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
+                >
+                  <app-icon [data]="{ name: 'trash-2', size: 18 }" />
+                </button>
+              </div>
             </header>
 
             @if (refs().get(ex.id); as ref) {
-              <!-- Last time: what to beat -->
-              <div class="border-b border-outline-variant/30 bg-surface-container-low/50 px-4 py-3">
-                <div class="flex items-start gap-2">
-                  <span class="mt-0.5 shrink-0 text-primary"><app-icon [data]="{ name: 'history', size: 16 }" /></span>
-                  <div class="min-w-0 flex-1">
-                    <p class="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-                      {{ (ref.offset === 0 ? 'detail.lastTime' : 'detail.earlierSession') | mnTranslate }}
-                      · <span class="text-on-surface">{{ refDate(ref.shown.date) }}</span>
-                    </p>
-                    <p class="truncate text-xs text-on-surface-variant">{{ ref.shown.workoutName }}</p>
-                  </div>
-                  @if (ref.maxOffset > 0) {
-                    <div class="-my-2 -mr-2 flex shrink-0">
-                      <button
-                        type="button"
-                        (click)="shiftRef(ex, 1)"
-                        [disabled]="ref.offset >= ref.maxOffset"
-                        [attr.aria-label]="'detail.aria.refOlder' | mnTranslate"
-                        [attr.title]="'detail.aria.refOlder' | mnTranslate"
-                        class="flex h-11 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        <span class="rotate-180"><app-icon [data]="{ name: 'chevron-right', size: 20 }" /></span>
-                      </button>
-                      <button
-                        type="button"
-                        (click)="shiftRef(ex, -1)"
-                        [disabled]="ref.offset === 0"
-                        [attr.aria-label]="'detail.aria.refNewer' | mnTranslate"
-                        [attr.title]="'detail.aria.refNewer' | mnTranslate"
-                        class="flex h-11 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        <app-icon [data]="{ name: 'chevron-right', size: 20 }" />
-                      </button>
-                    </div>
-                  }
-                </div>
-                <div class="tnum mt-2 flex flex-wrap gap-1.5">
-                  @for (s of ref.shown.sets; track $index) {
-                    <span
-                      class="rounded-md border px-2 py-1 text-sm font-bold"
-                      [class]="$index === workingCount(ex)
-                        ? 'border-primary-container/60 bg-primary-container/15 text-primary'
-                        : 'border-transparent bg-surface-container-high text-on-surface'"
-                    ><span aria-hidden="true">{{ chipText(s.reps, s.weightKg, isBw(ex)) }}</span><span class="sr-only">{{ setText(s.reps, s.weightKg, isBw(ex)) }}</span></span>
-                  }
-                </div>
-                @if (ref.best; as best) {
-                  <p class="tnum mt-2 text-xs font-semibold text-on-surface-variant">
-                    {{ 'detail.lastTime.best' | mnTranslate }}
-                    <span class="text-on-surface">{{ bestText(ex, ref) }}</span>
-                  </p>
+              <!-- Last time, as one line. The set to beat next is the dark one.
+                   With older sessions on record, tapping the line steps back through them. -->
+              @let older = ref.maxOffset > 0;
+              <button
+                type="button"
+                (click)="ref.offset >= ref.maxOffset ? shiftRef(ex, -ref.offset) : shiftRef(ex, 1)"
+                [disabled]="!older"
+                [attr.title]="older ? ('detail.aria.refOlder' | mnTranslate) : null"
+                class="tnum block w-full px-4 pb-1 text-left text-sm text-on-surface-variant disabled:cursor-default"
+              >
+                {{ (ref.offset === 0 ? 'detail.lastTime' : 'detail.earlierSession') | mnTranslate }}, {{ refDate(ref.shown.date) }}:
+                @for (s of ref.shown.sets; track $index; let last = $last) {
+                  <span [class]="$index === workingCount(ex) ? 'font-bold text-on-surface' : ''"><span aria-hidden="true">{{ chipText(s.reps, s.weightKg, isBw(ex)) }}</span><span class="sr-only">{{ setText(s.reps, s.weightKg, isBw(ex)) }}</span></span>@if (!last) {<span>, </span>}
                 }
-              </div>
+                @if (older) {
+                  <span class="sr-only">. {{ 'detail.aria.refOlder' | mnTranslate }}</span>
+                }
+              </button>
             }
 
             <!-- Log form: sits above the logged sets so it never moves -->
             <div
-              class="border-b border-outline-variant/30 px-1.5 py-3 transition-colors min-[360px]:px-3"
-              [class]="d.warmup ? 'bg-warning/10' : 'bg-surface-container-low/50'"
+              class="px-1.5 py-3 transition-colors min-[360px]:px-3"
+              [class]="d.warmup ? 'bg-warning/10' : ''"
             >
               <!-- Two columns only while each stepper keeps room for "102.5" between its buttons; else they stack (320px superset card, large text) -->
               <div class="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-1.5 min-[360px]:gap-2">
                 <div class="min-w-0">
-                  <label [attr.for]="'reps-' + ex.id" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.reps' | mnTranslate }}</label>
+                  <label [attr.for]="'reps-' + ex.id" class="mb-1 block text-xs font-semibold text-on-surface-variant">{{ 'detail.reps' | mnTranslate }}</label>
                   <div class="flex items-stretch overflow-hidden rounded-lg border border-control bg-surface-container focus-within:border-primary">
                     <button
                       type="button"
@@ -538,7 +491,7 @@
                   </div>
                 </div>
                 <div class="min-w-0">
-                  <label [attr.for]="'weight-' + ex.id" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ (isBw(ex) ? 'bw.extraKg' : 'detail.weightKg') | mnTranslate }}</label>
+                  <label [attr.for]="'weight-' + ex.id" class="mb-1 block text-xs font-semibold text-on-surface-variant">{{ (isBw(ex) ? 'bw.extraKg' : 'detail.weightKg') | mnTranslate }}</label>
                   <div class="flex items-stretch overflow-hidden rounded-lg border border-control bg-surface-container focus-within:border-primary">
                     <button
                       type="button"
@@ -573,39 +526,32 @@
                 </div>
               </div>
 
-              <div class="mt-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  (click)="toggleWarmup(ex.id)"
-                  [attr.aria-pressed]="d.warmup"
-                  class="flex min-h-12 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-bold transition-colors"
-                  [class]="d.warmup
-                    ? 'border-warning bg-warning text-warning-content'
-                    : 'border-control text-on-surface-variant'"
-                >
-                  <span
-                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]"
-                    [class]="d.warmup ? 'bg-warning-content/20' : 'bg-surface-container-high'"
-                  >
-                    @if (d.warmup) {
-                      <app-icon [data]="{ name: 'check', size: 14 }" />
-                    } @else {
-                      {{ 'detail.warmup.badge' | mnTranslate }}
-                    }
-                  </span>
-                  {{ 'detail.warmup.toggle' | mnTranslate }}
-                </button>
+              <div class="mt-2">
                 <button
                   type="button"
                   (click)="addSet(ex)"
                   [disabled]="!canLog(ex.id) || logging()"
-                  class="flex min-h-12 min-w-[7.5rem] flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1 text-center font-bold leading-tight active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                  class="flex min-h-13 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-1 text-center text-lg font-bold leading-tight active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
                   [class]="d.warmup ? 'bg-warning text-warning-content' : 'bg-primary text-on-primary-container'"
                 >
                   @if (!logging()) {
                     <span class="shrink-0"><app-icon [data]="{ name: 'plus', size: 18 }" /></span>
                   }
                   {{ (logging() ? 'action.saving' : d.warmup ? 'detail.log.warmup' : 'detail.log') | mnTranslate }}
+                </button>
+                <!-- Warm-up: a small switch, out of the way of the main button -->
+                <button
+                  type="button"
+                  role="switch"
+                  (click)="toggleWarmup(ex.id)"
+                  [attr.aria-checked]="d.warmup"
+                  class="mx-auto mt-1 flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold transition-colors"
+                  [class]="d.warmup ? 'text-warning' : 'text-on-surface-variant'"
+                >
+                  <span class="flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors" [class]="d.warmup ? 'bg-warning' : 'bg-surface-container-highest'">
+                    <span class="h-4 w-4 rounded-full bg-surface transition-transform" [class.translate-x-4]="d.warmup"></span>
+                  </span>
+                  {{ 'detail.warmup.toggle' | mnTranslate }}
                 </button>
               </div>
               @if (d.warmup) {
@@ -647,10 +593,10 @@
               }
             }
 
-            @if (targetSets(ex); as target) {
+            @if (ex.sets.length && targetSets(ex); as target) {
               <!-- Progress against the plan: below the log form, so it never moves the button -->
               @let reached = targetReached(ex);
-              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant/20 px-4 py-2" role="status">
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2" role="status">
                 <span class="tnum text-xs font-bold text-on-surface">{{ planSetsText(ex) }}</span>
                 <span class="flex min-w-12 flex-1 gap-1" aria-hidden="true">
                   @for (n of planSegments(ex); track $index) {
@@ -758,7 +704,7 @@
                       <span class="min-w-0 flex-1">
                         <ng-container [ngTemplateOutlet]="setLine" [ngTemplateOutletContext]="{ $implicit: set, bw: isBw(ex) }" />
                         @if (prSets().has(set.setId)) {
-                          <span class="mt-0.5 flex w-fit items-center gap-1 rounded-full bg-record-fill/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-record">
+                          <span class="mt-0.5 flex w-fit items-center gap-1 rounded-full bg-record-fill/20 px-2 py-0.5 text-[11px] font-bold text-record">
                             <span class="shrink-0"><app-icon [data]="{ name: 'trophy', size: 12 }" /></span>
                             {{ prLabel(set) }}
                           </span>
@@ -780,25 +726,14 @@
                   </div>
                 }
               }
-              <!-- Planned sets still to do: quiet placeholders that vanish as sets get logged -->
-              @for (n of remainingPlan(ex); track n) {
-                <div class="flex min-h-11 items-center gap-2 py-1 pl-4 pr-3">
-                  <span class="tnum flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-dashed border-outline-variant text-xs font-bold text-on-surface-variant">{{ n }}</span>
-                  <span class="tnum min-w-0 pl-1 text-sm text-on-surface-variant">
-                    {{ 'detail.plan.row' | mnTranslate: { n: n } }}
-                    @if (planRepsText(ex); as reps) {
-                      <span> · {{ reps }}</span>
-                    }
-                  </span>
-                </div>
-              }
               @if (!ex.sets.length && !targetSets(ex)) {
                 <p class="px-4 py-3 text-sm text-on-surface-variant">{{ 'detail.noSets' | mnTranslate }}</p>
               }
             </div>
 
-            <div class="border-t border-outline-variant/20 p-3">
-              <label [attr.for]="'note-' + ex.id" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{{ 'detail.exerciseNotes' | mnTranslate }}</label>
+            @if (note(ex.id) || noteOpen().has(ex.id)) {
+            <div class="p-3">
+              <label [attr.for]="'note-' + ex.id" class="mb-1 block text-xs font-semibold text-on-surface-variant">{{ 'detail.exerciseNotes' | mnTranslate }}</label>
               <textarea
                 [id]="'note-' + ex.id"
                 [ngModel]="note(ex.id)"
@@ -810,8 +745,11 @@
                 class="w-full rounded-lg border border-base-300 bg-base-100 p-3 text-base text-base-content outline-none transition-colors focus:ring-1 focus:ring-primary"
               ></textarea>
             </div>
+            }
 
-            <div class="p-3 pt-0">
+            <!-- Finishing only becomes a question once there is a set -->
+            @if (ex.sets.length) {
+            <div class="p-3 pt-1">
               <button
                 type="button"
                 (click)="finishExercise(ex)"
@@ -819,9 +757,12 @@
                 class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-success/15 px-3 font-bold text-success transition-colors hover:bg-success/25 disabled:cursor-not-allowed disabled:bg-surface-variant/40 disabled:text-on-surface-variant/50"
               >
                 <app-icon [data]="{ name: 'check', size: 20 }" />
-                {{ (finishingExerciseId() === ex.id ? 'action.saving' : ex.sets.length === 0 ? 'detail.finishExercise.needSet' : 'detail.finishExercise') | mnTranslate }}
+                {{ (finishingExerciseId() === ex.id ? 'action.saving' : 'detail.finishExercise') | mnTranslate }}
               </button>
             </div>
+            } @else {
+              <div class="h-2"></div>
+            }
           }
         </section>
           }
@@ -892,7 +833,7 @@
 <!-- Superset marker: a bracket down the left side plus a label above the members -->
 <ng-template #supersetMark let-b>
   <span aria-hidden="true" class="pointer-events-none absolute inset-y-0 left-0 w-2.5 rounded-l-lg border-y-2 border-l-2 border-primary"></span>
-  <p class="mb-1.5 flex min-h-5 items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
+  <p class="mb-1.5 flex min-h-5 items-center gap-1.5 text-xs font-bold text-primary">
     <span class="shrink-0"><app-icon [data]="{ name: 'link', size: 14 }" /></span>
     <span class="min-w-0 break-words">{{ b.label }}</span>
   </p>
@@ -981,7 +922,7 @@
             <span class="text-xs text-on-surface-variant">{{ 'detail.warmup' | mnTranslate }}</span>
           }
           @if (prSets().has(set.setId)) {
-            <span class="flex items-center gap-1 rounded-full bg-record-fill/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-record">
+            <span class="flex items-center gap-1 rounded-full bg-record-fill/20 px-2 py-0.5 text-[11px] font-bold text-record">
               <span class="shrink-0"><app-icon [data]="{ name: 'trophy', size: 12 }" /></span>
               {{ prLabel(set) }}
             </span>

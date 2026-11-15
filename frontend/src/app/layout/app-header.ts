@@ -14,7 +14,7 @@ import { AppLogo } from '../shared/app-logo';
   imports: [AppIcon, AppLogo, MnTranslatePipe],
   template: `
     <header
-      class="fixed inset-x-0 top-0 z-50 flex h-16 lg:left-60 items-center justify-between border-b border-outline-variant/40 bg-surface/95 px-4 backdrop-blur-md"
+      class="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between bg-surface/80 px-4 backdrop-blur-xl lg:left-60"
     >
       <div class="flex min-w-0 items-center gap-2">
         @if (title()) {
@@ -28,14 +28,14 @@ import { AppLogo } from '../shared/app-logo';
               <app-icon [data]="{ name: 'arrow-left', size: 24 }" />
             </button>
           }
-          <h1 class="truncate font-display text-xl font-bold tracking-tight text-on-surface">
+          <h1 class="truncate font-display text-lg font-bold text-on-surface">
             {{ title() }}
           </h1>
         } @else {
           <!-- The desktop sidebar already carries the logo. -->
-          <span class="shrink-0 text-primary lg:hidden"><app-logo [size]="32" /></span>
-          <h1 class="truncate font-display text-2xl font-extrabold tracking-tight text-primary lg:hidden">
-            IRON PULSE
+          <span class="shrink-0 text-primary lg:hidden"><app-logo [size]="26" /></span>
+          <h1 class="truncate font-display text-lg font-extrabold text-on-surface lg:hidden">
+            Iron Pulse
           </h1>
         }
       </div>

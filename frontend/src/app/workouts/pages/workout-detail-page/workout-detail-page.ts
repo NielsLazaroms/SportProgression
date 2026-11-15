@@ -295,6 +295,15 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     const w = this.workout();
     return w ? workoutVolumeKg(w) : 0;
   });
+  /** Exercises whose note field was opened by hand (it stays hidden until wanted). */
+  readonly noteOpen = signal<Set<number>>(new Set());
+
+  openNote(exerciseId: number): void {
+    this.noteOpen.update((s) => new Set(s).add(exerciseId));
+    // Put the cursor in the field that just appeared.
+    setTimeout(() => document.getElementById('note-' + exerciseId)?.focus());
+  }
+
   /** The AI analysis of this workout; only asked for when opened. */
   readonly showAnalysis = signal(false);
 
@@ -412,7 +421,8 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
       for (const set of workingSets(ex)) {
         const p = { reps: Number(set.repsAmount), weightKg: Number(set.weightKg) };
         const kind = recordKind(p, earlier);
-        if (kind) out.set(set.setId, kind);
+        // Only a heavier weight is a record; reps count for bodyweight work, which has no weight to beat.
+        if (kind === 'weight' || (kind && isBodyweight(ex))) out.set(set.setId, kind);
         earlier.push(p);
       }
     }
@@ -1464,7 +1474,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
 
     // Decide on the record toast against what's on screen before the reload.
     const ref = this.refs().get(ex.id);
-    const kind =
+    const found =
       !warmup && ref
         ? recordKind({ reps, weightKg: weight }, [
             ...ref.earlierSets,
@@ -1474,6 +1484,8 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
             })),
           ])
         : null;
+    // Only a heavier weight is a record (reps count for bodyweight work).
+    const kind = found === 'weight' || isBodyweight(ex) ? found : null;
 
     this.logging.set(true);
     this.setService
