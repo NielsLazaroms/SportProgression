@@ -14,13 +14,11 @@ import {
 import { AppHeader } from '../../../layout/app-header';
 import { AppIcon } from '../../../shared/app-icon';
 import { errorHintKey, plural } from '../../../shared/format';
-import { supersetRuns } from '../../../shared/superset';
+import { supersetLetter } from '../../../shared/superset';
 import { TemplateStarter } from '../../data-access/template-starter';
 import { TemplateService } from '../../data-access/template.service';
 import {
-  TemplateExercise,
   WorkoutTemplate,
-  templateSetCount,
 } from '../../models/template.model';
 
 /** All templates of the user: start, edit or delete one, or make a new one. */
@@ -47,7 +45,6 @@ export class TemplatesPage implements OnInit {
 
   // template helpers
   readonly plural = plural;
-  readonly setCount = templateSetCount;
 
   ngOnInit(): void {
     this.load();
@@ -68,18 +65,31 @@ export class TemplatesPage implements OnInit {
     });
   }
 
+  /** "4 templates". */
+  headline(): string {
+    const n = this.templates().length;
+    return this.lang.t(plural(n, 'templates.count'), { n });
+  }
+
   /**
-   * What is in the plan, in order: one piece per exercise, and one piece per
-   * superset ("Superset: Bench Press + Barbell Row").
+   * The exercises of a template in order, each with its target and its letter
+   * when it is part of a superset. Long templates show the first few.
    */
-  preview(t: WorkoutTemplate): { superset: boolean; text: string }[] {
-    const runs = supersetRuns<TemplateExercise>(
-      [...t.exercises].sort((a, b) => a.orderInTemplate - b.orderInTemplate),
-    );
-    return runs.map((run, i) => ({
-      superset: run.length > 1,
-      text: run.map((e) => e.name).join(' + ') + (i < runs.length - 1 ? ', ' : ''),
+  rowsOf(t: WorkoutTemplate): {
+    shown: { id: number | string; name: string; target: string; letter: string | null }[];
+    more: number;
+  } {
+    const list = [...t.exercises].sort((a, b) => a.orderInTemplate - b.orderInTemplate);
+    const all = list.map((e, i) => ({
+      id: e.id,
+      name: e.name,
+      target: `${e.targetSets} × ${e.targetReps}`,
+      letter: supersetLetter(list, i),
     }));
+    const max = 6;
+    return all.length > max
+      ? { shown: all.slice(0, max - 1), more: all.length - (max - 1) }
+      : { shown: all, more: 0 };
   }
 
   remove(t: WorkoutTemplate): void {

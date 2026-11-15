@@ -556,5 +556,8 @@
   "profile.totals.volume": "{{v}} kg verzet",
   "history.count": "{{n}} workouts gelogd",
   "history.count.one": "{{n}} workout gelogd",
-  "history.since": "Sinds {{date}}"
+  "history.since": "Sinds {{date}}",
+  "templates.count": "{{n}} schema's",
+  "templates.count.one": "{{n}} schema",
+  "templates.more": "en nog {{n}}"
 }

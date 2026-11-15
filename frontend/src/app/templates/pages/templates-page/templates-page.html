@@ -8,70 +8,60 @@
   </a>
 </app-header>
 
+<!-- Your templates as cards you can read at a glance: what is in it, and one button to start. -->
 <main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
-  <p class="mb-4 text-sm text-on-surface-variant">{{ 'templates.note' | mnTranslate }}</p>
-
   @if (loading()) {
     <div class="space-y-3">
       @for (i of [1, 2, 3]; track i) {
-        <mn-skeleton [data]="{ shape: 'rectangle', height: '148px' }" class="rounded-xl" />
+        <mn-skeleton [data]="{ shape: 'rectangle', height: '200px' }" class="rounded-2xl" />
       }
     </div>
   } @else if (loadError(); as hint) {
-    <div class="glass-card flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center" role="alert">
-      <span class="text-outline"><app-icon [data]="{ name: 'search-x', size: 40 }" /></span>
+    <div class="glass-card flex flex-col items-start gap-2 rounded-2xl p-4" role="alert">
       <p class="font-bold text-on-surface">{{ 'templates.error.title' | mnTranslate }}</p>
-      <p class="max-w-xs text-sm text-on-surface-variant">{{ hint | mnTranslate }}</p>
+      <p class="text-sm text-on-surface-variant">{{ hint | mnTranslate }}</p>
       <button
         type="button"
         (click)="load()"
-        class="mt-2 flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 font-bold text-on-primary-container transition-transform active:scale-95"
+        class="mt-1 flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 font-bold text-on-primary-container transition-transform active:scale-95"
       >
         {{ 'action.retry' | mnTranslate }}
       </button>
     </div>
   } @else if (!templates().length) {
-    <div class="glass-card flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center">
-      <span class="text-outline"><app-icon [data]="{ name: 'clipboard-list', size: 40 }" /></span>
-      <p class="font-bold text-on-surface">{{ 'templates.empty.title' | mnTranslate }}</p>
-      <p class="max-w-xs text-sm text-on-surface-variant">{{ 'templates.empty.hint' | mnTranslate }}</p>
+    <section class="px-1">
+      <h2 class="font-display text-[1.75rem] font-extrabold leading-[1.15] tracking-tight text-on-surface">
+        {{ 'templates.empty.title' | mnTranslate }}
+      </h2>
+      <p class="mt-1 text-on-surface-variant">{{ 'templates.empty.hint' | mnTranslate }}</p>
       <a
         routerLink="/templates/new"
-        class="mt-2 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-bold text-on-primary-container transition-transform active:scale-95"
+        class="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
       >
         <app-icon [data]="{ name: 'plus', size: 18 }" />
         {{ 'templates.new' | mnTranslate }}
       </a>
-    </div>
+    </section>
   } @else {
+    <section class="mb-6 px-1">
+      <h2 class="font-display text-[1.75rem] font-extrabold leading-[1.15] tracking-tight text-on-surface">
+        {{ headline() }}
+      </h2>
+      <p class="mt-1 text-on-surface-variant">{{ 'templates.note' | mnTranslate }}</p>
+    </section>
+
     <ul class="space-y-3">
       @for (t of templates(); track t.id) {
-        <li class="glass-card rounded-xl p-4">
+        @let rows = rowsOf(t);
+        <li class="glass-card rounded-2xl p-4">
           <div class="flex items-start gap-1">
-            <!-- Tapping the card body opens the template, same as the pencil. -->
-            <a
-              [routerLink]="['/templates', t.id]"
-              [attr.aria-label]="'templates.editNamed' | mnTranslate: { name: t.name }"
-              class="-m-1 block min-w-0 flex-1 rounded-lg p-1 transition-colors hover:bg-surface-variant/20 active:bg-surface-variant/30"
-            >
-              <h2 class="line-clamp-2 font-display text-lg font-bold leading-snug text-on-surface [overflow-wrap:anywhere]" [title]="t.name">{{ t.name }}</h2>
-              <span class="tnum mt-0.5 flex flex-wrap gap-x-1 text-sm font-semibold text-on-surface-variant">
-                <span class="whitespace-nowrap">{{ t.exercises.length }} {{ plural(t.exercises.length, 'unit.exercises') | mnTranslate }} ·</span>
-                <span class="whitespace-nowrap">{{ setCount(t) }} {{ plural(setCount(t), 'unit.sets') | mnTranslate }}</span>
-              </span>
-              <span class="mt-2 line-clamp-2 block text-sm text-on-surface-variant [overflow-wrap:anywhere]">
-                @if (t.exercises.length) {
-                  @for (piece of preview(t); track $index) {<span>@if (piece.superset) {<span class="font-semibold text-on-surface">{{ 'templates.superset' | mnTranslate }}:</span>{{ ' ' }}}{{ piece.text }}</span>}
-                } @else {
-                  {{ 'templates.noExercises' | mnTranslate }}
-                }
-              </span>
-            </a>
+            <h3 class="min-w-0 flex-1 font-display text-xl font-bold leading-snug text-on-surface [overflow-wrap:anywhere]">{{ t.name }}</h3>
             <div class="-mr-2 -mt-2 flex shrink-0 items-center">
               <a
                 [routerLink]="['/templates', t.id]"
                 [attr.aria-label]="'templates.editNamed' | mnTranslate: { name: t.name }"
-                class="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-primary/15 hover:text-primary"
+                [attr.title]="'templates.edit' | mnTranslate"
+                class="flex h-11 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-primary"
               >
                 <app-icon [data]="{ name: 'pencil', size: 18 }" />
               </a>
@@ -79,20 +69,41 @@
                 type="button"
                 (click)="remove(t)"
                 [attr.aria-label]="'templates.deleteNamed' | mnTranslate: { name: t.name }"
-                class="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
+                class="flex h-11 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error/15 hover:text-error"
               >
                 <app-icon [data]="{ name: 'trash-2', size: 18 }" />
               </button>
             </div>
           </div>
 
+          <!-- What is in it: every exercise with its target, like a line in a training log -->
+          @if (rows.shown.length) {
+            <ul class="mt-1 text-sm">
+              @for (r of rows.shown; track r.id) {
+                <li class="flex items-baseline justify-between gap-3 py-0.5">
+                  <span class="min-w-0 truncate text-on-surface">
+                    @if (r.letter) {
+                      <span class="tnum mr-1 inline-flex h-4 min-w-4 items-center justify-center rounded border border-primary px-0.5 align-middle text-[11px] font-bold leading-none text-primary" [attr.title]="'templates.superset' | mnTranslate">{{ r.letter }}</span>
+                    }
+                    {{ r.name }}
+                  </span>
+                  <span class="tnum shrink-0 text-on-surface-variant">{{ r.target }}</span>
+                </li>
+              }
+            </ul>
+            @if (rows.more > 0) {
+              <p class="mt-0.5 text-sm text-on-surface-variant">{{ 'templates.more' | mnTranslate: { n: rows.more } }}</p>
+            }
+          } @else {
+            <p class="mt-1 text-sm text-on-surface-variant">{{ 'templates.noExercises' | mnTranslate }}</p>
+          }
 
           <button
             type="button"
             (click)="starter.start(t)"
             [attr.aria-label]="'templates.startNamed' | mnTranslate: { name: t.name }"
             [attr.aria-busy]="starter.startingId() === t.id"
-            class="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-primary/60 bg-primary/10 px-3 text-sm font-bold text-primary transition-colors hover:bg-primary/20 active:bg-primary/30"
+            class="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary/15 px-3 text-lg font-bold text-primary transition-colors active:bg-primary/25"
           >
             <app-icon [data]="{ name: 'play', size: 18 }" />
             {{ (starter.startingId() === t.id ? 'templates.starting' : 'templates.start') | mnTranslate }}
@@ -103,9 +114,9 @@
 
     <a
       routerLink="/templates/new"
-      class="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-xl border border-dashed border-control px-4 text-center font-bold text-primary transition-colors hover:bg-primary/10"
+      class="glass-card mt-3 flex min-h-13 items-center justify-center gap-2 rounded-xl px-4 text-lg font-bold text-on-surface transition-colors hover:text-primary"
     >
-      <app-icon [data]="{ name: 'plus', size: 20 }" />
+      <app-icon [data]="{ name: 'plus', size: 18 }" />
       {{ 'templates.new' | mnTranslate }}
     </a>
   }

@@ -556,5 +556,8 @@
   "profile.totals.volume": "{{v}} kg moved",
   "history.count": "{{n}} workouts logged",
   "history.count.one": "{{n}} workout logged",
-  "history.since": "Since {{date}}"
+  "history.since": "Since {{date}}",
+  "templates.count": "{{n}} templates",
+  "templates.count.one": "{{n}} template",
+  "templates.more": "and {{n}} more"
 }
