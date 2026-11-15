@@ -17,8 +17,10 @@ import { ProgressService } from '../../../progress/data-access/progress.service'
 import { compactKg, errorHintKey, formatNumber, todayIso } from '../../../shared/format';
 import { AnalysisService, MuscleGroupChoice } from '../../../analysis/analysis.service';
 import { ThemeChoice, ThemeService } from '../../../shared/theme.service';
+import { AccountExport, exportToCsv, exportToPdf } from '../../export-formats';
 
 type Locale = 'en' | 'nl';
+type ExportFormat = 'csv' | 'pdf';
 
 @Component({
   selector: 'app-profile-page',
@@ -55,7 +57,8 @@ export class ProfilePage implements OnInit {
   /** Last choice the server confirmed, to fall back on when a save fails. */
   private musclesConfirmed: MuscleGroupChoice[] | null = null;
 
-  readonly exporting = signal(false);
+  /** The format being prepared, or null. */
+  readonly exporting = signal<ExportFormat | null>(null);
   readonly deleting = signal(false);
 
   readonly profile = this.auth.profile;
@@ -222,28 +225,43 @@ export class ProfilePage implements OnInit {
     this.theme.setChoice(choice);
   }
 
-  /** Download everything stored about me as one JSON file. */
-  exportData(): void {
+  readonly exportFormats: ExportFormat[] = ['csv', 'pdf'];
+
+  /** Downloads my data: CSV (every set, for a spreadsheet) or PDF (a readable training log). */
+  exportData(format: ExportFormat): void {
     if (this.exporting()) return;
-    this.exporting.set(true);
+    this.exporting.set(format);
     this.auth.exportData().subscribe({
-      next: (blob) => {
-        this.exporting.set(false);
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `iron-pulse-${todayIso()}.json`;
-        link.click();
-        URL.revokeObjectURL(url);
+      next: async (blob) => {
+        try {
+          const file = await this.convert(format, JSON.parse(await blob.text()));
+          const url = URL.createObjectURL(file);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `iron-pulse-${todayIso()}.${format}`;
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch {
+          this.alerts.error(this.lang.t('profile.export.err'), this.lang.t('toast.retry'));
+        } finally {
+          this.exporting.set(null);
+        }
       },
       error: (err) => {
-        this.exporting.set(false);
+        this.exporting.set(null);
         this.alerts.error(
           this.lang.t('profile.export.err'),
           this.lang.t(errorHintKey(err)),
         );
       },
     });
+  }
+
+  private async convert(format: ExportFormat, data: AccountExport): Promise<Blob> {
+    const t = this.lang.t.bind(this.lang);
+    return format === 'csv'
+      ? exportToCsv(data, t, this.lang.locale)
+      : exportToPdf(data, t, this.lang.locale);
   }
 
   deleteAccount(): void {

@@ -136,6 +136,7 @@ export class AccountService {
         exercises: (w.exercises ?? []).map((e) => ({
           name: e.name,
           muscleGroup: e.muscleGroup ?? null,
+          type: e.type,
           notes: e.notes ?? null,
           sets: (e.sets ?? []).map((s) => ({
             reps: s.repsAmount,
