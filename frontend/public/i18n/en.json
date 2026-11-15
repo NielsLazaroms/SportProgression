@@ -558,5 +558,7 @@
   "history.since": "Since {{date}}",
   "templates.count": "{{n}} templates",
   "templates.count.one": "{{n}} template",
-  "templates.more": "and {{n}} more"
+  "templates.more": "and {{n}} more",
+  "def.count": "{{n}} exercises",
+  "def.count.one": "{{n}} exercise"
 }

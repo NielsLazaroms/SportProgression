@@ -558,5 +558,7 @@
   "history.since": "Sinds {{date}}",
   "templates.count": "{{n}} schema's",
   "templates.count.one": "{{n}} schema",
-  "templates.more": "en nog {{n}}"
+  "templates.more": "en nog {{n}}",
+  "def.count": "{{n}} oefeningen",
+  "def.count.one": "{{n}} oefening"
 }

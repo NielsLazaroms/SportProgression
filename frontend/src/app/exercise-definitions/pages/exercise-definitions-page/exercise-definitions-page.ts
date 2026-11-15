@@ -12,7 +12,6 @@ import {
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
-  MnButton,
   MnInputField,
   MnSelect,
   MnBottomSheet,
@@ -51,7 +50,6 @@ const NAME_MAX = 80;
     AppIcon,
     BodyweightTag,
     ExerciseTypeToggle,
-    MnButton,
     MnInputField,
     MnSelect,
     MnBottomSheet,
@@ -86,6 +84,31 @@ export class ExerciseDefinitionsPage implements OnInit {
         .includes(q),
     );
   });
+
+  /** The matching exercises per muscle group, in the app's usual order; the rest under "Other". */
+  readonly groups = computed(() => {
+    const order: string[] = [...MUSCLE_GROUPS];
+    const byGroup = new Map<string, ExerciseDefinition[]>();
+    for (const d of this.filtered()) {
+      const key = d.muscleGroup || '';
+      if (!byGroup.has(key)) byGroup.set(key, []);
+      byGroup.get(key)!.push(d);
+    }
+    const rank = (k: string) => (k === '' ? 999 : order.includes(k) ? order.indexOf(k) : 500);
+    return [...byGroup.entries()]
+      .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
+      .map(([key, items]) => ({
+        key: key || 'other',
+        label: key ? this.muscleLabel(key) : this.lang.t('progress.muscle.other'),
+        items: [...items].sort((a, b) => a.name.localeCompare(b.name)),
+      }));
+  });
+
+  /** "33 exercises". */
+  headline(): string {
+    const n = this.definitions().length;
+    return this.lang.t(n === 1 ? 'def.count.one' : 'def.count', { n });
+  }
 
   // Add / edit sheet. `editing` is the exercise being changed, null when adding.
   readonly showForm = signal(false);
