@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { MnAlertService, MnLanguageService, MnTranslatePipe } from 'mn-angular-lib';
 import { concatMap, from, map, switchMap, tap, toArray } from 'rxjs';
-import { supersetLetter, supersetRole } from '../shared/superset';
+import { supersetLetter } from '../shared/superset';
 import { AppIcon } from '../shared/app-icon';
 import { errorHintKey, formatKg, todayIso } from '../shared/format';
 import { TemplateService } from '../templates/data-access/template.service';
@@ -38,27 +38,25 @@ const TEMPLATE_NAME_MAX = 100;
       (closed)="closed.emit()"
     >
       @if (choosingDays()) {
-        <p id="suggest-days-label" class="mb-3 text-on-surface">{{ 'suggest.days.question' | mnTranslate }}</p>
+        <p id="suggest-days-label" class="mb-4 font-display text-[1.5rem] font-extrabold leading-[1.2] tracking-tight text-on-surface">{{ 'suggest.days.question' | mnTranslate }}</p>
         <div
           role="group"
           aria-labelledby="suggest-days-label"
-          class="grid grid-cols-5 gap-1 rounded-xl border border-control p-1"
+          class="grid grid-cols-5 gap-1.5"
         >
           @for (n of dayOptions; track n) {
             <button
               type="button"
               (click)="days.set(n)"
               [attr.aria-pressed]="days() === n"
-              class="tnum min-h-11 rounded-lg text-base font-bold transition-colors"
-              [class.bg-primary-container]="days() === n"
-              [class.text-on-primary-container]="days() === n"
-              [class.text-on-surface-variant]="days() !== n"
+              class="tnum min-h-13 rounded-xl font-display text-xl font-bold transition-colors"
+              [class]="days() === n ? 'bg-primary text-on-primary-container' : 'bg-surface-container-high text-on-surface-variant'"
             >
               {{ n }}
             </button>
           }
         </div>
-        <p class="mt-2 text-sm text-on-surface-variant">
+        <p class="mt-2 px-1 text-xs text-on-surface-variant">
           @if (preferredDays().length) {
             {{ 'suggest.days.preferred' | mnTranslate: { days: preferredDaysText() } }}
           } @else {
@@ -68,20 +66,18 @@ const TEMPLATE_NAME_MAX = 100;
         <button
           type="button"
           (click)="load(false)"
-          class="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+          class="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
         >
-          <app-icon [data]="{ name: 'sparkles', size: 18 }" />
           {{ 'suggest.days.go' | mnTranslate }}
         </button>
-        <p class="mt-3 text-xs leading-relaxed text-on-surface-variant">{{ 'coach.disclosure' | mnTranslate }}</p>
+        <p class="mt-3 px-1 text-xs leading-relaxed text-on-surface-variant">{{ 'coach.disclosure' | mnTranslate }}</p>
       } @else if (loading()) {
         <app-ai-loading message="suggest.loading" [steps]="loadingSteps" />
       } @else if (error(); as e) {
         <app-ai-error [error]="e" (retry)="load(true)" (closed)="closed.emit()" />
       } @else {
         @if (!basedOnHistory()) {
-          <div class="mb-4 flex gap-3 rounded-xl border border-primary/50 bg-primary/10 p-3">
-            <span aria-hidden="true" class="mt-0.5 shrink-0 text-primary"><app-icon [data]="{ name: 'clipboard-list', size: 20 }" /></span>
+          <div class="mb-4 rounded-2xl bg-primary/15 px-4 py-3">
             <div class="min-w-0">
               <p class="text-sm font-bold text-on-surface">{{ 'suggest.general.title' | mnTranslate }}</p>
               <p class="mt-0.5 text-sm leading-relaxed text-on-surface-variant">{{ 'suggest.general.body' | mnTranslate }}</p>
@@ -89,19 +85,19 @@ const TEMPLATE_NAME_MAX = 100;
           </div>
         }
         @if (summary(); as text) {
-          <p class="mb-4 hyphens-auto leading-relaxed text-on-surface-variant">{{ text }}</p>
+          <p class="mb-4 hyphens-auto px-1 leading-relaxed text-on-surface-variant">{{ text }}</p>
         }
 
-        <div class="grid gap-4" [class]="gridClass()">
+        <div class="grid gap-3" [class]="gridClass()">
           @for (plan of plans(); track $index; let i = $index) {
             <section
-              class="@container flex min-w-0 flex-col rounded-xl border border-outline-variant/40 bg-surface-container-low p-4 dark:bg-surface-container-high"
+              class="flex min-w-0 flex-col rounded-2xl bg-surface-container-high p-4"
             >
               <h3 class="min-w-0">
                 @if (week) {
-                  <span class="mb-0.5 block text-xs font-bold text-primary">{{ dayLabel(plan, i) }}<span class="sr-only">: </span></span>
+                  <span class="mb-0.5 block text-sm font-semibold text-on-surface-variant">{{ dayLabel(plan, i) }}<span class="sr-only">: </span></span>
                 }
-                <span class="block hyphens-auto break-words font-display text-lg font-bold leading-snug text-on-surface">{{ plan.title }}</span>
+                <span class="block hyphens-auto break-words font-display text-xl font-bold leading-snug text-on-surface">{{ plan.title }}</span>
               </h3>
               <!-- In a weekly plan every description takes exactly three lines, so the cards line up. -->
               <p
@@ -113,53 +109,36 @@ const TEMPLATE_NAME_MAX = 100;
                 {{ plan.reason }}
               </p>
 
-              <ul class="mt-3 overflow-hidden rounded-lg border border-outline-variant/30">
-                @for (ex of plan.exercises; track $index; let first = $first; let x = $index) {
-                  @let role = supersetRole(plan.exercises, x);
-                  <!-- Superset members share a rail on the left and have no line between them. -->
-                  <li
-                    class="relative px-3 py-2 text-sm"
-                    [class.pl-5]="role"
-                    [class.border-t]="!first && (role === null || role === 'first')"
-                    [class.border-outline-variant/20]="!first"
-                  >
-                    @if (role) {
-                      <span
-                        aria-hidden="true"
-                        class="absolute left-1.5 w-2 border-l-[3px] border-primary"
-                        [class]="role === 'first' ? 'top-2.5 bottom-0' : role === 'last' ? 'top-0 bottom-2.5' : 'inset-y-0'"
-                        [class.border-t-[3px]]="role === 'first'"
-                        [class.rounded-tl-md]="role === 'first'"
-                        [class.border-b-[3px]]="role === 'last'"
-                        [class.rounded-bl-md]="role === 'last'"
-                      ></span>
-                    }
-                    @if (role === 'first') {
-                      <span class="mb-0.5 block text-xs font-bold text-primary">{{ 'templates.superset' | mnTranslate }}</span>
-                    }
-                    <div class="flex flex-wrap items-baseline justify-between gap-x-3">
-                      <span class="min-w-0 break-words font-semibold text-on-surface">
-                        @if (supersetLetter(plan.exercises, x); as letter) {
-                          <span class="tnum mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded border border-primary px-1 align-middle text-xs font-bold leading-none text-primary">{{ letter }}</span>
-                        }
-                        {{ ex.name }}
-                      </span>
-                      <span class="tnum shrink-0 whitespace-nowrap font-semibold text-on-surface-variant">{{ target(ex) }}</span>
-                    </div>
+              <!-- The exercises as lines in a training log; superset members carry their letter -->
+              <ul class="mt-3 text-sm">
+                @for (ex of plan.exercises; track $index; let x = $index) {
+                  @if (supersetLetter(plan.exercises, x) === 'A') {
+                    <!-- Names the pair that follows, so the letters explain themselves -->
+                    <li class="pt-1.5 text-xs font-semibold text-primary" aria-hidden="true">{{ 'templates.superset' | mnTranslate }}</li>
+                  }
+                  <li class="flex items-baseline justify-between gap-3 py-0.5">
+                    <span class="min-w-0 break-words text-on-surface">
+                      @if (supersetLetter(plan.exercises, x); as letter) {
+                        <span class="tnum mr-1 inline-flex h-4 min-w-4 items-center justify-center rounded border border-primary px-0.5 align-middle text-[11px] font-bold leading-none text-primary" [attr.title]="'templates.superset' | mnTranslate">{{ letter }}</span>
+                        <span class="sr-only">{{ 'templates.superset' | mnTranslate }} </span>
+                      }
+                      {{ ex.name }}
+                    </span>
+                    <span class="tnum shrink-0 whitespace-nowrap text-on-surface-variant">{{ target(ex) }}</span>
                   </li>
                 }
               </ul>
 
-              <div class="mt-auto grid grid-cols-1 gap-2 pt-3 @min-[25rem]:grid-cols-2">
+              <div class="mt-auto grid grid-cols-1 gap-2 pt-4">
                 <button
                   type="button"
                   (click)="start(plan, i)"
                   [attr.aria-label]="'suggest.startNamed' | mnTranslate: { name: plan.title }"
                   [attr.aria-disabled]="busy() !== null ? 'true' : null"
-                  class="flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary px-3 text-sm font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+                  class="flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-3 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
                   [class.opacity-70]="busy() !== null"
                 >
-                  <app-icon [data]="{ name: 'play', size: 16 }" />
+                  <app-icon [data]="{ name: 'play', size: 18 }" />
                   {{ (busy() === 'start' + i ? 'action.creating' : 'suggest.start') | mnTranslate }}
                 </button>
                 <!-- One element for both states: pressing it must not drop keyboard focus. -->
@@ -169,7 +148,7 @@ const TEMPLATE_NAME_MAX = 100;
                   (click)="save([i])"
                   [attr.aria-label]="(isSaved ? 'suggest.savedNamed' : 'suggest.saveNamed') | mnTranslate: { name: plan.title }"
                   [attr.aria-disabled]="isSaved || busy() !== null ? 'true' : null"
-                  class="flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg border px-3 text-sm font-bold transition-colors"
+                  class="flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-3 font-bold transition-colors"
                   [class]="isSaved ? savedLook : saveLook"
                   [class.opacity-70]="!isSaved && busy() !== null"
                 >
@@ -190,7 +169,7 @@ const TEMPLATE_NAME_MAX = 100;
               type="button"
               (click)="saveAll()"
               [attr.aria-disabled]="allSaved() || busy() !== null ? 'true' : null"
-              class="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border px-3 text-sm font-bold transition-colors lg:w-auto lg:shrink-0 lg:px-5"
+              class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-3 font-bold transition-colors lg:w-auto lg:shrink-0 lg:px-5"
               [class]="allSaved() ? savedLook : saveLook"
               [class.opacity-70]="!allSaved() && busy() !== null"
             >
@@ -201,10 +180,10 @@ const TEMPLATE_NAME_MAX = 100;
           </div>
         }
 
-        <p class="mt-4 text-xs leading-relaxed text-on-surface-variant">
+        <p class="mt-5 px-1 text-xs leading-relaxed text-on-surface-variant">
           {{ (basedOnHistory() ? 'suggest.disclaimer' : 'suggest.disclaimer.general') | mnTranslate }}
         </p>
-        <div class="mt-2 flex flex-wrap gap-x-6">
+        <div class="mt-1 flex flex-wrap gap-x-6 px-1">
           <button
             type="button"
             (click)="load(true)"
@@ -249,7 +228,6 @@ export class SuggestSheet implements OnInit {
   readonly loading = signal(false);
   /** The answer on screen; the service keeps the same object, with what was saved from it. */
   private readonly suggestion = signal<Suggestion | null>(null);
-  readonly supersetRole = supersetRole;
   readonly supersetLetter = supersetLetter;
 
   readonly plans = computed<SuggestedWorkout[]>(() => {
@@ -269,8 +247,8 @@ export class SuggestSheet implements OnInit {
   readonly allSaved = computed(() => this.plans().every((_, i) => this.saved().has(i)));
 
   /** "Save as template": the tinted outline secondary; once saved a calm, readable "Saved". */
-  readonly saveLook = 'border-primary/60 bg-primary/10 text-primary hover:bg-primary/20 active:bg-primary/30';
-  readonly savedLook = 'cursor-default border-outline-variant/60 text-success';
+  readonly saveLook = 'bg-primary/15 text-primary active:bg-primary/25';
+  readonly savedLook = 'cursor-default bg-surface-container text-success';
 
   readonly loadingSteps = ['suggest.loading.1', 'suggest.loading.2', 'suggest.loading.3'];
 
@@ -347,7 +325,7 @@ export class SuggestSheet implements OnInit {
   dayLabel(plan: SuggestedWorkout, index: number): string {
     const day = this.lang.t('suggest.day', { n: index + 1 });
     const weekday = plan.weekday?.trim();
-    return weekday ? `${day} · ${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}` : day;
+    return weekday ? `${day}, ${weekday.toLowerCase()}` : day;
   }
 
   /** "3 × 8 · 70 kg"; bodyweight shows "+10 kg" only when extra weight is suggested. */

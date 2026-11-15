@@ -16,11 +16,11 @@ import { AiError } from './ai-error';
     <div class="flex flex-col items-center px-2 py-8 text-center">
       <span
         aria-hidden="true"
-        class="flex h-14 w-14 animate-pulse items-center justify-center rounded-full bg-primary/15 text-primary motion-reduce:animate-none"
+        class="flex h-16 w-16 animate-pulse items-center justify-center rounded-2xl bg-primary/15 text-primary motion-reduce:animate-none"
       >
         <app-icon [data]="{ name: 'sparkles', size: 28 }" />
       </span>
-      <p class="mt-4 max-w-sm font-semibold leading-snug text-on-surface">{{ message() | mnTranslate }}</p>
+      <p class="mt-4 max-w-sm font-display text-lg font-bold leading-snug text-on-surface">{{ message() | mnTranslate }}</p>
       <p aria-hidden="true" class="mt-2 min-h-5 text-sm text-on-surface-variant">{{ steps()[step()] | mnTranslate }}</p>
       <p class="mt-4 max-w-sm text-xs leading-relaxed text-on-surface-variant">{{ 'analysis.loading.keep' | mnTranslate }}</p>
     </div>
@@ -52,18 +52,18 @@ export class AiLoading implements OnInit, OnDestroy {
   imports: [AppIcon, MnTranslatePipe],
   template: `
     @let e = error();
-    <div class="flex flex-col items-center rounded-xl border border-outline-variant/40 px-4 py-8 text-center">
+    <div class="flex flex-col items-center px-2 py-6 text-center">
       <span aria-hidden="true" class="text-outline"><app-icon [data]="{ name: e.icon, size: 36 }" /></span>
-      <p class="mt-3 font-bold text-on-surface">{{ e.title | mnTranslate }}</p>
+      <p class="mt-3 font-display text-lg font-bold leading-snug text-on-surface">{{ e.title | mnTranslate }}</p>
       @if (e.hint; as hint) {
         <p class="mt-1 max-w-sm text-sm leading-relaxed text-on-surface-variant">{{ hint | mnTranslate }}</p>
       }
-      <div class="mt-5 flex w-full max-w-xs flex-col gap-2">
+      <div class="mt-5 flex w-full flex-col gap-2">
         @if (e.retry) {
           <button
             type="button"
             (click)="retry.emit()"
-            class="flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+            class="flex min-h-13 items-center justify-center rounded-xl bg-primary px-4 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
           >
             {{ 'action.retry' | mnTranslate }}
           </button>
@@ -71,7 +71,7 @@ export class AiLoading implements OnInit, OnDestroy {
         <button
           type="button"
           (click)="closed.emit()"
-          class="flex min-h-11 items-center justify-center rounded-lg border border-control px-4 text-sm font-bold text-on-surface transition-colors hover:border-primary hover:text-primary"
+          class="flex min-h-13 items-center justify-center rounded-xl bg-surface-container-high px-4 text-lg font-bold text-on-surface transition-colors hover:text-primary"
         >
           {{ 'action.close' | mnTranslate }}
         </button>

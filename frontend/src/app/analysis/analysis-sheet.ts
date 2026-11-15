@@ -33,31 +33,29 @@ import { AnalysisResult, AnalysisService } from './analysis.service';
       } @else if (error(); as e) {
         <app-ai-error [error]="e" (retry)="load(true)" (closed)="closed.emit()" />
       } @else if (result(); as r) {
-        <p class="hyphens-auto font-display text-lg font-bold leading-snug text-on-surface">{{ r.analysis.headline }}</p>
+        <p class="hyphens-auto font-display text-[1.5rem] font-extrabold leading-[1.2] tracking-tight text-on-surface">{{ r.analysis.headline }}</p>
         <p class="mt-2 hyphens-auto leading-relaxed text-on-surface-variant">{{ r.analysis.summary }}</p>
 
         @for (section of sections(r); track section.key) {
-          <section class="mt-4 rounded-xl border border-outline-variant/40 bg-surface-container-low p-4 dark:bg-surface-container-high">
-            <h3 class="mb-2 flex items-center gap-2 text-sm font-bold" [class]="section.tone">
-              <app-icon [data]="{ name: section.icon, size: 16 }" />
+          <section class="mt-6">
+            <h3 class="mb-2 flex items-center gap-1.5 px-1 text-sm font-semibold text-on-surface-variant">
+              <span [class]="section.tone"><app-icon [data]="{ name: section.icon, size: 16 }" /></span>
               {{ section.key | mnTranslate }}
             </h3>
+            <!-- One point, one row: no bullets to scan past -->
             <ul class="space-y-2">
               @for (item of section.items; track $index) {
-                <li class="flex gap-2 text-sm leading-relaxed text-on-surface">
-                  <span aria-hidden="true" class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-on-surface-variant/60"></span>
-                  <span class="min-w-0 hyphens-auto [overflow-wrap:anywhere]">{{ item }}</span>
-                </li>
+                <li class="hyphens-auto rounded-2xl bg-surface-container-high px-4 py-3 leading-relaxed text-on-surface [overflow-wrap:anywhere]">{{ item }}</li>
               }
             </ul>
           </section>
         }
 
-        <p class="mt-4 text-xs leading-relaxed text-on-surface-variant">{{ 'analysis.disclaimer' | mnTranslate }}</p>
+        <p class="mt-6 px-1 text-xs leading-relaxed text-on-surface-variant">{{ 'analysis.disclaimer' | mnTranslate }}</p>
         <button
           type="button"
           (click)="load(true)"
-          class="mt-2 flex min-h-11 items-center gap-2 rounded-lg text-sm font-semibold text-primary"
+          class="mt-1 flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-semibold text-primary"
         >
           <app-icon [data]="{ name: 'rotate-ccw', size: 16 }" />
           {{ 'analysis.again' | mnTranslate }}

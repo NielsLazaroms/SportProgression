@@ -46,15 +46,15 @@ let nextId = 0;
         #panel
         class="mx-auto max-h-[80dvh] w-full max-w-xl overflow-y-auto overscroll-contain px-5 pb-6 pt-2 lg:max-w-none lg:px-6 lg:pt-5"
       >
-        <div class="mb-4 flex items-start justify-between gap-3">
+        <div class="mb-2 flex items-center justify-between gap-3">
           <div class="min-w-0">
             <h2
               #heading
               [id]="headingId"
               tabindex="-1"
-              class="flex items-center gap-2 font-display text-xl font-bold text-on-surface outline-none"
+              class="flex items-center gap-2 text-sm font-semibold text-on-surface-variant outline-none"
             >
-              <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'sparkles', size: 20 }" /></span>
+              <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'sparkles', size: 16 }" /></span>
               <span class="min-w-0 break-words">{{ title() }}</span>
             </h2>
             @if (subtitle(); as sub) {
@@ -65,7 +65,7 @@ let nextId = 0;
             type="button"
             (click)="closed.emit()"
             [attr.aria-label]="'action.close' | mnTranslate"
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/50"
+            class="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface"
           >
             <app-icon [data]="{ name: 'x', size: 22 }" />
           </button>
