@@ -11,6 +11,7 @@ import { ProgressService } from '../../../progress/data-access/progress.service'
 import { ProgressSummary } from '../../../progress/models/progress.model';
 import { Workout, workoutSetCount } from '../../models/workout.model';
 import { TemplateService } from '../../../templates/data-access/template.service';
+import { TemplateStarter } from '../../../templates/data-access/template-starter';
 import {
   WorkoutTemplate,
   templateSetCount,
@@ -54,6 +55,9 @@ export class WorkoutsPage implements OnInit {
   private readonly workoutService = inject(WorkoutService);
   private readonly progressService = inject(ProgressService);
   private readonly templateService = inject(TemplateService);
+  private readonly starter = inject(TemplateStarter);
+  /** Id of the template that is being started right now. */
+  readonly startingTemplateId = this.starter.startingId;
   private readonly lang = inject(MnLanguageService);
 
   /** The AI role: without it Home shows no AI entry point at all. */
@@ -106,11 +110,9 @@ export class WorkoutsPage implements OnInit {
     };
   });
 
-  // New-workout sheet; with `rerunSource` set it starts a re-run, with
-  // `templateSource` set a workout from that template.
+  // New-workout sheet; with `rerunSource` set it starts a re-run.
   readonly showNew = signal(false);
   readonly rerunSource = signal<Workout | null>(null);
-  readonly templateSource = signal<WorkoutTemplate | null>(null);
 
   // template helpers
   readonly setCount = workoutSetCount;
@@ -170,21 +172,17 @@ export class WorkoutsPage implements OnInit {
 
   openNew(): void {
     this.rerunSource.set(null);
-    this.templateSource.set(null);
     this.showNew.set(true);
   }
 
   /** Re-run: the normal new-workout sheet, prefilled from an earlier workout. */
   reRun(w: Workout): void {
-    this.templateSource.set(null);
     this.rerunSource.set(w);
     this.showNew.set(true);
   }
 
-  /** Start from a template: the same sheet, listing the planned exercises. */
+  /** One tap: today's workout from the template, straight to logging. */
   startTemplate(t: WorkoutTemplate): void {
-    this.rerunSource.set(null);
-    this.templateSource.set(t);
-    this.showNew.set(true);
+    this.starter.start(t);
   }
 }

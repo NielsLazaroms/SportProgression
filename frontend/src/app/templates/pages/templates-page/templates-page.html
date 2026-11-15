@@ -89,12 +89,13 @@
 
           <button
             type="button"
-            (click)="starting.set(t)"
+            (click)="starter.start(t)"
             [attr.aria-label]="'templates.startNamed' | mnTranslate: { name: t.name }"
+            [attr.aria-busy]="starter.startingId() === t.id"
             class="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-primary/60 bg-primary/10 px-3 text-sm font-bold text-primary transition-colors hover:bg-primary/20 active:bg-primary/30"
           >
             <app-icon [data]="{ name: 'play', size: 18 }" />
-            {{ 'templates.start' | mnTranslate }}
+            {{ (starter.startingId() === t.id ? 'templates.starting' : 'templates.start') | mnTranslate }}
           </button>
         </li>
       }
@@ -109,7 +110,3 @@
     </a>
   }
 </main>
-
-@if (starting(); as tpl) {
-  <app-new-workout-sheet [template]="tpl" (closed)="starting.set(null)" />
-}

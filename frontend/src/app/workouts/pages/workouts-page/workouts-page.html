@@ -89,10 +89,11 @@
                 type="button"
                 (click)="startTemplate(t)"
                 [attr.aria-label]="'templates.startNamed' | mnTranslate: { name: t.name }"
+                [attr.aria-busy]="startingTemplateId() === t.id"
                 class="mx-3 mb-3 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary/60 bg-primary/10 px-3 text-sm font-bold text-primary transition-colors hover:bg-primary/20 active:bg-primary/30"
               >
                 <app-icon [data]="{ name: 'play', size: 18 }" />
-                {{ 'templates.start' | mnTranslate }}
+                {{ (startingTemplateId() === t.id ? 'templates.starting' : 'templates.start') | mnTranslate }}
               </button>
             </li>
           }
@@ -245,7 +246,7 @@
 </main>
 
 @if (showNew()) {
-  <app-new-workout-sheet [source]="rerunSource()" [template]="templateSource()" (closed)="showNew.set(false)" />
+  <app-new-workout-sheet [source]="rerunSource()" (closed)="showNew.set(false)" />
 }
 
 @if (showAnalysis() && canUseAi()) {

@@ -98,6 +98,7 @@
   "templates.new": "Nieuw schema",
   "templates.edit": "Schema bewerken",
   "templates.start": "Start",
+  "templates.starting": "Starten…",
   "templates.startNamed": "{{name}} starten",
   "templates.editNamed": "{{name}} bewerken",
   "templates.deleteNamed": "{{name}} verwijderen",

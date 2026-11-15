@@ -15,7 +15,7 @@ import { AppHeader } from '../../../layout/app-header';
 import { AppIcon } from '../../../shared/app-icon';
 import { errorHintKey, plural } from '../../../shared/format';
 import { supersetRuns } from '../../../shared/superset';
-import { NewWorkoutSheet } from '../../../workouts/components/new-workout-sheet';
+import { TemplateStarter } from '../../data-access/template-starter';
 import { TemplateService } from '../../data-access/template.service';
 import {
   TemplateExercise,
@@ -27,7 +27,7 @@ import {
 @Component({
   selector: 'app-templates-page',
   standalone: true,
-  imports: [AppHeader, RouterLink, AppIcon, MnSkeleton, MnTranslatePipe, NewWorkoutSheet],
+  imports: [AppHeader, RouterLink, AppIcon, MnSkeleton, MnTranslatePipe],
   templateUrl: './templates-page.html',
 })
 export class TemplatesPage implements OnInit {
@@ -42,8 +42,8 @@ export class TemplatesPage implements OnInit {
   /** i18n key explaining why loading failed; null when it worked. */
   readonly loadError = signal<string | null>(null);
 
-  /** Template whose "start" sheet is open. */
-  readonly starting = signal<WorkoutTemplate | null>(null);
+  /** One-tap start: today's workout from a template, straight to logging. */
+  readonly starter = inject(TemplateStarter);
 
   // template helpers
   readonly plural = plural;

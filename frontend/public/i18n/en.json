@@ -98,6 +98,7 @@
   "templates.new": "New template",
   "templates.edit": "Edit template",
   "templates.start": "Start",
+  "templates.starting": "Starting…",
   "templates.startNamed": "Start {{name}}",
   "templates.editNamed": "Edit {{name}}",
   "templates.deleteNamed": "Delete {{name}}",
