@@ -1,0 +1,56 @@
+# Rendered at container start: ${BACKEND_URL} comes from the environment.
+
+# Keep the original scheme when TLS ends at an ingress in front of nginx.
+map $http_x_forwarded_proto $forwarded_proto {
+    default $http_x_forwarded_proto;
+    ""      $scheme;
+}
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    server_tokens off;
+
+    # Liveness and readiness probe for this container only.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # The API, on the same origin as the app: no CORS needed and the strict
+    # session cookies just work. The /api prefix is stripped on the way.
+    location /api/ {
+        proxy_pass ${BACKEND_URL}/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        # AI analysis calls can take a while.
+        proxy_read_timeout 120s;
+        client_max_body_size 2m;
+    }
+
+    # Build files with a content hash in the name (main-ABC123.js, media/)
+    # never change: cache them for a long time.
+    location ~* "(?:-[A-Z0-9]{8}\.(?:js|css)$|^/media/)" {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # Translations and the manifest change between releases.
+    location ~* \.(?:json|webmanifest)$ {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    # Single page app: every other path is handled by Angular's router.
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri $uri/ /index.html;
+    }
+}

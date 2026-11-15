@@ -1,0 +1,20 @@
+# Local development database only (the app itself runs with npm):
+#   docker compose -f docker-compose.dev.yml up -d
+# Matches the defaults in backend/.env.example. Start over with an empty
+# database: docker compose -f docker-compose.dev.yml down -v
+name: sportprogression-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: sportprogression
+      POSTGRES_USER: sportprogression
+      POSTGRES_PASSWORD: sportprogression
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - devdata:/var/lib/postgresql/data
+
+volumes:
+  devdata:

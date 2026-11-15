@@ -1,4 +1,6 @@
 export const environment = {
   production: true,
-  backendUrl: 'https://your-production-backend-url.com',
+  // Same origin as the app: nginx (frontend/nginx.conf.template) forwards
+  // /api/ to the backend service.
+  backendUrl: '/api',
 };

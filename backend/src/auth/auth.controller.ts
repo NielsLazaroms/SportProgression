@@ -31,14 +31,15 @@ export class AuthController {
 
   /**
    * Passwordless demo login for local development. Fails closed: it needs
-   * DEV_LOGIN=true, NODE_ENV=development and the local SQLite database, so a
-   * misconfigured production server can never expose it.
+   * DEV_LOGIN=true, NODE_ENV=development and a database on this machine
+   * (DB_HOST localhost), so a misconfigured server can never expose it.
    */
   private devLoginEnabled(): boolean {
+    const dbHost = this.config.get<string>(EnvKey.DB_HOST) || 'localhost';
     return (
       this.config.get<string>(EnvKey.DEV_LOGIN) === 'true' &&
       this.config.get<string>(EnvKey.NODE_ENV) === 'development' &&
-      this.config.get<string>(EnvKey.DB_TYPE) === 'sqljs'
+      ['localhost', '127.0.0.1', '::1'].includes(dbHost)
     );
   }
 

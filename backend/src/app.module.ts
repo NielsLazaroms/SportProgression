@@ -11,6 +11,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { UserThrottlerGuard, limitFor } from './auth/user-throttler.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EnvKey } from '../envKey';
+import { postgresOptions } from './database/database-options';
 import { ExercisesModule } from './exercises/exercises.module';
 import { ExerciseDefinitionsModule } from './exercise-definitions/exercise-definitions.module';
 import { SetsModule } from './sets/sets.module';
@@ -25,45 +26,20 @@ import { AnalysisModule } from './analysis/analysis.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const sslEnabled =
-          (config.get<string>(EnvKey.DB_SSL) ?? 'false') === 'true';
+        const env = (key: EnvKey) => config.get<string>(key);
 
-        // Schema auto-sync rewrites tables to match the code. Handy while
-        // developing, dangerous on real data (a renamed column is dropped and
-        // re-created empty), so in production it is OFF unless explicitly
-        // requested with DB_SYNCHRONIZE=true.
-        const syncSetting = config.get<string>(EnvKey.DB_SYNCHRONIZE);
-        const synchronize =
-          syncSetting !== undefined && syncSetting !== ''
-            ? syncSetting === 'true'
-            : config.get<string>(EnvKey.NODE_ENV) !== 'production';
-        // SQL logging prints user data (notes, e-mail addresses) to the logs.
-        const logging = config.get<string>(EnvKey.DB_LOGGING) === 'true';
-
-        // Zero-setup local development: DB_TYPE=sqljs stores everything in a
-        // single SQLite file (pure JS, no database server needed).
-        if (config.get<string>(EnvKey.DB_TYPE) === 'sqljs') {
-          return {
-            type: 'sqljs',
-            location: config.get<string>(EnvKey.DB_FILE, 'dev-data.sqlite'),
-            autoSave: true,
-            autoLoadEntities: true,
-            synchronize,
-          };
-        }
-
+        // The schema is managed by the migrations in
+        // src/database/migrations, applied on startup (DB_MIGRATIONS_RUN=false
+        // switches that off when they are run separately). Auto-sync is only
+        // for throwaway databases: it can drop columns and their data, and
+        // must never be mixed with migrations on the same database.
+        const synchronize = env(EnvKey.DB_SYNCHRONIZE) === 'true';
         return {
-          type: 'mysql',
-          host: config.get<string>(EnvKey.DB_HOST),
-          port: config.get<number>(EnvKey.DB_PORT, 3306),
-          username: config.get<string>(EnvKey.DB_USER),
-          password: config.get<string>(EnvKey.DB_PASS),
-          database: config.get<string>(EnvKey.DB_NAME),
-
-          logging,
+          ...postgresOptions(env),
           autoLoadEntities: true,
           synchronize,
-          ssl: sslEnabled ? { rejectUnauthorized: true } : undefined,
+          migrationsRun:
+            !synchronize && env(EnvKey.DB_MIGRATIONS_RUN) !== 'false',
         };
       },
     }),

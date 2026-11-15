@@ -55,7 +55,7 @@ export class Workout {
     nullable: true,
     description: 'When the workout was finished. Null while still in progress.',
   })
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   completedAt?: Date | null;
 
   @ApiProperty({ example: '2026-03-23T10:00:00.000Z' })

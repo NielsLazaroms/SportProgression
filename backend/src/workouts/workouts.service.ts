@@ -30,7 +30,7 @@ export class WorkoutsService {
       order: {
         date: 'DESC',
         createdAt: 'DESC',
-        exercises: { orderInWorkout: 'ASC' },
+        exercises: { orderInWorkout: 'ASC', sets: { setOrder: 'ASC', setId: 'ASC' } },
       },
     });
   }

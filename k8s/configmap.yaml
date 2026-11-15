@@ -1,0 +1,38 @@
+# Settings that are not secret. Secrets (passwords, keys) go in secret.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+data:
+  NODE_ENV: production
+  # Time zone of the API (week boundaries, timestamps), e.g. Europe/Amsterdam.
+  TZ: UTC
+
+  # The PostgreSQL database that the VM provides.
+  # DB_HOST is the "postgres" Service from postgres-external.yaml. If the
+  # database runs inside the cluster, put its Service name here instead
+  # (for another namespace: <service>.<namespace>.svc.cluster.local).
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: sportprogression
+  DB_SSL: "false"
+  # With DB_SSL=true: "false" accepts a self signed certificate.
+  DB_SSL_REJECT_UNAUTHORIZED: "true"
+  # Apply pending schema migrations when the API starts.
+  DB_MIGRATIONS_RUN: "true"
+
+  # Public address of the app, exactly as people type it (no trailing slash).
+  FRONTEND_URL: https://sportprogression.example.com
+  # Must also be listed under "Authorised redirect URIs" in Google Cloud.
+  GOOGLE_CALLBACK_URL: https://sportprogression.example.com/api/auth/google/callback
+
+  JWT_EXPIRES_IN: 15m
+  JWT_REFRESH_EXPIRES_IN: 7d
+
+  # Proxy hops in front of the API: ingress controller + frontend nginx = 2.
+  # Use 1 when people reach the frontend directly (NodePort, no ingress).
+  # Too high lets clients fake their address and dodge the rate limits.
+  TRUST_PROXY: "2"
+
+  # Accounts that may use the paid AI features (comma separated, or "*").
+  AI_ALLOWED_EMAILS: ""

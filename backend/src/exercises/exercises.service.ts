@@ -27,7 +27,7 @@ export class ExercisesService {
     await this.workoutsService.findOne(workoutId, userId);
     return this.workoutExerciseRepository.find({
       where: { workoutId },
-      order: { orderInWorkout: 'ASC' },
+      order: { orderInWorkout: 'ASC', sets: { setOrder: 'ASC', setId: 'ASC' } },
       relations: ['sets'],
     });
   }
@@ -37,6 +37,7 @@ export class ExercisesService {
     const exercise = await this.workoutExerciseRepository.findOne({
       where: { id, workoutId },
       relations: ['sets'],
+      order: { sets: { setOrder: 'ASC', setId: 'ASC' } },
     });
     if (!exercise) {
       throw new NotFoundException(`Workout exercise with ID ${id} not found`);

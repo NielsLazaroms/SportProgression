@@ -1,0 +1,22 @@
+# Apply everything:  kubectl apply -k k8s/
+# Preview first:     kubectl kustomize k8s/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: sportprogression
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  # Create secret.yaml from secret.example.yaml first (it is not committed).
+  - secret.yaml
+  - postgres-external.yaml
+  - backend.yaml
+  - frontend.yaml
+  - ingress.yaml
+
+# Change the tag here when you build a new version of the images.
+images:
+  - name: sportprogression-backend
+    newTag: 1.0.0
+  - name: sportprogression-frontend
+    newTag: 1.0.0

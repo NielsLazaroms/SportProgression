@@ -1,0 +1,30 @@
+# Sends all traffic for the host to the frontend; nginx in that container
+# forwards /api/ to the backend, so no rewrite rules are needed here.
+#
+# HTTPS is required: in production the session cookies are marked Secure and
+# browsers drop them on plain http, so signing in would silently fail.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sportprogression
+  annotations:
+    # With cert-manager installed, this requests a certificate automatically:
+    # cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  # The ingress controller on the VM, e.g. "nginx" or "traefik" (k3s).
+  # ingressClassName: nginx
+  tls:
+    - hosts:
+        - sportprogression.example.com
+      secretName: sportprogression-tls
+  rules:
+    - host: sportprogression.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  name: http

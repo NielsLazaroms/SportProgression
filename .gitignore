@@ -76,5 +76,6 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# Local development database
-*.sqlite
+
+# Kubernetes secrets with real values (template: k8s/secret.example.yaml)
+k8s/secret.yaml

@@ -5,11 +5,17 @@ A personal strength-training tracker: log workouts (exercises → sets × reps �
 - `backend/`: NestJS + TypeORM REST API (Swagger UI at `http://localhost:3001/api`)
 - `frontend/`: Angular 21 app (Tailwind v4, mn-angular-lib), English + Dutch
 
-## Quick start (no database or Google account needed)
+## Quick start (no Google account needed)
+
+Needs Docker for the local PostgreSQL database.
+
+```bash
+docker compose -f docker-compose.dev.yml up -d   # PostgreSQL on localhost:5432
+```
 
 ```bash
 cd backend
-cp .env.example .env   # defaults: SQLite file database + demo login
+cp .env.example .env   # defaults: the local database above + demo login
 npm install
 npm run start:dev      # http://localhost:3001
 ```
@@ -20,24 +26,40 @@ npm install
 npm start              # http://localhost:4201
 ```
 
-Open http://localhost:4201 and choose **Continue as demo user**. The demo account is created with eight weeks of sample training so the progress charts have data. All data lives in `backend/dev-data.sqlite`: delete that file to start fresh.
+Open http://localhost:4201 and choose **Continue as demo user**. The demo account is created with eight weeks of sample training so the progress charts have data. To start fresh with an empty database: `docker compose -f docker-compose.dev.yml down -v`, then `up -d` again.
 
 ## Configuration (`backend/.env`)
 
 | Variable | Purpose |
 | --- | --- |
-| `DB_TYPE` | `sqljs` = single-file SQLite (local dev). Empty/`mysql` = MySQL via `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`, `DB_SSL`. |
-| `DEV_LOGIN` | `true` enables the passwordless demo login. Only honoured with `NODE_ENV=development` and `DB_TYPE=sqljs`. |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`, `DB_SSL` | The PostgreSQL database. `DB_SSL_REJECT_UNAUTHORIZED=false` accepts a self signed certificate. |
+| `DEV_LOGIN` | `true` enables the passwordless demo login. Only honoured with `NODE_ENV=development` and a database on this machine (`DB_HOST` localhost). |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` | Google sign-in (optional for local dev). |
 | `JWT_SECRET`, `JWT_REFRESH_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN` | Session tokens (httpOnly cookies). |
 | `FRONTEND_URL` | Allowed CORS origin and post-login redirect. |
-| `DB_SYNCHRONIZE` | Let the app rewrite tables to match the code on startup. On in development, **off in production** unless set to `true` (it can drop columns and their data). After deploying a schema change: back up, then run once with `DB_SYNCHRONIZE=true`. |
+| `DB_MIGRATIONS_RUN` | Apply pending migrations from `backend/src/database/migrations` on startup (default `true`). Set `false` to run them yourself with `npm run migration:run`. |
+| `DB_SYNCHRONIZE` | `true` rewrites the tables to match the code instead of using migrations. Only for a throwaway database (it can drop columns and their data). |
 | `DB_LOGGING` | `true` prints every SQL statement (includes user data). Off by default. |
 | `TRUST_PROXY` | Number of reverse-proxy hops in front of the API (e.g. `1`), so rate limiting sees real client addresses. |
 | `ANTHROPIC_API_KEY` | Claude API key for the Analyse buttons. Server-side only, never sent to the browser. Empty switches the feature off. In production set it as an environment variable or secret on the host that runs the API. |
 | `AI_ALLOWED_EMAILS` | The AI role: comma-separated e-mail addresses of the accounts that may use the analysis and plan features (`*` for everyone). Other users do not see the AI buttons and the endpoints refuse them, so they cannot spend API credit. The role can also be set per user in the database (`users.aiAccess`). |
 
 On an empty database the API seeds a starter catalog of common exercises.
+
+## Database schema changes (PostgreSQL)
+
+Change an entity, then generate a migration against a database that has all earlier migrations applied, review it and commit it:
+
+```bash
+cd backend
+npm run migration:generate -- src/database/migrations/DescribeTheChange
+```
+
+The API applies it on its next start. `npm run migration:revert` undoes the last one.
+
+## Deployment
+
+Docker images and Kubernetes manifests: see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Features
 

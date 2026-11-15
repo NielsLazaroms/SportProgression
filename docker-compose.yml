@@ -1,0 +1,62 @@
+# Full stack on one machine, for trying the production images locally:
+#   docker compose up --build      then open http://localhost:8080
+#
+# The "postgres" service only stands in for the database container that the
+# VM provides. On the VM itself the app runs on Kubernetes (see k8s/).
+name: sportprogression
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: sportprogression
+      POSTGRES_USER: sportprogression
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sportprogression -d sportprogression"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    image: sportprogression-backend:${TAG:-1.0.0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      TZ: ${TZ:-UTC}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: sportprogression
+      DB_USER: sportprogression
+      DB_PASS: ${POSTGRES_PASSWORD:-change-me}
+      DB_SSL: "false"
+      FRONTEND_URL: ${PUBLIC_URL:-http://localhost:8080}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-not-configured}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-not-configured}
+      GOOGLE_CALLBACK_URL: ${PUBLIC_URL:-http://localhost:8080}/api/auth/google/callback
+      JWT_SECRET: ${JWT_SECRET:-local-only-access-secret-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-local-only-refresh-secret-change-me}
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      # One proxy hop: the frontend nginx.
+      TRUST_PROXY: "1"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_ALLOWED_EMAILS: ${AI_ALLOWED_EMAILS:-}
+
+  frontend:
+    build: ./frontend
+    image: sportprogression-frontend:${TAG:-1.0.0}
+    depends_on:
+      - backend
+    environment:
+      BACKEND_URL: http://backend:3001
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
