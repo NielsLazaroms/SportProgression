@@ -7,6 +7,7 @@ import {
   MnLanguageService,
   MnModalService,
   MnTranslatePipe,
+  KeyboardMode,
   ModalBuilder,
 } from 'mn-angular-lib';
 import { AppIcon } from '../../../shared/app-icon';
@@ -14,6 +15,7 @@ import { AppHeader } from '../../../layout/app-header';
 import { AuthService } from '../../../auth/data-access/auth.service';
 import { ProgressService } from '../../../progress/data-access/progress.service';
 import { compactKg, errorHintKey, formatNumber, todayIso } from '../../../shared/format';
+import { AnalysisService, MuscleGroupChoice } from '../../../analysis/analysis.service';
 import { ThemeChoice, ThemeService } from '../../../shared/theme.service';
 
 type Locale = 'en' | 'nl';
@@ -31,6 +33,17 @@ export class ProfilePage implements OnInit {
   private readonly theme = inject(ThemeService);
   private readonly alerts = inject(MnAlertService);
   private readonly modal = inject(MnModalService);
+  private readonly analysis = inject(AnalysisService);
+
+  /** Muscle groups with whether the user trains them; untrained ones are skipped by the analysis. */
+  readonly muscleGroups = signal<MuscleGroupChoice[]>([]);
+  readonly savingMuscles = signal(false);
+  /** Read out by screen readers after a toggle: "Glutes switched off". */
+  readonly muscleAnnouncement = signal('');
+  /** A toggle made while a save is running: sent right after it. */
+  private musclesDirty = false;
+  /** Last choice the server confirmed, to fall back on when a save fails. */
+  private musclesConfirmed: MuscleGroupChoice[] | null = null;
 
   readonly exporting = signal(false);
   readonly deleting = signal(false);
@@ -68,14 +81,78 @@ export class ProfilePage implements OnInit {
     if (!this.profile()) {
       this.auth.checkAuth().subscribe();
     }
+    // Optional section: without the list it simply stays hidden.
+    this.analysis.muscleGroups().subscribe({
+      next: (groups) => this.muscleGroups.set(groups),
+      error: () => undefined,
+    });
     this.progressService.getSummary().subscribe({
       next: (s) => {
         this.workoutCount.set(s.totals?.workouts ?? 0);
         this.lifetimeVolume.set(s.totals?.volumeKg ?? 0);
       },
-      // Unknown stays "—": a made-up 0 would be wrong.
+      // Unknown stays "-": a made-up 0 would be wrong.
       error: () => undefined,
     });
+  }
+
+  muscleLabel(name: string): string {
+    return this.lang.translateIfPresent('muscle.' + name) ?? name;
+  }
+
+  /**
+   * Switches one group on or off and saves the choice right away. The chips
+   * stay enabled meanwhile (a disabled button loses the keyboard focus): a
+   * toggle made during a save is shown at once and sent in a follow-up save.
+   */
+  toggleMuscle(name: string): void {
+    const before = this.muscleGroups();
+    const group = before.find((g) => g.name === name);
+    if (!group) return;
+    if (!this.savingMuscles()) this.musclesConfirmed = before;
+    this.muscleGroups.set(
+      before.map((g) => (g.name === name ? { ...g, trained: !g.trained } : g)),
+    );
+    this.muscleAnnouncement.set(
+      this.lang.t(group.trained ? 'profile.muscles.off' : 'profile.muscles.on', {
+        name: this.muscleLabel(name),
+      }),
+    );
+    this.saveMuscles();
+  }
+
+  /** One save at a time; the latest choice always wins. */
+  private saveMuscles(): void {
+    if (this.savingMuscles()) {
+      this.musclesDirty = true;
+      return;
+    }
+    this.savingMuscles.set(true);
+    this.analysis
+      .setIgnoredMuscleGroups(
+        this.muscleGroups()
+          .filter((g) => !g.trained)
+          .map((g) => g.name),
+      )
+      .subscribe({
+        next: (groups) => {
+          this.savingMuscles.set(false);
+          this.musclesConfirmed = groups;
+          if (this.musclesDirty) {
+            this.musclesDirty = false;
+            this.saveMuscles();
+            return;
+          }
+          this.muscleGroups.set(groups);
+        },
+        error: (err) => {
+          this.savingMuscles.set(false);
+          this.musclesDirty = false;
+          if (this.musclesConfirmed) this.muscleGroups.set(this.musclesConfirmed);
+          this.muscleAnnouncement.set('');
+          this.alerts.error(this.lang.t('profile.muscles.err'), this.lang.t(errorHintKey(err)));
+        },
+      });
   }
 
   countText(n: number): string {
@@ -138,6 +215,7 @@ export class ProfilePage implements OnInit {
         })
         .cancelAction({ label: this.lang.t('action.cancel') })
         .mobileBottomSheet(true)
+        .keyboard(KeyboardMode.ENABLED)
         .build(),
     );
     ref.afterClosed$.subscribe(({ result }) => {

@@ -1,14 +1,8 @@
-<app-header>
-  <a
-    routerLink="/profile"
-    [attr.aria-label]="'nav.profile' | mnTranslate"
-    class="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant/50 lg:hidden"
-  >
-    <app-icon [data]="{ name: 'circle-user-round', size: 26 }" />
-  </a>
-</app-header>
+<app-header />
 
-<main class="mx-auto max-w-2xl px-4 pb-28 pt-20">
+<main class="mx-auto max-w-2xl px-4 pb-28 pt-20 lg:grid lg:max-w-6xl lg:grid-cols-2 lg:items-start lg:gap-x-8 lg:px-8">
+  <!-- Phone: one column. Desktop: start, templates and coach left, recent workouts right. -->
+  <div class="min-w-0">
   <!-- Continue today's/yesterday's unfinished workout -->
   @if (unfinished(); as u) {
     <section class="mb-4">
@@ -40,44 +34,26 @@
     </section>
   }
 
-  <!-- Primary CTA -->
+  <!-- Start: the one filled primary, unless a workout is waiting to be continued -->
   <section class="mb-8">
-    <button
-      type="button"
-      (click)="openNew()"
-      class="active-glow flex min-h-16 w-full items-center justify-center gap-3 rounded-xl bg-primary px-4 py-3 font-display text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
-    >
-      <app-icon [data]="{ name: 'plus-circle', size: 24 }" />
-      {{ 'home.start' | mnTranslate }}
-    </button>
-
-    <!-- This week -->
-    @if (week(); as wk) {
-      <div class="glass-card mt-4 rounded-xl px-2 py-3">
-        <h2 class="mb-2 px-2 text-sm font-semibold text-on-surface-variant">
-          {{ 'home.week.title' | mnTranslate }}
-        </h2>
-        <dl class="grid grid-cols-[1fr_auto_1fr] divide-x divide-outline-variant/30 text-center">
-          <div class="flex flex-col-reverse px-2">
-            <dt class="text-xs font-semibold leading-tight text-on-surface-variant">{{ plural(wk.workouts, 'home.week.workouts') | mnTranslate }}</dt>
-            <dd class="tnum flex items-center justify-center gap-1.5 font-display text-xl font-extrabold text-on-surface">
-              <span class="text-primary"><app-icon [data]="{ name: 'dumbbell', size: 16 }" /></span>
-              {{ wk.workouts }}
-            </dd>
-          </div>
-          <div class="flex flex-col-reverse px-3">
-            <dt class="text-xs font-semibold leading-tight text-on-surface-variant">{{ plural(wk.streakWeeks, 'home.week.streak') | mnTranslate }}</dt>
-            <dd class="tnum flex items-center justify-center gap-1.5 font-display text-xl font-extrabold text-on-surface">
-              <span class="text-primary"><app-icon [data]="{ name: 'flame', size: 16 }" /></span>
-              {{ wk.streakWeeks }}
-            </dd>
-          </div>
-          <div class="flex flex-col-reverse px-2">
-            <dt class="text-xs font-semibold leading-tight text-on-surface-variant">{{ 'home.week.volume' | mnTranslate }}</dt>
-            <dd class="tnum font-display text-xl font-extrabold text-primary">{{ volumeText(wk.volumeKg) }}</dd>
-          </div>
-        </dl>
-      </div>
+    @if (unfinished()) {
+      <button
+        type="button"
+        (click)="openNew()"
+        class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-primary/60 bg-primary/10 px-4 py-2 font-bold text-primary transition-colors hover:bg-primary/20 active:bg-primary/30"
+      >
+        <app-icon [data]="{ name: 'plus-circle', size: 20 }" />
+        {{ 'home.start' | mnTranslate }}
+      </button>
+    } @else {
+      <button
+        type="button"
+        (click)="openNew()"
+        class="active-glow flex min-h-16 w-full items-center justify-center gap-3 rounded-xl bg-primary px-4 py-3 font-display text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+      >
+        <app-icon [data]="{ name: 'plus-circle', size: 24 }" />
+        {{ 'home.start' | mnTranslate }}
+      </button>
     }
   </section>
 
@@ -97,10 +73,11 @@
 
       @if (templates().length) {
         <!-- Bleeds to the screen edge while scrolling; `scroll-px-4` keeps the
-             snap position (and so the first card) on the page's content edge. -->
-        <ul class="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2">
+             snap position (and so the first card) on the page's content edge.
+             Desktop: a two-column grid inside the left column, no rail. -->
+        <ul class="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-2 lg:overflow-visible lg:px-0 lg:pb-0">
           @for (t of templates(); track t.id) {
-            <li class="glass-card flex w-56 shrink-0 snap-start flex-col rounded-xl">
+            <li class="glass-card flex w-56 shrink-0 snap-start flex-col rounded-xl lg:w-auto">
               <div class="min-w-0 flex-1 p-4 pb-3">
                 <span class="block truncate font-bold text-on-surface" [title]="t.name">{{ t.name }}</span>
                 <span class="tnum mt-1 block text-sm text-on-surface-variant">
@@ -141,8 +118,84 @@
     </section>
   }
 
+  <!-- Coach: this week's numbers and, with the AI role, the three AI actions -->
+  @let wk = week();
+  @if (wk || canUseAi()) {
+    <section class="mb-8" aria-labelledby="home-coach-title">
+      <h2 id="home-coach-title" class="mb-4 font-display text-lg font-bold text-on-surface">
+        {{ (canUseAi() ? 'coach.title' : 'home.week.title') | mnTranslate }}
+      </h2>
+      <div class="glass-card rounded-xl p-4">
+        @if (wk) {
+          @if (canUseAi()) {
+            <h3 class="mb-2 text-sm font-semibold text-on-surface-variant">{{ 'home.week.title' | mnTranslate }}</h3>
+          }
+          <dl class="-mx-2 grid grid-cols-3 divide-x divide-outline-variant/30 text-center">
+            <div class="flex min-w-0 flex-col-reverse px-1.5">
+              <dt class="hyphens-auto break-words text-xs font-semibold leading-tight text-on-surface-variant">{{ plural(wk.workouts, 'home.week.workouts') | mnTranslate }}</dt>
+              <dd class="tnum flex items-center justify-center gap-1.5 font-display text-xl font-extrabold text-on-surface">
+                <span class="text-primary"><app-icon [data]="{ name: 'dumbbell', size: 16 }" /></span>
+                {{ wk.workouts }}
+              </dd>
+            </div>
+            <div class="flex min-w-0 flex-col-reverse px-1.5">
+              <dt class="hyphens-auto break-words text-xs font-semibold leading-tight text-on-surface-variant">{{ plural(wk.streakWeeks, 'home.week.streak') | mnTranslate }}</dt>
+              <dd class="tnum flex items-center justify-center gap-1.5 font-display text-xl font-extrabold text-on-surface">
+                <span class="text-primary"><app-icon [data]="{ name: 'flame', size: 16 }" /></span>
+                {{ wk.streakWeeks }}
+              </dd>
+            </div>
+            <div class="flex min-w-0 flex-col-reverse px-1.5">
+              @if (wk.showReps) {
+                <!-- A bodyweight-only week has no kilos to add up: count reps. -->
+                <dt class="hyphens-auto break-words text-xs font-semibold leading-tight text-on-surface-variant">{{ plural(wk.reps, 'home.week.reps') | mnTranslate }}</dt>
+                <dd class="tnum font-display text-xl font-extrabold text-primary">{{ wk.reps }}</dd>
+              } @else {
+                <dt class="hyphens-auto break-words text-xs font-semibold leading-tight text-on-surface-variant">{{ 'home.week.volume' | mnTranslate }}</dt>
+                <dd class="tnum font-display text-xl font-extrabold text-primary">{{ volumeText(wk.volumeKg) }}</dd>
+              }
+            </div>
+          </dl>
+        }
+
+        @if (canUseAi()) {
+          <!-- One family of AI buttons: outline, sparkles in primary, one line. -->
+          <ul class="space-y-2" [class.mt-4]="!!wk">
+            <li>
+              @if (wk && wk.workouts > 0) {
+                <button type="button" (click)="showAnalysis.set(true)" class="{{ aiButton }}">
+                  <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'sparkles', size: 16 }" /></span>
+                  <span class="min-w-0 flex-1 text-left">{{ 'analysis.week' | mnTranslate }}</span>
+                  <span class="shrink-0 text-outline"><app-icon [data]="{ name: 'chevron-right', size: 18 }" /></span>
+                </button>
+              } @else {
+                <p class="px-1 text-sm leading-relaxed text-on-surface-variant">{{ 'coach.analyse.empty' | mnTranslate }}</p>
+              }
+            </li>
+            <li>
+              <button type="button" (click)="suggestMode.set('workout')" class="{{ aiButton }}">
+                <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'sparkles', size: 16 }" /></span>
+                <span class="min-w-0 flex-1 text-left">{{ 'suggest.workout' | mnTranslate }}</span>
+                <span class="shrink-0 text-outline"><app-icon [data]="{ name: 'chevron-right', size: 18 }" /></span>
+              </button>
+            </li>
+            <li>
+              <button type="button" (click)="suggestMode.set('week')" class="{{ aiButton }}">
+                <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'sparkles', size: 16 }" /></span>
+                <span class="min-w-0 flex-1 text-left">{{ 'suggest.week' | mnTranslate }}</span>
+                <span class="shrink-0 text-outline"><app-icon [data]="{ name: 'chevron-right', size: 18 }" /></span>
+              </button>
+            </li>
+          </ul>
+          <p class="mt-3 text-xs leading-relaxed text-on-surface-variant">{{ 'coach.disclosure' | mnTranslate }}</p>
+        }
+      </div>
+    </section>
+  }
+  </div>
+
   <!-- Recent workouts -->
-  <section>
+  <section class="min-w-0">
     <div class="mb-4 flex items-center justify-between gap-3">
       <h2 class="font-display text-lg font-bold text-on-surface">
         {{ 'home.recent' | mnTranslate }}
@@ -193,4 +246,12 @@
 
 @if (showNew()) {
   <app-new-workout-sheet [source]="rerunSource()" [template]="templateSource()" (closed)="showNew.set(false)" />
+}
+
+@if (showAnalysis() && canUseAi()) {
+  <app-analysis-sheet (closed)="showAnalysis.set(false)" />
+}
+
+@if (canUseAi() && suggestMode(); as mode) {
+  <app-suggest-sheet [mode]="mode" (closed)="closeSuggest()" />
 }

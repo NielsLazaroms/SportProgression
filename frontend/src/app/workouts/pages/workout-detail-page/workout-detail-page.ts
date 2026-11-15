@@ -27,7 +27,12 @@ import {
   ModalBuilder,
   ConfirmationTone,
   ActionStyle,
+  KeyboardMode,
 } from 'mn-angular-lib';
+import { AuthService } from '../../../auth/data-access/auth.service';
+import { DecimalInput } from '../../components/decimal-input';
+import { AnalysisSheet } from '../../../analysis/analysis-sheet';
+import { AnalysisService } from '../../../analysis/analysis.service';
 import { AppIcon } from '../../../shared/app-icon';
 import { AppHeader } from '../../../layout/app-header';
 import { WorkoutService } from '../../data-access/workout.service';
@@ -44,6 +49,8 @@ import {
 } from '../../../progress/models/progress.model';
 import {
   Workout,
+  workoutBodyweightReps,
+  workoutRepCount,
   workoutVolumeKg,
   workoutSetCount,
   workingSets,
@@ -59,6 +66,7 @@ import {
   BodyweightTag,
   bodyweightChipText,
   bodyweightSetText,
+  extraWeightText,
 } from '../../../shared/bodyweight';
 import {
   compactKg,
@@ -81,7 +89,7 @@ interface SetDraft {
   /** null while the input is cleared mid-typing. */
   reps: number | null;
   weight: number | null;
-  /** True once the user changed a value — never prefill over it. */
+  /** True once the user changed a value: never prefill over it. */
   touched: boolean;
   /** Log the next set as a warm-up (resets after every logged set). */
   warmup: boolean;
@@ -99,6 +107,8 @@ interface ExerciseRef {
   maxOffset: number;
   /** Best set of all earlier sessions (heaviest; most reps on a tie). */
   best: PlainSet | null;
+  /** The set with the most reps of all earlier sessions (heaviest on a tie). */
+  mostReps: PlainSet | null;
   /** Every working set of all earlier finished sessions, for records. */
   earlierSets: PlainSet[];
 }
@@ -117,6 +127,10 @@ const DEFAULT_WEIGHT = 20;
 /** How many earlier sessions the "Last time" strip can page through. */
 const MAX_SESSIONS_BACK = 5;
 const UNDO_MS = 6000;
+/** How long the "Set 2 logged" line stays under the Log button. */
+const LOGGED_MS = 5000;
+/** Set once the lifter has logged a set against a target: the legend is known by then. */
+const TARGET_HINT_KEY = 'ironpulse.hint.targetSeen';
 const APP_TITLE = 'Iron Pulse';
 
 type ExState = 'finished' | 'active' | 'pending';
@@ -161,6 +175,8 @@ const letterAt = (i: number) => String.fromCharCode(65 + (i % 26));
     MnInputField,
     MnSkeleton,
     MnTranslatePipe,
+    AnalysisSheet,
+    DecimalInput,
   ],
   templateUrl: './workout-detail-page.html',
   host: { '(document:keydown.escape)': 'onEscape()' },
@@ -172,6 +188,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   private readonly title = inject(Title);
   private readonly injector = inject(Injector);
   private readonly workoutService = inject(WorkoutService);
+  private readonly analysisService = inject(AnalysisService);
   private readonly exerciseService = inject(ExerciseService);
   private readonly definitionService = inject(ExerciseDefinitionService);
   private readonly setService = inject(SetService);
@@ -180,6 +197,8 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   private readonly alerts = inject(MnAlertService);
   private readonly lang = inject(MnLanguageService);
   private readonly modal = inject(MnModalService);
+  /** AI entry points ("Analyse workout") are only shown to users who may use them. */
+  readonly canUseAi = inject(AuthService).canUseAi;
 
   private workoutId = '';
   private readonly previousTitle = this.title.getTitle();
@@ -276,6 +295,18 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     const w = this.workout();
     return w ? workoutVolumeKg(w) : 0;
   });
+  /** The AI analysis of this workout; only asked for when opened. */
+  readonly showAnalysis = signal(false);
+
+  readonly totalReps = computed(() => {
+    const w = this.workout();
+    return w ? workoutRepCount(w) : 0;
+  });
+  /** Reps on bodyweight exercises: shown next to the volume of a mixed workout. */
+  readonly bodyweightReps = computed(() => {
+    const w = this.workout();
+    return w ? workoutBodyweightReps(w) : 0;
+  });
   readonly totalSets = computed(() => {
     const w = this.workout();
     return w ? workoutSetCount(w) : 0;
@@ -285,7 +316,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     return this.exercises().filter((e) => ids.has(e.id)).length;
   });
 
-  /** Catalog ids already in this workout — flagged in the picker. */
+  /** Catalog ids already in this workout: flagged in the picker. */
   readonly usedDefinitionIds = computed(
     () =>
       new Set(
@@ -329,11 +360,19 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
       if (!prev.length) continue;
       const earlierSets: PlainSet[] = [];
       let best: PlainSet | null = null;
+      let mostReps: PlainSet | null = null;
       for (const s of prev) {
         for (const set of s.sets) {
           const p = { reps: Number(set.reps), weightKg: Number(set.weightKg) };
           if (!(p.reps > 0)) continue;
           earlierSets.push(p);
+          if (
+            !mostReps ||
+            p.reps > mostReps.reps ||
+            (p.reps === mostReps.reps && p.weightKg > mostReps.weightKg)
+          ) {
+            mostReps = p;
+          }
           if (
             !best ||
             p.weightKg > best.weightKg ||
@@ -350,6 +389,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
         offset,
         maxOffset,
         best,
+        mostReps,
         earlierSets,
       });
     }
@@ -359,7 +399,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   /**
    * Working sets of this workout that are a personal record, with the kind:
    * heavier than ever ('weight') or more reps than ever at that weight or
-   * heavier ('reps') — compared with every earlier finished session plus the
+   * heavier ('reps'): compared with every earlier finished session plus the
    * earlier working sets of this workout. Warm-ups never count.
    */
   readonly prSets = computed(() => {
@@ -416,6 +456,15 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
 
   readonly showAddExercise = signal(false);
 
+  /** The set that was just logged: confirmed under the Log button and flashed in the list. */
+  readonly lastLogged = signal<{ exerciseId: number; setId: number | null; text: string } | null>(
+    null,
+  );
+  private loggedTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Spell the target line out ("3 sets of 8 reps") until a set was logged against one. */
+  readonly showTargetHint = signal(!WorkoutDetailPage.targetHintSeen());
+
   // "Save as template" bottom sheet (finished workouts only)
   readonly showSaveTemplate = signal(false);
   readonly savingTemplate = signal(false);
@@ -469,6 +518,15 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.title.setTitle(this.previousTitle || APP_TITLE);
     if (this.undoTimer) clearTimeout(this.undoTimer);
+    if (this.loggedTimer) clearTimeout(this.loggedTimer);
+  }
+
+  private static targetHintSeen(): boolean {
+    try {
+      return localStorage.getItem(TARGET_HINT_KEY) === '1';
+    } catch {
+      return false;
+    }
   }
 
   // ---------------------------------------------------------------- loading
@@ -580,7 +638,9 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
 
   /**
    * Seed untouched drafts: follow the reference session set-by-set, else
-   * continue from the last set logged today, else 10 × 20.
+   * continue from the last set logged today, else 10 × 20. A suggested weight
+   * (planned workout) wins for the first working set; after that the lifter's
+   * own sets lead again.
    */
   private applyPrefill(): void {
     const refs = this.refs();
@@ -605,6 +665,8 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
       // A planned exercise: the plan decides the reps, last time the weight.
       const planReps = this.targetReps(ex);
       if (planReps) d.reps = planReps;
+      const planWeight = this.targetWeight(ex);
+      if (planWeight != null && !sets.length) d.weight = planWeight;
     }
     this.draftTick.update((n) => n + 1);
   }
@@ -624,20 +686,37 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     return this.lang.translateIfPresent('muscle.' + value) ?? value;
   }
 
-  /** "67,5 kg", or the bodyweight label for 0 kg. */
-  weightText(kg: number | string): string {
-    return Number(kg) === 0
-      ? this.t('unit.bw')
-      : `${this.num(kg)} ${this.t('unit.kg')}`;
-  }
-
   /** Bodyweight exercise: its weights are extra weight on top of body weight. */
   readonly isBw = isBodyweight;
 
-  /** "9 × 67,5 kg" / "12 × BW"; bodyweight exercise: "12 reps" / "8 reps · +10 kg". */
+  /**
+   * "9 × 67,5 kg"; bodyweight exercise: "12 reps" / "8 reps · +10 kg"; a
+   * weights exercise done at 0 kg: "12 reps · no extra weight" (no "BW"
+   * abbreviation where there is room for the words).
+   */
   setText(reps: number | string, kg: number | string, bw = false): string {
     if (bw) return bodyweightSetText(reps, kg, this.t, this.lang.locale);
-    return `${this.num(reps)} × ${this.weightText(kg)}`;
+    if (Number(kg) === 0) {
+      return `${bodyweightSetText(reps, 0, this.t, this.lang.locale)} · ${this.t('bw.plain')}`;
+    }
+    return `${this.num(reps)} × ${this.num(kg)} ${this.t('unit.kg')}`;
+  }
+
+  /**
+   * "Best so far" of a bodyweight exercise: the most reps AND the heaviest
+   * extra weight, e.g. "12 reps · heaviest +10 kg × 6".
+   */
+  bestText(ex: WorkoutExercise, ref: ExerciseRef): string {
+    const best = ref.best;
+    if (!best) return '';
+    if (!isBodyweight(ex)) return this.setText(best.reps, best.weightKg);
+    const most = ref.mostReps ?? best;
+    const out = bodyweightSetText(most.reps, most.weightKg, this.t, this.lang.locale);
+    if (best.weightKg > 0 && best.weightKg > most.weightKg) {
+      const set = `${extraWeightText(best.weightKg, this.t, this.lang.locale)} × ${this.num(best.reps)}`;
+      return `${out} · ${this.t('bw.best.heaviest', { set })}`;
+    }
+    return out;
   }
 
   /** Compact chip text without the unit: "9 × 67,5" / "12 × BW". */
@@ -681,14 +760,53 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     return this.targetSets(ex) && n > 0 ? n : null;
   }
 
-  /** "Target 4 × 8" / "4 × 8 planned" (just the set count if reps are unknown). */
-  planText(ex: WorkoutExercise, key: 'detail.plan.target' | 'detail.plan.planned'): string {
-    const sets = this.targetSets(ex) ?? 0;
-    const reps = this.targetReps(ex);
-    return this.t(key, { sets, reps: reps ?? '' }).replace(/\s×\s(?=\s|$)/, '');
+  /**
+   * Suggested working weight of a planned exercise, or null. For a bodyweight
+   * exercise it is the extra weight (0 = none); elsewhere 0 means "no advice".
+   */
+  targetWeight(ex: WorkoutExercise): number | null {
+    if (ex.targetWeightKg == null || !this.targetSets(ex)) return null;
+    const n = Number(ex.targetWeightKg);
+    if (!Number.isFinite(n) || n < 0) return null;
+    return n > 0 || isBodyweight(ex) ? n : null;
   }
 
-  /** "2 of 4 sets" — working sets against the plan. */
+  /** "70 kg" / "+10 kg" (bodyweight); '' when there is nothing to show. */
+  private targetWeightText(ex: WorkoutExercise): string {
+    const kg = this.targetWeight(ex);
+    if (!kg) return '';
+    return isBodyweight(ex)
+      ? extraWeightText(kg, this.t, this.lang.locale)
+      : `${this.num(kg)} ${this.t('unit.kg')}`;
+  }
+
+  /**
+   * The one way a target is shown: "Target 4 × 8 · 70 kg" (bodyweight:
+   * "· +10 kg"; just the set count if reps are unknown).
+   */
+  planText(ex: WorkoutExercise): string {
+    const sets = this.targetSets(ex) ?? 0;
+    const reps = this.targetReps(ex);
+    const base = this.t('detail.plan.target', { sets, reps: reps ?? '' }).replace(
+      /\s×\s(?=\s|$)/,
+      '',
+    );
+    const weight = this.targetWeightText(ex);
+    return weight ? `${base} · ${weight}` : base;
+  }
+
+  /** The target spelled out for beginners and screen readers: "3 sets of 8 reps at 70 kg". */
+  planLegend(ex: WorkoutExercise): string {
+    const sets = this.targetSets(ex) ?? 0;
+    const reps = this.targetReps(ex);
+    const legend = reps
+      ? this.t(plural(sets, 'detail.plan.legend'), { sets, reps })
+      : `${sets} ${this.t(plural(sets, 'unit.sets'))}`;
+    const weight = this.targetWeightText(ex);
+    return weight ? this.t('detail.plan.legend.weight', { legend, weight }) : legend;
+  }
+
+  /** "2 of 4 sets": working sets against the plan. */
   planSetsText(ex: WorkoutExercise): string {
     const total = this.targetSets(ex) ?? 0;
     return this.t(plural(total, 'detail.plan.sets'), {
@@ -697,13 +815,32 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     });
   }
 
-  /** "8 reps planned" for a placeholder row. */
+  /** "8 reps" for a placeholder row of a planned set. */
   planRepsText(ex: WorkoutExercise): string {
     const reps = this.targetReps(ex);
-    if (!reps) return '';
-    return this.t('detail.plan.row.reps', {
-      reps: `${reps} ${this.t(plural(reps, 'unit.reps'))}`,
-    });
+    return reps ? `${reps} ${this.t(plural(reps, 'unit.reps'))}` : '';
+  }
+
+  /** "2 sets short of plan" / "1 set more than planned" for a finished row; '' when on plan. */
+  planDeltaText(ex: WorkoutExercise): string {
+    const delta = this.planDelta(ex);
+    if (!delta) return '';
+    const n = Math.abs(delta);
+    return this.t(plural(n, delta < 0 ? 'detail.plan.short' : 'detail.plan.extra'), { n });
+  }
+
+  /** "2 of 4 exercises finished". */
+  progressText(): string {
+    const total = this.exercises().length;
+    return this.t(plural(total, 'detail.progress'), { done: this.finishedCount(), total });
+  }
+
+  /** Width of the header bar: planned sets when there is a plan, else finished exercises. */
+  progressPct(): number {
+    const p = this.planned();
+    if (p) return (p.done / p.total) * 100;
+    const total = this.exercises().length;
+    return total ? (this.finishedCount() / total) * 100 : 0;
   }
 
   /** Numbers of the planned working sets that are still to be logged. */
@@ -757,6 +894,13 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
       // Volume says nothing here (only the extra weight is known): total reps.
       const reps = workingSets(ex).reduce((n, set) => n + Number(set.repsAmount), 0);
       if (reps > 0) parts.push(`${this.num(reps)} ${this.t(plural(reps, 'unit.reps'))}`);
+      // Weighted bodyweight work: say how heavy it got.
+      const top = Math.max(0, ...workingSets(ex).map((set) => Number(set.weightKg) || 0));
+      if (top > 0) {
+        parts.push(
+          this.t('bw.upTo', { weight: extraWeightText(top, this.t, this.lang.locale) }),
+        );
+      }
       return parts.join(' · ');
     }
     const vol = this.exerciseVolume(ex);
@@ -766,6 +910,12 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
 
   volumeText(): string {
     return compactKg(this.volume(), this.lang.locale);
+  }
+
+  /** "27 reps": the bodyweight work of a mixed workout, shown under its volume. */
+  bodyweightRepsText(): string {
+    const reps = this.bodyweightReps();
+    return `${this.num(reps)} ${this.t(plural(reps, 'unit.reps'))}`;
   }
 
   /** Badge for a set row: "W" for a warm-up, else its number among working sets. */
@@ -820,7 +970,9 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     if (target) {
       const d = this.draft(ex.id);
       d.reps = this.targetReps(ex) ?? Number(target.reps);
-      d.weight = Number(target.weightKg);
+      // The suggested weight keeps the first set, like in applyPrefill.
+      const planWeight = workingSets(ex).length ? null : this.targetWeight(ex);
+      d.weight = planWeight ?? Number(target.weightKg);
       d.touched = false;
       this.draftTick.update((n) => n + 1);
     }
@@ -1030,6 +1182,32 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     if (this.completed() || index < 0 || index >= list.length - 1) return;
     const groups = linkWithNext(list, index);
     this.applyArrangement(list.map((e, i) => ({ id: e.id, supersetGroup: groups[i] })));
+    this.moveAnnouncement.set(
+      this.t('detail.reorder.linked', { name: list[index].name, next: list[index + 1].name }),
+    );
+    // "Superset with next" is gone after the re-render: its counterpart takes the focus.
+    this.focusReorderControl(list[index].id, ['unlink', 'link', 'up', 'down']);
+  }
+
+  /** Focus the first of these controls of a reorder row that exists and is enabled. */
+  private focusReorderControl(
+    exerciseId: number,
+    order: ('link' | 'unlink' | 'up' | 'down')[],
+  ): void {
+    afterNextRender(
+      () => {
+        for (const kind of order) {
+          const el = document.getElementById(`ro-${kind}-${exerciseId}`) as
+            | HTMLButtonElement
+            | null;
+          if (el && !el.disabled) {
+            el.focus({ preventScroll: true });
+            return;
+          }
+        }
+      },
+      { injector: this.injector },
+    );
   }
 
   /** Take the exercise out of its superset (it keeps its place in the workout). */
@@ -1038,12 +1216,14 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     if (this.completed() || !list[index]) return;
     const groups = unlink(list, index);
     this.applyArrangement(list.map((e, i) => ({ id: e.id, supersetGroup: groups[i] })));
+    this.moveAnnouncement.set(this.t('detail.reorder.unlinked', { name: list[index].name }));
+    this.focusReorderControl(list[index].id, ['unlink', 'link', 'up', 'down']);
   }
 
   /** Second line of a row in reorder mode. */
   reorderMeta(ex: WorkoutExercise): string {
     if (ex.sets?.length) return this.exerciseMeta(ex);
-    if (this.targetSets(ex)) return this.planText(ex, 'detail.plan.planned');
+    if (this.targetSets(ex)) return this.planText(ex);
     return this.muscleLabel(ex.muscleGroup);
   }
 
@@ -1111,7 +1291,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
 
   /**
    * Save an exercise's notes if they changed. Emits once saved (or when there
-   * was nothing to save) and errors — after showing a toast — when it failed.
+   * was nothing to save) and errors: after showing a toast: when it failed.
    * A blur and a "Finish exercise" tap share the same in-flight request.
    */
   private persistNotes(ex: WorkoutExercise): Observable<void> {
@@ -1216,7 +1396,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
       });
   }
 
-  /** Removing an exercise with logged sets destroys data — confirm first. */
+  /** Removing an exercise with logged sets destroys data: confirm first. */
   deleteExercise(ex: WorkoutExercise): void {
     const total = ex.sets?.length ?? 0;
     if (total === 0) {
@@ -1237,6 +1417,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
         .confirmAction({ label: this.t('action.delete'), style: ActionStyle.DANGER })
         .cancelAction({ label: this.t('action.cancel') })
         .mobileBottomSheet(true)
+        .keyboard(KeyboardMode.ENABLED)
         .build(),
     );
     ref.afterClosed$.subscribe(({ result }) => {
@@ -1303,10 +1484,11 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
         isWarmup: warmup,
       })
       .subscribe({
-        next: () => {
+        next: (created) => {
           // A warm-up is a one-off: the next set counts again.
           d.warmup = false;
           this.draftTick.update((n) => n + 1);
+          this.confirmLogged(ex, created?.setId ?? null, reps, weight, warmup);
           this.loadWorkout({
             then: () => {
               this.logging.set(false);
@@ -1331,6 +1513,35 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
           this.alerts.error(this.t('toast.addSet.err'), this.t(errorHintKey(err)));
         },
       });
+  }
+
+  /**
+   * Quiet confirmation of a logged set: one line under the Log button (the new
+   * row itself can land below the tab bar) and a short flash on the row. The
+   * button never moves, so the next set stays under the thumb.
+   */
+  private confirmLogged(
+    ex: WorkoutExercise,
+    setId: number | null,
+    reps: number,
+    weight: number,
+    warmup: boolean,
+  ): void {
+    const set = this.setText(reps, weight, isBodyweight(ex));
+    const text = warmup
+      ? this.t('detail.logged.warmup', { set })
+      : this.t('detail.logged', { n: workingSets(ex).length + 1, set });
+    this.lastLogged.set({ exerciseId: ex.id, setId, text });
+    if (this.loggedTimer) clearTimeout(this.loggedTimer);
+    this.loggedTimer = setTimeout(() => this.lastLogged.set(null), LOGGED_MS);
+    if (!warmup && this.targetSets(ex) && this.showTargetHint()) {
+      this.showTargetHint.set(false);
+      try {
+        localStorage.setItem(TARGET_HINT_KEY, '1');
+      } catch {
+        /* storage unavailable: the hint simply shows again next time */
+      }
+    }
   }
 
   private focusReps(exerciseId: number): void {
@@ -1549,6 +1760,8 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     this.workoutService.reopenWorkout(this.workoutId).subscribe({
       next: () => {
         this.reopening.set(false);
+        // The workout can change now, so a stored analysis is out of date.
+        this.analysisService.forgetWorkout(this.workoutId);
         const current = this.workout();
         if (current) {
           const open: Workout = { ...current, completedAt: null };
@@ -1676,6 +1889,7 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
         .confirmAction({ label: this.t('action.delete'), style: ActionStyle.DANGER })
         .cancelAction({ label: this.t('action.cancel') })
         .mobileBottomSheet(true)
+        .keyboard(KeyboardMode.ENABLED)
         .build(),
     );
     ref.afterClosed$.subscribe(({ result }) => {

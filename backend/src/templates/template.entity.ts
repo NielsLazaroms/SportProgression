@@ -81,7 +81,7 @@ export class TemplateExercise {
   supersetGroup?: number | null;
 
   /** The plan: this many working sets of this many reps. No weight on
-   *  purpose — that comes from what the lifter did last time. */
+   *  purpose: that comes from what the lifter did last time. */
   @Column()
   targetSets: number;
 

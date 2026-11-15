@@ -26,7 +26,7 @@ import { AuthGuard } from '@nestjs/passport';
 
 /**
  * What clients get to see of a catalog entry. The catalog is shared between
- * all users, so the creator's account id is never exposed — only whether the
+ * all users, so the creator's account id is never exposed: only whether the
  * entry belongs to the caller (and may therefore be edited or deleted).
  */
 function toPublic(def: ExerciseDefinition, userId: string) {

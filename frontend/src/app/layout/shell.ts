@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MnTranslatePipe } from 'mn-angular-lib';
 import { AppIcon } from '../shared/app-icon';
+import { AppLogo } from '../shared/app-logo';
 
 interface Tab {
   path: string;
@@ -13,14 +14,14 @@ interface Tab {
 
 /**
  * Authenticated app shell: a scrolling content area (each page brings its own
- * header) plus the navigation — a fixed bottom tab bar on phones/tablets, a
+ * header) plus the navigation: a fixed bottom tab bar on phones/tablets, a
  * fixed 15rem left sidebar from `lg` up (the page header is offset to match,
  * see `app-header`).
  */
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, AppIcon, MnTranslatePipe],
+  imports: [RouterOutlet, RouterLink, AppIcon, AppLogo, MnTranslatePipe],
   template: `
     <div class="min-h-dvh bg-surface text-on-surface lg:pl-60">
       <router-outlet />
@@ -47,7 +48,8 @@ interface Tab {
               >
                 <app-icon [data]="{ name: tab.icon, size: 22 }" />
               </span>
-              <span class="max-w-full truncate text-xs font-semibold">{{ tab.labelKey | mnTranslate }}</span>
+              <!-- Shrinks on narrow screens and wraps as a last resort: never cut off (large text, 320px) -->
+              <span class="max-w-full text-center text-[clamp(0.625rem,3.75vw,0.75rem)] font-semibold leading-tight [overflow-wrap:anywhere]">{{ tab.labelKey | mnTranslate }}</span>
             </a>
           }
         </div>
@@ -59,7 +61,7 @@ interface Tab {
         class="fixed inset-y-0 left-0 z-50 hidden w-60 flex-col border-r border-outline-variant/40 bg-surface-container-low lg:flex"
       >
         <a routerLink="/workouts" class="flex h-16 shrink-0 items-center gap-2 px-5 text-primary">
-          <app-icon [data]="{ name: 'dumbbell', size: 26 }" />
+          <app-logo [size]="32" />
           <span class="font-display text-2xl font-extrabold tracking-tight">IRON PULSE</span>
         </a>
         <ul class="flex flex-col gap-1 overflow-y-auto px-3 py-4">

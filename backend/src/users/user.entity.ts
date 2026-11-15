@@ -42,6 +42,21 @@ export class User {
   @Column({ default: 0 })
   tokenVersion: number;
 
+  /**
+   * The "AI" role: only users with it may use the analysis and plan features,
+   * because every use is a paid call to Claude. Off for new accounts; can also
+   * be granted by e-mail address through AI_ALLOWED_EMAILS.
+   */
+  @Column({ default: false })
+  aiAccess: boolean;
+
+  /**
+   * Muscle groups the user deliberately does not train. The analysis leaves
+   * these alone instead of reporting them as missing.
+   */
+  @Column({ type: 'simple-json', nullable: true })
+  ignoredMuscleGroups?: string[] | null;
+
   @OneToMany(() => Workout, (workout) => workout.user)
   workouts: Workout[];
 

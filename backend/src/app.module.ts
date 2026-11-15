@@ -17,6 +17,7 @@ import { SetsModule } from './sets/sets.module';
 import { ProgressModule } from './progress/progress.module';
 import { AccountModule } from './account/account.module';
 import { TemplatesModule } from './templates/templates.module';
+import { AnalysisModule } from './analysis/analysis.module';
 
 @Module({
   imports: [
@@ -82,6 +83,7 @@ import { TemplatesModule } from './templates/templates.module';
     ProgressModule,
     AccountModule,
     TemplatesModule,
+    AnalysisModule,
     AuthModule,
   ],
   controllers: [AppController],

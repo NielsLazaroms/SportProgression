@@ -50,7 +50,7 @@ export class ExercisePicker implements AfterViewInit {
   readonly definitions = input.required<ExerciseDefinition[]>();
   /** Catalog ids that are already part of this workout (flagged, still allowed). */
   readonly usedIds = input<Set<number>>(new Set());
-  /** True while the parent is adding/creating — blocks repeat taps. */
+  /** True while the parent is adding/creating: blocks repeat taps. */
   readonly busy = input(false);
   /** i18n key of the marker on entries that are already in the list. */
   readonly usedLabel = input('picker.inWorkout');

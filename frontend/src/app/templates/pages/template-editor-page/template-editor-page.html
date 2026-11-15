@@ -48,6 +48,10 @@
     @if (!rows().length) {
       <p class="mb-3 text-sm text-on-surface-variant">{{ 'templates.editor.empty' | mnTranslate }}</p>
     } @else {
+      @if (rows().length > 1) {
+        <!-- What a superset is, in the same words as the workout's reorder mode -->
+        <p class="mb-3 text-xs leading-relaxed text-on-surface-variant">{{ 'detail.reorder.hint' | mnTranslate }}</p>
+      }
       <ol class="mb-3 space-y-3">
         @for (row of rows(); track row.key; let i = $index; let first = $first; let last = $last) {
           @let ss = supersets()[i];

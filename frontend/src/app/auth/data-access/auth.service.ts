@@ -11,6 +11,8 @@ export interface UserProfile {
   firstName?: string;
   lastName?: string;
   picture?: string;
+  /** The AI role: whether analysis and plan features are available to this user. */
+  aiAccess?: boolean;
 }
 
 export interface AuthConfig {
@@ -38,6 +40,9 @@ export class AuthService {
 
   /** Current user profile, populated by checkAuth()/loadProfile(). */
   readonly profile = signal<UserProfile | null>(null);
+
+  /** True when this user may use the AI features (buttons are hidden otherwise). */
+  readonly canUseAi = computed(() => this.profile()?.aiAccess === true);
 
   readonly displayName = computed(() => {
     const p = this.profile();
@@ -141,7 +146,7 @@ export class AuthService {
 
   /**
    * Rotates the session tokens. Single-flight: when several requests hit a
-   * 401 at once they all share one refresh call — a second call with the same
+   * 401 at once they all share one refresh call: a second call with the same
    * (already rotated) token would be treated as token reuse and log the user out.
    */
   renewSession(): Observable<RenewResult> {

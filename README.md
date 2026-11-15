@@ -1,9 +1,9 @@
-# Iron Pulse — SportProgression
+# Iron Pulse: SportProgression
 
 A personal strength-training tracker: log workouts (exercises → sets × reps × weight, with notes), and see your progression per exercise over time.
 
-- `backend/` — NestJS + TypeORM REST API (Swagger UI at `http://localhost:3000/api`)
-- `frontend/` — Angular 21 app (Tailwind v4, mn-angular-lib), English + Dutch
+- `backend/`: NestJS + TypeORM REST API (Swagger UI at `http://localhost:3000/api`)
+- `frontend/`: Angular 21 app (Tailwind v4, mn-angular-lib), English + Dutch
 
 ## Quick start (no database or Google account needed)
 
@@ -20,7 +20,7 @@ npm install
 npm start              # http://localhost:4200
 ```
 
-Open http://localhost:4200 and choose **Continue as demo user**. The demo account is created with eight weeks of sample training so the progress charts have data. All data lives in `backend/dev-data.sqlite` — delete that file to start fresh.
+Open http://localhost:4200 and choose **Continue as demo user**. The demo account is created with eight weeks of sample training so the progress charts have data. All data lives in `backend/dev-data.sqlite`: delete that file to start fresh.
 
 ## Configuration (`backend/.env`)
 
@@ -34,6 +34,8 @@ Open http://localhost:4200 and choose **Continue as demo user**. The demo accoun
 | `DB_SYNCHRONIZE` | Let the app rewrite tables to match the code on startup. On in development, **off in production** unless set to `true` (it can drop columns and their data). After deploying a schema change: back up, then run once with `DB_SYNCHRONIZE=true`. |
 | `DB_LOGGING` | `true` prints every SQL statement (includes user data). Off by default. |
 | `TRUST_PROXY` | Number of reverse-proxy hops in front of the API (e.g. `1`), so rate limiting sees real client addresses. |
+| `ANTHROPIC_API_KEY` | Claude API key for the Analyse buttons. Server-side only, never sent to the browser. Empty switches the feature off. In production set it as an environment variable or secret on the host that runs the API. |
+| `AI_ALLOWED_EMAILS` | The AI role: comma-separated e-mail addresses of the accounts that may use the analysis and plan features (`*` for everyone). Other users do not see the AI buttons and the endpoints refuse them, so they cannot spend API credit. The role can also be set per user in the database (`users.aiAccess`). |
 
 On an empty database the API seeds a starter catalog of common exercises.
 
@@ -47,6 +49,8 @@ On an empty database the API seeds a starter catalog of common exercises.
 - Reorder exercises and link neighbours into supersets; logging alternates between the members automatically
 - Finish (lock) / reopen workouts, re-run a finished workout through the normal new-workout flow
 - Progress: weekly consistency, streak, muscle-group balance, per-exercise charts (estimated 1RM, top weight, volume, reps) and records
+- AI analysis on request (Claude): this week's workouts, or one finished workout compared with its earlier sessions. Limited to 10 per hour per account; the logged sets and notes are sent to Anthropic. The week analysis flags muscle groups you skipped, except the ones you switch off under Profile
+- AI plan on request (Claude): a suggested next workout or a whole training week with sets × reps and suggested weights, using only catalog exercises; start it as a workout or save it as a template
 - Shared exercise catalog (rename/delete your own entries), history with search, English + Dutch, sidebar layout on desktop
 
 ## Tests

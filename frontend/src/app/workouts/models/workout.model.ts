@@ -1,4 +1,8 @@
-import { ExerciseSet, WorkoutExercise } from '../../exercises/models/exercise.model';
+import {
+  ExerciseSet,
+  WorkoutExercise,
+  isBodyweight,
+} from '../../exercises/models/exercise.model';
 
 export interface Workout {
   id: string;
@@ -39,6 +43,27 @@ export function workoutVolumeKg(workout: Workout): number {
 export function workoutSetCount(workout: Workout): number {
   return (workout.exercises ?? []).reduce(
     (n, ex) => n + workingSets(ex).length,
+    0,
+  );
+}
+
+/**
+ * Reps done on bodyweight exercises (working sets). A mixed workout shows them
+ * next to its volume, because that work adds little or nothing to the kg total.
+ */
+export function workoutBodyweightReps(workout: Workout): number {
+  return (workout.exercises ?? [])
+    .filter((ex) => isBodyweight(ex))
+    .reduce(
+      (n, ex) => n + workingSets(ex).reduce((r, set) => r + Number(set.repsAmount), 0),
+      0,
+    );
+}
+
+/** Total reps across all working sets (what a bodyweight workout shows instead of volume). */
+export function workoutRepCount(workout: Workout): number {
+  return (workout.exercises ?? []).reduce(
+    (n, ex) => n + workingSets(ex).reduce((r, set) => r + Number(set.repsAmount), 0),
     0,
   );
 }

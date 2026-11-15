@@ -81,6 +81,17 @@ export class WorkoutExercise {
   @Column({ type: 'int', nullable: true })
   targetReps?: number | null;
 
+  /** Suggested working weight from a plan (an AI suggestion); null otherwise. */
+  @ApiProperty({ example: 70, required: false, nullable: true })
+  @Column({ type: 'float', nullable: true })
+  targetWeightKg?: number | null;
+
+  /** The planner's one-line reason for this exercise. Kept apart from the
+   *  user's own notes so it is never mistaken for something they wrote. */
+  @ApiProperty({ required: false, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  planNote?: string | null;
+
   @OneToMany(() => ExerciseSet, (set) => set.workoutExercise, { cascade: true })
   sets: ExerciseSet[];
 

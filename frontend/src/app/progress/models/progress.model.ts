@@ -6,6 +6,8 @@ export type RecordKind = 'weight' | 'reps';
 export interface ProgressTotals {
   workouts: number;
   sets: number;
+  /** Total reps of the working sets (what a bodyweight week is measured in). */
+  reps: number;
   volumeKg: number;
 }
 
@@ -106,7 +108,7 @@ export interface ExerciseHistory {
   sessions: ExerciseSession[];
 }
 
-/** Estimated one-rep max (Epley) — must match the backend formula. */
+/** Estimated one-rep max (Epley): must match the backend formula. */
 export function estimateOneRepMax(weightKg: number, reps: number): number {
   if (reps <= 0 || weightKg <= 0) return 0;
   if (reps === 1) return weightKg;

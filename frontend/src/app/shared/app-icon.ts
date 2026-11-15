@@ -48,10 +48,12 @@ import {
   LucideArrowUp,
   LucideArrowDown,
   LucideClipboardList,
+  LucideSparkles,
+  LucideEye,
 } from '@lucide/angular';
 
 /**
- * App-wide icon by stable name — `<app-icon [data]="{ name: 'dumbbell', size: 22 }" />`.
+ * App-wide icon by stable name: `<app-icon [data]="{ name: 'dumbbell', size: 22 }" />`.
  * Renders lucide's per-icon SVG directives; icons inherit the surrounding
  * `currentColor`. Add a name here to make it available everywhere.
  */
@@ -59,6 +61,8 @@ import {
   selector: 'app-icon',
   standalone: true,
   imports: [
+    LucideEye,
+    LucideSparkles,
     LucideClipboardList,
     LucideArrowDown,
     LucideArrowUp,
@@ -157,6 +161,8 @@ import {
       @case ('arrow-up') { <svg lucideArrowUp [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('arrow-down') { <svg lucideArrowDown [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('clipboard-list') { <svg lucideClipboardList [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('sparkles') { <svg lucideSparkles [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('eye') { <svg lucideEye [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('zap') { <svg lucideZap [style.width.px]="size()" [style.height.px]="size()"></svg> }
     }
   `,

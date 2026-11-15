@@ -100,10 +100,21 @@
                   <p class="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
                     {{ fullDay(p.session.date) }} · {{ opt.label | mnTranslate }}
                   </p>
-                  <p class="tnum mt-0.5 font-display text-3xl font-extrabold text-on-surface">
-                    {{ metricText(p.value) }}
-                    <span class="text-sm font-bold text-on-surface-variant">{{ metricUnit(p.value) }}</span>
-                  </p>
+                  @if (noExtra(p.value)) {
+                    <!-- A plain bodyweight session: "0 kg" would read as a missing number -->
+                    <p class="mt-0.5 font-display text-2xl font-extrabold leading-tight text-on-surface">
+                      {{ 'bw.plain.title' | mnTranslate }}
+                    </p>
+                  } @else {
+                    <p class="tnum mt-0.5 font-display text-3xl font-extrabold text-on-surface">
+                      {{ metricText(p.value) }}
+                      <span class="text-sm font-bold text-on-surface-variant">{{ metricUnit(p.value) }}</span>
+                    </p>
+                  }
+                  @if (loadNote(p.session); as load) {
+                    <!-- Reps done with extra weight: say so, or a dip looks like a step back -->
+                    <p class="tnum mt-0.5 text-xs font-semibold text-on-surface-variant">{{ load }}</p>
+                  }
                 </div>
                 @if (change(); as c) {
                   @let dir = changeDir(c.pct);
@@ -121,6 +132,10 @@
                       {{ 'progress.ex.sinceFirst' | mnTranslate }}
                     </p>
                   </div>
+                } @else if (loadChanged()) {
+                  <p class="max-w-[45%] shrink-0 text-right text-[11px] font-semibold leading-tight text-on-surface-variant">
+                    {{ 'bw.trend.changed' | mnTranslate }}
+                  </p>
                 } @else if (h.sessions.length > 1 && activeIndex() === 0) {
                   <p class="max-w-[45%] shrink-0 text-right text-[11px] font-semibold leading-tight text-on-surface-variant">
                     {{ 'progress.ex.firstSession' | mnTranslate }}
@@ -205,9 +220,15 @@
                   (focus)="selected.set($index)"
                   [attr.aria-label]="pointAria(p)"
                   [attr.aria-pressed]="isActive"
-                  class="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-surface-container outline-none transition-transform focus-visible:ring-2 focus-visible:ring-primary"
+                  class="absolute -translate-x-1/2 -translate-y-1/2 rounded-full outline-none transition-transform focus-visible:ring-2 focus-visible:ring-primary"
                   [class]="
-                    (p.session.isPr ? 'z-10 h-3 w-3 border-2 bg-record-fill ring-1 ring-record ' : dense() && !isActive ? 'h-1.5 w-1.5 bg-primary-container ' : 'h-2.5 w-2.5 border-2 bg-primary-container ') +
+                    (p.session.isPr
+                      ? 'z-10 h-3 w-3 border-2 border-surface-container bg-record-fill ring-1 ring-record '
+                      : weighted(p)
+                        ? 'h-2.5 w-2.5 border-2 border-primary-container bg-surface-container '
+                        : dense() && !isActive
+                          ? 'h-1.5 w-1.5 bg-primary-container '
+                          : 'h-2.5 w-2.5 border-2 border-surface-container bg-primary-container ') +
                     (isActive ? 'z-20 scale-150' : '')
                   "
                   [style.left.%]="p.x"
@@ -232,6 +253,12 @@
               <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-record-fill ring-1 ring-record"></span>
               <span>{{ 'progress.ex.prLegend' | mnTranslate }}</span>
             </p>
+            @if (hasWeighted()) {
+              <p class="flex items-center gap-2">
+                <span class="h-2.5 w-2.5 shrink-0 rounded-full border-2 border-primary-container bg-surface-container"></span>
+                <span>{{ 'bw.chart.weighted' | mnTranslate }}</span>
+              </p>
+            }
             @if (h.sessions.length < 2) {
               <p>{{ 'progress.ex.onePoint' | mnTranslate }}</p>
             }
@@ -240,7 +267,7 @@
 
         <!-- ============ Records ============ -->
         <section class="mb-8">
-          <h2 class="mb-3 flex items-center gap-2 font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+          <h2 class="mb-3 flex items-center gap-2 font-display text-lg font-bold text-on-surface">
             <span class="shrink-0 text-record"><app-icon [data]="{ name: 'trophy', size: 18 }" /></span>
             {{ 'progress.ex.records' | mnTranslate }}
           </h2>
@@ -268,7 +295,7 @@
                     @if (h.bodyweight) {
                       {{ r.weightKg > 0 ? extraText(r.weightKg) : ('bw.plain' | mnTranslate) }}
                     } @else {
-                      × {{ weightText(r.weightKg) }}
+                      {{ r.weightKg > 0 ? '× ' + weightText(r.weightKg) : ('bw.plain' | mnTranslate) }}
                     }
                   </p>
                   <p class="mt-auto pt-1 text-[11px] text-on-surface-variant">{{ fullDay(r.date) }}</p>
@@ -306,7 +333,7 @@
 
         <!-- ============ Session history (newest first) ============ -->
         <section>
-          <h2 class="mb-3 font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+          <h2 class="mb-3 font-display text-lg font-bold text-on-surface">
             {{ 'progress.ex.history' | mnTranslate }}
           </h2>
           <div class="space-y-2">
@@ -330,10 +357,14 @@
                   </div>
                   <div class="flex shrink-0 items-center gap-1">
                     <div class="text-right">
-                      <p class="tnum font-display font-extrabold text-on-surface">
-                        {{ metricText(v) }} <span class="text-xs font-bold text-on-surface-variant">{{ metricUnit(v) }}</span>
-                      </p>
-                      <p class="text-[11px] font-semibold text-on-surface-variant">{{ opt.label | mnTranslate }}</p>
+                      <!-- The metric is named once, above the chart: not repeated under every number -->
+                      @if (noExtra(v)) {
+                        <p class="max-w-[9rem] text-sm font-bold leading-tight text-on-surface-variant">{{ 'bw.plain' | mnTranslate }}</p>
+                      } @else {
+                        <p class="tnum font-display font-extrabold text-on-surface">
+                          {{ metricText(v) }} <span class="text-xs font-bold text-on-surface-variant">{{ metricUnit(v) }}</span>
+                        </p>
+                      }
                     </div>
                     <span class="text-outline"><app-icon [data]="{ name: 'chevron-right', size: 18 }" /></span>
                   </div>

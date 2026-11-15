@@ -8,6 +8,7 @@ import {
   MnModalService,
   MnSkeleton,
   MnTranslatePipe,
+  KeyboardMode,
   ModalBuilder,
 } from 'mn-angular-lib';
 import { AppHeader } from '../../../layout/app-header';
@@ -93,6 +94,7 @@ export class TemplatesPage implements OnInit {
         })
         .cancelAction({ label: this.lang.t('action.cancel') })
         .mobileBottomSheet(true)
+        .keyboard(KeyboardMode.ENABLED)
         .build(),
     );
     ref.afterClosed$.subscribe(({ result }) => {

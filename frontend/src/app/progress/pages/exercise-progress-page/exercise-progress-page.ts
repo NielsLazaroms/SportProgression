@@ -13,7 +13,7 @@ import {
 } from '../../models/progress.model';
 import {
   BodyweightTag,
-  bodyweightChipText,
+  bodyweightSetText,
   extraWeightText,
 } from '../../../shared/bodyweight';
 import {
@@ -123,7 +123,7 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
   });
   readonly metric = computed<Metric>(() => this.metricOption().id);
 
-  /** Lowest / highest value of the chosen metric — the chart's y range. */
+  /** Lowest / highest value of the chosen metric: the chart's y range. */
   private readonly range = computed(() => {
     const values = this.sessions().map(METRIC_VALUE[this.metric()]);
     if (!values.length) return { min: 0, max: 0 };
@@ -192,10 +192,75 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
   readonly change = computed<{ pct: number } | null>(() => {
     const pts = this.points();
     const i = this.activeIndex();
-    if (i < 1 || !pts[i]) return null;
+    if (i < 1 || !pts[i] || this.loadChanged()) return null;
     const first = pts[0].value;
     return first > 0 ? { pct: ((pts[i].value - first) / first) * 100 } : null;
   });
+
+  /** A reps chart of a bodyweight exercise: the extra weight is not in the numbers. */
+  private readonly repsOfBodyweight = computed(
+    () => this.bodyweight() && REP_METRICS.includes(this.metric()),
+  );
+
+  /**
+   * Reps of a bodyweight exercise, and the selected session was done with a
+   * different extra weight than the first one: fewer reps with more weight is
+   * no step back, so no percentage is shown.
+   */
+  readonly loadChanged = computed(() => {
+    const sessions = this.sessions();
+    const i = this.activeIndex();
+    return (
+      this.repsOfBodyweight() &&
+      i >= 1 &&
+      !!sessions[i] &&
+      sessions[0].topWeightKg !== sessions[i].topWeightKg
+    );
+  });
+
+  /**
+   * True when the reps chart shows hollow dots: sessions done with extra
+   * weight (a record session keeps its gold dot, so it does not count).
+   */
+  readonly hasWeighted = computed(
+    () =>
+      this.repsOfBodyweight() &&
+      this.sessions().some((s) => s.topWeightKg > 0 && !s.isPr),
+  );
+
+  /** A point of the reps chart that was done with extra weight. */
+  weighted(p: ChartPoint): boolean {
+    return this.repsOfBodyweight() && p.session.topWeightKg > 0;
+  }
+
+  /**
+   * What the reps of a weighted bodyweight session were done with:
+   * "Best set: 8 reps · +15 kg" / "up to +15 kg" (total reps). '' otherwise.
+   */
+  loadNote(s: ExerciseSession): string {
+    if (!this.repsOfBodyweight() || !(s.topWeightKg > 0)) return '';
+    const t = (k: string, p?: Record<string, string | number>) => this.lang.t(k, p);
+    if (this.metric() === 'totalReps') {
+      return t('bw.upTo', { weight: this.extraText(s.topWeightKg) });
+    }
+    let top: { reps: number; weightKg: number } | null = null;
+    for (const set of s.sets) {
+      const reps = Number(set.reps);
+      const weightKg = Number(set.weightKg);
+      if (!top || reps > top.reps || (reps === top.reps && weightKg > top.weightKg)) {
+        top = { reps, weightKg };
+      }
+    }
+    if (!top) return '';
+    return t('bw.bestSet', {
+      set: bodyweightSetText(top.reps, top.weightKg, t, this.lang.locale),
+    });
+  }
+
+  /** "Top extra weight" of a session without any: say so instead of "0 kg". */
+  noExtra(value: number): boolean {
+    return this.bodyweight() && this.metric() === 'weight' && !(value > 0);
+  }
 
   readonly rel = (d: string) =>
     relativeDay(d, (k, p) => this.lang.t(k, p), this.lang.locale);
@@ -265,12 +330,11 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
     );
   }
 
-  /** "100 kg", or "BW" for a bodyweight (0 kg) set; "+10 kg" on a bodyweight exercise. */
+  /** "100 kg"; "+10 kg" on a bodyweight exercise; "no extra weight" for 0 kg. */
   weightText(weightKg: number): string {
-    if (weightKg > 0 && this.bodyweight()) return this.extraText(weightKg);
-    return weightKg > 0
-      ? `${this.kg(weightKg)} ${this.lang.t('unit.kg')}`
-      : this.lang.t('unit.bw');
+    if (!(weightKg > 0)) return this.lang.t('bw.plain');
+    if (this.bodyweight()) return this.extraText(weightKg);
+    return `${this.kg(weightKg)} ${this.lang.t('unit.kg')}`;
   }
 
   /** "+10 kg": extra weight on top of body weight. */
@@ -278,15 +342,18 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
     return extraWeightText(weightKg, (k, p) => this.lang.t(k, p), this.lang.locale);
   }
 
-  /** One set of a session as a chip: "8 × 60 kg" / "12 × BW" / "8 × +10 kg". */
+  /**
+   * One set of a session as a chip: "8 × 60 kg"; without weight just
+   * "12 reps"; bodyweight exercise with extra weight "8 reps · +10 kg". There
+   * is room here, so no "BW" abbreviation.
+   */
   chipText(set: { reps: number; weightKg: number }): string {
-    if (this.bodyweight()) {
-      return bodyweightChipText(
+    if (this.bodyweight() || !(Number(set.weightKg) > 0)) {
+      return bodyweightSetText(
         set.reps,
-        set.weightKg,
+        this.bodyweight() ? set.weightKg : 0,
         (k, p) => this.lang.t(k, p),
         this.lang.locale,
-        true,
       );
     }
     return `${set.reps} × ${this.weightText(set.weightKg)}`;
@@ -297,10 +364,11 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
     return `${reps} ${this.lang.t(plural(reps, 'unit.reps'))}`;
   }
 
-  /** What the record was: "Heaviest ever · 185 kg × 1" / "Most reps · 13 × BW". */
+  /** What the record was: "Heaviest ever · 185 kg × 1" / "Most reps · 13 reps" (no weight). */
   recordText(r: { kind: RecordKind; reps: number; weightKg: number }): string {
-    const set =
-      r.kind === 'weight'
+    const set = !(r.weightKg > 0)
+      ? this.repsText(r.reps)
+      : r.kind === 'weight'
         ? `${this.weightText(r.weightKg)} × ${r.reps}`
         : `${r.reps} × ${this.weightText(r.weightKg)}`;
     // Non-breaking spaces keep the set itself on one line when the text wraps.
@@ -320,8 +388,12 @@ export class ExerciseProgressPage implements OnInit, OnDestroy {
   pointAria(p: ChartPoint): string {
     const parts = [
       this.fullDay(p.session.date),
-      `${this.metricText(p.value)} ${this.metricUnit(p.value)}`,
+      this.noExtra(p.value)
+        ? this.lang.t('bw.plain')
+        : `${this.metricText(p.value)} ${this.metricUnit(p.value)}`,
     ];
+    const load = this.loadNote(p.session);
+    if (load) parts.push(load);
     if (p.session.record) parts.push(this.recordText(p.session.record));
     else if (p.session.isPr) parts.push(this.lang.t('progress.ex.prLegend'));
     return parts.join(', ');

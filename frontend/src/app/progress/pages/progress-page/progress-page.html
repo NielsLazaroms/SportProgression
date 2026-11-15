@@ -41,7 +41,7 @@
     <!-- ============ Exercises ============ -->
     <section class="mb-8">
       <div class="mb-3 flex items-baseline justify-between gap-3">
-        <h2 class="font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+        <h2 class="font-display text-lg font-bold text-on-surface">
           {{ 'progress.exercises' | mnTranslate }}
         </h2>
         <span class="tnum text-xs font-semibold text-on-surface-variant">{{ s.exercises.length }}</span>
@@ -127,7 +127,7 @@
 
     <!-- ============ Recent personal records ============ -->
     <section class="mb-8">
-      <h2 class="mb-3 flex items-start gap-2 font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+      <h2 class="mb-3 flex items-start gap-2 font-display text-lg font-bold text-on-surface">
         <span class="mt-1 shrink-0 text-record"><app-icon [data]="{ name: 'trophy', size: 18 }" /></span>
         {{ 'progress.records' | mnTranslate }}
       </h2>
@@ -143,10 +143,13 @@
                 <app-icon [data]="{ name: 'award', size: 18 }" />
               </span>
               <span class="min-w-0 flex-1">
-                <span class="block font-bold text-on-surface [overflow-wrap:anywhere]">{{ r.name }}</span>
+                <!-- Name and date share a line and wrap as whole items on narrow screens -->
+                <span class="flex flex-wrap items-baseline justify-between gap-x-3">
+                  <span class="min-w-0 font-bold text-on-surface [overflow-wrap:anywhere]">{{ r.name }}</span>
+                  <span class="text-xs text-on-surface-variant">{{ rel(r.date) }}</span>
+                </span>
                 <span class="tnum block text-xs font-bold text-record">{{ recordText(r) }}</span>
               </span>
-              <span class="shrink-0 text-right text-xs text-on-surface-variant">{{ rel(r.date) }}</span>
             </a>
           }
         </div>
@@ -168,13 +171,13 @@
             <app-icon [data]="{ name: 'flame', size: 14 }" />
             {{ streakText(s.streakWeeks) }}
           </span>
-          <h2 class="font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+          <h2 class="font-display text-lg font-bold text-on-surface">
             {{ 'progress.consistency' | mnTranslate }}
           </h2>
           <p class="text-xs text-on-surface-variant">
             {{ 'progress.consistency.sub' | mnTranslate }}
             @if (avgWorkouts(); as avg) {
-              <span class="tnum"> · {{ 'progress.avgPerWeek' | mnTranslate: { n: kg(avg) } }}</span>
+              <span class="tnum"> · {{ avgText(avg) }}</span>
             }
           </p>
         </div>
@@ -259,7 +262,7 @@
 
     <!-- ============ Muscle balance (30 days) ============ -->
     <section>
-      <h2 class="font-display text-lg font-bold uppercase tracking-wider text-on-surface">
+      <h2 class="font-display text-lg font-bold text-on-surface">
         {{ 'progress.muscles' | mnTranslate }}
       </h2>
       <p class="mb-3 text-xs text-on-surface-variant">{{ 'progress.muscles.sub' | mnTranslate }}</p>

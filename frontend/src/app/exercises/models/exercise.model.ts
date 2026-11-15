@@ -36,6 +36,10 @@ export interface WorkoutExercise {
   /** Planned working sets × reps when the workout came from a template. */
   targetSets?: number | null;
   targetReps?: number | null;
+  /** Suggested working weight (bodyweight exercise: the EXTRA weight), or null. */
+  targetWeightKg?: number | null;
+  /** The AI planner's one-line reason. Never the user's own note. */
+  planNote?: string | null;
   sets: ExerciseSet[];
   createdAt: string;
   updatedAt: string;

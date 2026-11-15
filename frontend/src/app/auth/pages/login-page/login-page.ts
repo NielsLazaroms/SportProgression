@@ -1,12 +1,13 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { MnTranslatePipe } from 'mn-angular-lib';
 import { AppIcon } from '../../../shared/app-icon';
+import { AppLogo } from '../../../shared/app-logo';
 import { AuthService } from '../../data-access/auth.service';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [AppIcon, MnTranslatePipe],
+  imports: [AppIcon, AppLogo, MnTranslatePipe],
   template: `
     <div class="relative flex min-h-dvh flex-col overflow-hidden bg-surface">
       <!-- Atmospheric glow: dark theme only (on chalk it is just a smudge) -->
@@ -25,7 +26,7 @@ import { AuthService } from '../../data-access/auth.service';
           <div
             class="mb-6 flex h-20 w-20 items-center justify-center active-glow rounded-2xl bg-primary/10 text-primary"
           >
-            <app-icon [data]="{ name: 'dumbbell', size: 44 }" />
+            <app-logo [size]="52" />
           </div>
           <h1
             class="mb-2 font-display text-4xl font-extrabold uppercase tracking-tight text-primary"

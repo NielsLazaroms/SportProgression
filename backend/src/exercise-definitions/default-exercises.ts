@@ -37,3 +37,10 @@ export const DEFAULT_EXERCISES: {
   { name: 'Push-up', muscleGroup: 'Chest', bodyweight: true },
   { name: 'Dip', muscleGroup: 'Triceps', bodyweight: true },
 ];
+
+/** The muscle groups of the starter catalog: the ones everyone is judged on. */
+export const STANDARD_MUSCLE_GROUPS: string[] = [
+  ...new Set(
+    DEFAULT_EXERCISES.map((e) => e.muscleGroup).filter((g): g is string => !!g),
+  ),
+];

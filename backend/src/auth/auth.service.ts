@@ -1,3 +1,4 @@
+import { hasAiAccess } from '../common/ai-access';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -65,7 +66,7 @@ export class AuthService {
     }
 
     if (!matchedToken) {
-      // Token not found among active tokens — check if it matches a revoked token (reuse detection)
+      // Token not found among active tokens: check if it matches a revoked token (reuse detection)
       const revokedTokens = await this.refreshTokenRepo.find({
         where: { userId, isRevoked: true },
       });
@@ -75,7 +76,7 @@ export class AuthService {
         if (matches) {
           // Reuse detected! Invalidate the entire family
           await this.revokeFamily(revoked.family);
-          throw new ForbiddenException('Refresh token reuse detected — all sessions in this family have been revoked');
+          throw new ForbiddenException('Refresh token reuse detected: all sessions in this family have been revoked');
         }
       }
 
@@ -112,6 +113,8 @@ export class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       picture: user.picture,
+      // Whether the AI features (analysis, plans) are available to this user.
+      aiAccess: hasAiAccess(user),
     };
   }
 

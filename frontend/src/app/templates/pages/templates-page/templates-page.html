@@ -48,13 +48,25 @@
       @for (t of templates(); track t.id) {
         <li class="glass-card rounded-xl p-4">
           <div class="flex items-start gap-1">
-            <div class="min-w-0 flex-1">
+            <!-- Tapping the card body opens the template, same as the pencil. -->
+            <a
+              [routerLink]="['/templates', t.id]"
+              [attr.aria-label]="'templates.editNamed' | mnTranslate: { name: t.name }"
+              class="-m-1 block min-w-0 flex-1 rounded-lg p-1 transition-colors hover:bg-surface-variant/20 active:bg-surface-variant/30"
+            >
               <h2 class="line-clamp-2 font-display text-lg font-bold leading-snug text-on-surface [overflow-wrap:anywhere]" [title]="t.name">{{ t.name }}</h2>
-              <p class="tnum mt-0.5 text-sm font-semibold text-on-surface-variant">
-                {{ t.exercises.length }} {{ plural(t.exercises.length, 'unit.exercises') | mnTranslate }}
-                · {{ setCount(t) }} {{ plural(setCount(t), 'unit.sets') | mnTranslate }}
-              </p>
-            </div>
+              <span class="tnum mt-0.5 flex flex-wrap gap-x-1 text-sm font-semibold text-on-surface-variant">
+                <span class="whitespace-nowrap">{{ t.exercises.length }} {{ plural(t.exercises.length, 'unit.exercises') | mnTranslate }} ·</span>
+                <span class="whitespace-nowrap">{{ setCount(t) }} {{ plural(setCount(t), 'unit.sets') | mnTranslate }}</span>
+              </span>
+              <span class="mt-2 line-clamp-2 block text-sm text-on-surface-variant [overflow-wrap:anywhere]">
+                @if (t.exercises.length) {
+                  @for (piece of preview(t); track $index) {<span>@if (piece.superset) {<span class="font-semibold text-on-surface">{{ 'templates.superset' | mnTranslate }}:</span>{{ ' ' }}}{{ piece.text }}</span>}
+                } @else {
+                  {{ 'templates.noExercises' | mnTranslate }}
+                }
+              </span>
+            </a>
             <div class="-mr-2 -mt-2 flex shrink-0 items-center">
               <a
                 [routerLink]="['/templates', t.id]"
@@ -74,13 +86,6 @@
             </div>
           </div>
 
-          <p class="mt-2 line-clamp-2 text-sm text-on-surface-variant [overflow-wrap:anywhere]">
-            @if (t.exercises.length) {
-              @for (piece of preview(t); track $index) {<span>@if (piece.superset) {<span class="font-semibold text-on-surface">{{ 'templates.superset' | mnTranslate }}:</span>{{ ' ' }}}{{ piece.text }}</span>}
-            } @else {
-              {{ 'templates.noExercises' | mnTranslate }}
-            }
-          </p>
 
           <button
             type="button"

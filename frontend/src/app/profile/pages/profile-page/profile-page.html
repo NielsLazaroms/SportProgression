@@ -16,7 +16,7 @@
           aria-hidden="true"
           class="flex h-24 w-24 items-center justify-center rounded-full bg-surface-container-high font-display text-2xl font-extrabold text-primary"
         >
-          {{ initials() || '—' }}
+          {{ initials() || '-' }}
         </div>
       }
     </div>
@@ -36,22 +36,22 @@
       <dt class="mt-1 text-xs font-semibold text-on-surface-variant">
         {{ 'profile.workouts' | mnTranslate }}
       </dt>
-      <dd class="tnum font-display text-2xl font-extrabold text-primary">
-        {{ workoutCount() === null ? '—' : countText(workoutCount()!) }}
+      <dd class="tnum font-display text-[clamp(1.125rem,6.5vw,1.5rem)] font-extrabold text-primary">
+        {{ workoutCount() === null ? '-' : countText(workoutCount()!) }}
       </dd>
     </div>
     <div class="glass-card flex flex-col-reverse rounded-xl p-4 text-center">
       <dt class="mt-1 text-xs font-semibold text-on-surface-variant">
         {{ 'profile.volumeKg' | mnTranslate }}
       </dt>
-      <dd class="tnum font-display text-2xl font-extrabold text-primary">
-        {{ lifetimeVolume() === null ? '—' : volumeText(lifetimeVolume()!) }}
+      <dd class="tnum font-display text-[clamp(1.125rem,6.5vw,1.5rem)] font-extrabold text-primary">
+        {{ lifetimeVolume() === null ? '-' : volumeText(lifetimeVolume()!) }}
       </dd>
     </div>
   </dl>
 
   <!-- Settings -->
-  <h2 class="mb-2 text-sm font-semibold text-on-surface-variant">
+  <h2 class="mb-2 font-display text-lg font-bold text-on-surface">
     {{ 'profile.settings' | mnTranslate }}
   </h2>
   <div class="glass-card mb-8 overflow-hidden rounded-xl">
@@ -72,7 +72,7 @@
             (click)="setLanguage(l.code)"
             [attr.aria-pressed]="locale() === l.code"
             [attr.lang]="l.code"
-            class="flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-bold transition-colors"
+            class="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-1 text-[clamp(0.625rem,3.6vw,0.875rem)] font-bold transition-colors"
             [class.bg-primary-container]="locale() === l.code"
             [class.text-on-primary-container]="locale() === l.code"
             [class.text-on-surface-variant]="locale() !== l.code"
@@ -103,7 +103,7 @@
             type="button"
             (click)="setTheme(t.id)"
             [attr.aria-pressed]="themeChoice() === t.id"
-            class="flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-sm font-bold transition-colors min-[360px]:flex-row min-[360px]:gap-1.5"
+            class="flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[clamp(0.625rem,3.6vw,0.875rem)] font-bold transition-colors min-[360px]:flex-row min-[360px]:gap-1.5"
             [class.bg-primary-container]="themeChoice() === t.id"
             [class.text-on-primary-container]="themeChoice() === t.id"
             [class.text-on-surface-variant]="themeChoice() !== t.id"
@@ -126,10 +126,49 @@
     </a>
   </div>
 
+  <!-- Muscle groups the analysis should judge -->
+  @if (muscleGroups().length) {
+    <h2 id="muscles-label" class="mb-2 mt-8 font-display text-lg font-bold text-on-surface">
+      {{ 'profile.muscles' | mnTranslate }}
+    </h2>
+    <div class="glass-card rounded-xl px-4 py-4">
+      <p class="mb-3 text-sm text-on-surface-variant">{{ 'profile.muscles.hint' | mnTranslate }}</p>
+      <!-- Never disabled while saving: a disabled button drops the keyboard focus. -->
+      <div
+        role="group"
+        aria-labelledby="muscles-label"
+        [attr.aria-busy]="savingMuscles()"
+        class="flex flex-wrap gap-2"
+      >
+        @for (g of muscleGroups(); track g.name) {
+          <!-- Same look as the Language / Theme toggles: solid = on, outline + struck through = off -->
+          <button
+            type="button"
+            (click)="toggleMuscle(g.name)"
+            [attr.aria-pressed]="g.trained"
+            class="flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-sm font-bold transition-colors"
+            [class.border-primary-container]="g.trained"
+            [class.bg-primary-container]="g.trained"
+            [class.text-on-primary-container]="g.trained"
+            [class.border-control]="!g.trained"
+            [class.text-on-surface-variant]="!g.trained"
+            [class.hover:bg-surface-variant/40]="!g.trained"
+          >
+            @if (g.trained) {
+              <app-icon [data]="{ name: 'check', size: 16 }" />
+            }
+            <span [class.line-through]="!g.trained">{{ muscleLabel(g.name) }}</span>
+          </button>
+        }
+      </div>
+      <p class="sr-only" role="status" aria-live="polite">{{ muscleAnnouncement() }}</p>
+    </div>
+  }
+
   <!-- Your data -->
-  <p class="mb-2 mt-8 text-xs font-semibold uppercase tracking-[0.15em] text-on-surface-variant">
+  <h2 class="mb-2 mt-8 font-display text-lg font-bold text-on-surface">
     {{ 'profile.data' | mnTranslate }}
-  </p>
+  </h2>
   <div class="mb-8 overflow-hidden rounded-xl glass-card">
     <button
       type="button"

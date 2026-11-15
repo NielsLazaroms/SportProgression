@@ -2,8 +2,14 @@ import { Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MnLanguageService, MnTranslatePipe } from 'mn-angular-lib';
 import { AppIcon } from '../../shared/app-icon';
-import { compactKg, plural, relativeDay } from '../../shared/format';
-import { Workout, workoutSetCount, workoutVolumeKg } from '../models/workout.model';
+import { compactKg, formatNumber, plural, relativeDay } from '../../shared/format';
+import {
+  Workout,
+  workoutBodyweightReps,
+  workoutRepCount,
+  workoutSetCount,
+  workoutVolumeKg,
+} from '../models/workout.model';
 
 /**
  * One workout in a list (Home and History show the same row): a link to the
@@ -46,11 +52,19 @@ import { Workout, workoutSetCount, workoutVolumeKg } from '../models/workout.mod
               </span>
             }
           </span>
+          <!-- Each item carries the dot AFTER it, so a wrapped line never starts with one. -->
           <span class="tnum mt-1 flex flex-wrap gap-x-1 text-sm text-on-surface-variant">
-            <span class="whitespace-nowrap">{{ exercises() }} {{ plural(exercises(), 'unit.exercises') | mnTranslate }}</span>
-            <span class="whitespace-nowrap">· {{ sets() }} {{ plural(sets(), 'unit.sets') | mnTranslate }}</span>
+            <span class="whitespace-nowrap">{{ exercises() }} {{ plural(exercises(), 'unit.exercises') | mnTranslate }} ·</span>
+            <span class="whitespace-nowrap">{{ sets() }} {{ plural(sets(), 'unit.sets') | mnTranslate }}@if (volume() > 0 || reps() > 0) { · }</span>
             @if (volume() > 0) {
-              <span class="whitespace-nowrap">· <span class="font-semibold text-primary">{{ volumeText() }} {{ 'unit.kg' | mnTranslate }}</span></span>
+              <span class="whitespace-nowrap"><span class="font-semibold text-primary">{{ volumeText() }} {{ 'unit.kg' | mnTranslate }}</span>@if (bodyweightReps() > 0) { · }</span>
+              @if (bodyweightReps() > 0) {
+                <!-- Mixed workout: the bodyweight work is not in the kg total. -->
+                <span class="whitespace-nowrap font-semibold text-primary">{{ repsText(bodyweightReps()) }} {{ plural(bodyweightReps(), 'unit.reps') | mnTranslate }}</span>
+              }
+            } @else if (reps() > 0) {
+              <!-- Bodyweight only: there is no volume, total reps say more. -->
+              <span class="whitespace-nowrap font-semibold text-primary">{{ repsText(reps()) }} {{ plural(reps(), 'unit.reps') | mnTranslate }}</span>
             }
           </span>
         </span>
@@ -80,10 +94,17 @@ export class WorkoutRow {
   readonly exercises = computed(() => this.workout().exercises?.length ?? 0);
   readonly sets = computed(() => workoutSetCount(this.workout()));
   readonly volume = computed(() => workoutVolumeKg(this.workout()));
+  readonly reps = computed(() => workoutRepCount(this.workout()));
+  /** Reps on bodyweight exercises: shown next to the volume of a mixed workout. */
+  readonly bodyweightReps = computed(() => workoutBodyweightReps(this.workout()));
 
   // Plain methods (not computed): they must follow a language switch.
   day(): string {
     return relativeDay(this.workout().date, (k, p) => this.lang.t(k, p), this.lang.locale);
+  }
+
+  repsText(reps: number): string {
+    return formatNumber(reps, this.lang.locale, 0);
   }
 
   volumeText(): string {

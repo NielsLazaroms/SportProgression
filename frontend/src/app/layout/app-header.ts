@@ -1,6 +1,7 @@
 import { Component, input, output } from '@angular/core';
 import { MnTranslatePipe } from 'mn-angular-lib';
 import { AppIcon } from '../shared/app-icon';
+import { AppLogo } from '../shared/app-logo';
 
 /**
  * Fixed top app bar. Shows the Iron Pulse wordmark by default, or a back
@@ -10,7 +11,7 @@ import { AppIcon } from '../shared/app-icon';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [AppIcon, MnTranslatePipe],
+  imports: [AppIcon, AppLogo, MnTranslatePipe],
   template: `
     <header
       class="fixed inset-x-0 top-0 z-50 flex h-16 lg:left-60 items-center justify-between border-b border-outline-variant/40 bg-surface/95 px-4 backdrop-blur-md"
@@ -32,7 +33,7 @@ import { AppIcon } from '../shared/app-icon';
           </h1>
         } @else {
           <!-- The desktop sidebar already carries the logo. -->
-          <span class="shrink-0 text-primary lg:hidden"><app-icon [data]="{ name: 'dumbbell', size: 26 }" /></span>
+          <span class="shrink-0 text-primary lg:hidden"><app-logo [size]="32" /></span>
           <h1 class="truncate font-display text-2xl font-extrabold tracking-tight text-primary lg:hidden">
             IRON PULSE
           </h1>

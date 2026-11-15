@@ -64,7 +64,7 @@ describe('ProgressService', () => {
 
   it('summarises totals, streak and per-exercise trend', async () => {
     const summary = await service.summary('user');
-    expect(summary.totals).toEqual({ workouts: 3, sets: 3, volumeKg: 1460 });
+    expect(summary.totals).toEqual({ workouts: 3, sets: 3, reps: 24, volumeKg: 1460 });
     expect(summary.thisWeek.workouts).toBeGreaterThanOrEqual(1);
     expect(summary.streakWeeks).toBe(3);
     expect(summary.weekly).toHaveLength(12);
@@ -94,7 +94,7 @@ describe('ProgressService', () => {
       } as any,
     );
     const summary = await svc.summary('user');
-    expect(summary.totals).toEqual({ workouts: 1, sets: 1, volumeKg: 500 });
+    expect(summary.totals).toEqual({ workouts: 1, sets: 1, reps: 5, volumeKg: 500 });
     const history = await svc.exerciseHistory(1, 'user');
     expect(history.sessions[0].sets).toEqual([
       { setId: 91, reps: 5, weightKg: 100 },

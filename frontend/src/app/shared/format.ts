@@ -54,9 +54,9 @@ export function formatNumber(n: number | string, locale = 'en', maxDecimals = 2)
   });
 }
 
-/** Compact volume WITHOUT unit: 12432 -> "12.4k", 850 -> "850", 0 -> "—". */
+/** Compact volume WITHOUT unit: 12432 -> "12.4k", 850 -> "850", 0 -> "0". */
 export function compactKg(kg: number, locale = 'en'): string {
-  if (!(kg > 0)) return '—';
+  if (!(kg > 0)) return '0';
   if (kg >= 1000) {
     // Round on integers (1650 -> 1.7k) instead of trusting float toFixed.
     return `${formatNumber(Math.round(kg / 100) / 10, locale, 1)}k`;

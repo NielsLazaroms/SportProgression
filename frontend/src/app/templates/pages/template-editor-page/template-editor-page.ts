@@ -18,6 +18,7 @@ import {
   MnModalService,
   MnSkeleton,
   MnTranslatePipe,
+  KeyboardMode,
   ModalBuilder,
 } from 'mn-angular-lib';
 import { AppHeader } from '../../../layout/app-header';
@@ -397,7 +398,7 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
         this.saving.set(false);
         this.leaving = true;
         this.alerts.success(
-          this.lang.t(id ? 'templates.toast.saved' : 'templates.toast.created'),
+          this.lang.t('templates.toast.saved'),
         );
         this.router.navigate(['/templates']);
       },
@@ -432,6 +433,7 @@ export class TemplateEditorPage implements OnInit, ConfirmsLeave {
         })
         .cancelAction({ label: this.lang.t('templates.editor.leave.stay') })
         .mobileBottomSheet(true)
+        .keyboard(KeyboardMode.ENABLED)
         .build(),
     );
     return ref.afterClosed$.pipe(map(({ result }) => !!result));

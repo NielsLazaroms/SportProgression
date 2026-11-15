@@ -101,8 +101,9 @@ export class TemplatesService {
   }
 
   /**
-   * "Save as template": the plan becomes what was actually done — per
-   * exercise the number of working sets, at the reps used most often.
+   * "Save as template": an exercise that had a target keeps that target (the
+   * plan, even when the session fell short); one without a target gets what
+   * was actually done: the number of working sets, at the reps used most often.
    * Exercises without working sets, or whose catalog entry is gone, are left
    * out; an exercise logged twice in the workout is planned once.
    */
@@ -123,10 +124,11 @@ export class TemplatesService {
       const targetReps = [...counts.entries()].sort(
         (a, b) => b[1] - a[1] || b[0] - a[0],
       )[0][0];
+      const planned = !!ex.targetSets && !!ex.targetReps;
       exercises.push({
         exerciseDefinitionId: defId,
-        targetSets: Math.min(working.length, 20),
-        targetReps,
+        targetSets: planned ? ex.targetSets! : Math.min(working.length, 20),
+        targetReps: planned ? ex.targetReps! : targetReps,
         supersetGroup: ex.supersetGroup,
       });
     }

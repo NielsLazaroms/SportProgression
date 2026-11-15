@@ -40,7 +40,7 @@ export function recordKind(
   return null;
 }
 
-/** Working sets only — warm-ups never count towards any statistic. */
+/** Working sets only: warm-ups never count towards any statistic. */
 function workingSets(ex: WorkoutExercise) {
   return (ex.sets ?? []).filter((s) => !s.isWarmup);
 }
@@ -77,7 +77,7 @@ function addDays(isoDate: string, days: number): string {
 export interface SessionStats {
   workoutId: string;
   workoutName: string;
-  /** When the workout was created — orders several workouts on one day. */
+  /** When the workout was created: orders several workouts on one day. */
   workoutCreatedAt: Date;
   date: string;
   completed: boolean;
@@ -85,7 +85,7 @@ export interface SessionStats {
   topWeightKg: number;
   e1rmKg: number;
   volumeKg: number;
-  /** Most reps in a single set — the progress measure for bodyweight work. */
+  /** Most reps in a single set: the progress measure for bodyweight work. */
   topReps: number;
   totalReps: number;
   /** True when at least one set of this session was a personal record. */
@@ -207,14 +207,21 @@ export class ProgressService {
 
     const weeks = new Map<
       string,
-      { weekStart: string; workouts: number; sets: number; volumeKg: number }
+      {
+        weekStart: string;
+        workouts: number;
+        sets: number;
+        /** Total reps of the working sets: the measure for bodyweight training. */
+        reps: number;
+        volumeKg: number;
+      }
     >();
     for (let i = WEEKS - 1; i >= 0; i--) {
       const ws = addDays(currentWeek, -7 * i);
-      weeks.set(ws, { weekStart: ws, workouts: 0, sets: 0, volumeKg: 0 });
+      weeks.set(ws, { weekStart: ws, workouts: 0, sets: 0, reps: 0, volumeKg: 0 });
     }
 
-    const totals = { workouts: workouts.length, sets: 0, volumeKg: 0 };
+    const totals = { workouts: workouts.length, sets: 0, reps: 0, volumeKg: 0 };
     const activeWeeks = new Set<string>();
     const muscleSince = addDays(today, -30);
     // Muscle balance: in how many workouts was each muscle group trained.
@@ -225,6 +232,7 @@ export class ProgressService {
       const date = dateKey(workout.date);
       const ws = weekStart(date);
       let sets = 0;
+      let reps = 0;
       let volume = 0;
       const trained = new Set<string>();
       for (const ex of workout.exercises ?? []) {
@@ -232,6 +240,7 @@ export class ProgressService {
         const working = workingSets(ex);
         const count = working.length;
         sets += count;
+        reps += working.reduce((r, s) => r + Number(s.repsAmount), 0);
         volume += working.reduce(
           (v, s) => v + s.repsAmount * s.weightKg,
           0,
@@ -249,12 +258,14 @@ export class ProgressService {
         muscles.set(group, (muscles.get(group) ?? 0) + 1);
       }
       totals.sets += sets;
+      totals.reps += reps;
       totals.volumeKg += volume;
       activeWeeks.add(ws);
       const bucket = weeks.get(ws);
       if (bucket) {
         bucket.workouts += 1;
         bucket.sets += sets;
+        bucket.reps += reps;
         bucket.volumeKg += volume;
       }
     }
@@ -321,7 +332,10 @@ export class ProgressService {
         bestReps: Math.max(...sessions.map((s) => s.topReps)),
         bodyweight,
         trendPct:
-          sessions.length > 1 && sessionScore(first, bodyweight) > 0
+          // Reps at different extra weights cannot be compared as a percentage.
+          sessions.length > 1 &&
+          sessionScore(first, bodyweight) > 0 &&
+          !(bodyweight && first.topWeightKg !== last.topWeightKg)
             ? round1(
                 ((sessionScore(last, bodyweight) -
                   sessionScore(first, bodyweight)) /
@@ -357,6 +371,7 @@ export class ProgressService {
       thisWeek: {
         workouts: week.workouts,
         sets: week.sets,
+        reps: week.reps,
         volumeKg: round1(week.volumeKg),
       },
       streakWeeks,

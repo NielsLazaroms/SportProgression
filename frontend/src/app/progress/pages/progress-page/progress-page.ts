@@ -201,11 +201,11 @@ export class ProgressPage implements OnInit {
     return parts.join(', ');
   }
 
-  /** "100 kg", or "BW" for a bodyweight (0 kg) set. */
-  weightText(weightKg: number): string {
-    return weightKg > 0
-      ? `${this.kg(weightKg)} ${this.lang.t('unit.kg')}`
-      : this.lang.t('unit.bw');
+  /** "avg 2.5 workouts / week" ("avg 1 workout / week"). */
+  avgText(avg: number): string {
+    return this.lang.t(plural(Number(avg.toFixed(1)), 'progress.avgPerWeek'), {
+      n: this.kg(avg),
+    });
   }
 
   /** Definition ids of the exercises whose weights are extra weight. */
@@ -224,15 +224,19 @@ export class ProgressPage implements OnInit {
   }
 
   /**
-   * What the record was: "Heaviest ever · 185 kg × 1" / "Most reps · 13 × BW";
-   * bodyweight exercise with extra weight: "Heaviest ever · +10 kg × 6".
+   * What the record was: "Heaviest ever · 185 kg × 1" / "Most reps · 13 reps"
+   * (a set without weight: no "BW" abbreviation); bodyweight exercise with
+   * extra weight: "Heaviest ever · +10 kg × 6".
    */
   recordText(r: RecentRecord): string {
-    const weight =
-      r.weightKg > 0 && this.bodyweightIds().has(r.exerciseDefinitionId)
-        ? this.extraText(r.weightKg)
-        : this.weightText(r.weightKg);
-    const set = r.kind === 'weight' ? `${weight} × ${r.reps}` : `${r.reps} × ${weight}`;
+    const weight = this.bodyweightIds().has(r.exerciseDefinitionId)
+      ? this.extraText(r.weightKg)
+      : `${this.kg(r.weightKg)} ${this.lang.t('unit.kg')}`;
+    const set = !(r.weightKg > 0)
+      ? `${r.reps} ${this.lang.t(plural(r.reps, 'unit.reps'))}`
+      : r.kind === 'weight'
+        ? `${weight} × ${r.reps}`
+        : `${r.reps} × ${weight}`;
     // Non-breaking spaces keep the set itself on one line when the text wraps.
     return `${this.lang.t('progress.rec.' + r.kind)} · ${set.replace(/ /g, ' ')}`;
   }

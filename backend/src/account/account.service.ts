@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { STANDARD_MUSCLE_GROUPS } from '../exercise-definitions/default-exercises';
 import { DataSource, In } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Workout } from '../workouts/workouts.entity';
@@ -20,6 +21,41 @@ const chunk = <T>(items: T[], size = 500): T[][] => {
 @Injectable()
 export class AccountService {
   constructor(private readonly dataSource: DataSource) {}
+
+  /**
+   * The muscle groups this user can be judged on (the standard ones plus any
+   * they have logged), each with whether they chose to train it.
+   */
+  async muscleGroups(userId: string) {
+    const user = await this.dataSource.getRepository(User).findOneBy({ id: userId });
+    if (!user) throw new NotFoundException();
+    const rows = await this.dataSource
+      .getRepository(WorkoutExercise)
+      .createQueryBuilder('e')
+      .innerJoin('e.workout', 'w')
+      .select('DISTINCT e.muscleGroup', 'muscleGroup')
+      .where('w.userId = :userId', { userId })
+      .andWhere('e.muscleGroup IS NOT NULL')
+      .getRawMany<{ muscleGroup: string }>();
+    const ignored = new Set(user.ignoredMuscleGroups ?? []);
+    const names = [
+      ...new Set([
+        ...STANDARD_MUSCLE_GROUPS,
+        ...rows.map((r) => r.muscleGroup).filter(Boolean).sort(),
+        ...ignored,
+      ]),
+    ];
+    return { groups: names.map((name) => ({ name, trained: !ignored.has(name) })) };
+  }
+
+  async setIgnoredMuscleGroups(userId: string, ignored: string[]) {
+    const clean = [...new Set(ignored.map((g) => g.trim()).filter(Boolean))];
+    const result = await this.dataSource
+      .getRepository(User)
+      .update({ id: userId }, { ignoredMuscleGroups: clean.length ? clean : null });
+    if (!result.affected) throw new NotFoundException();
+    return this.muscleGroups(userId);
+  }
 
   /** Everything the app stores about this user, as one portable document. */
   async export(userId: string) {
@@ -54,6 +90,7 @@ export class AccountService {
         firstName: user.firstName ?? null,
         lastName: user.lastName ?? null,
         memberSince: user.createdAt,
+        ignoredMuscleGroups: user.ignoredMuscleGroups ?? [],
       },
       myExercises: exercises.map((e) => ({
         name: e.name,

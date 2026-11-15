@@ -24,7 +24,7 @@ import { AppIcon } from '../../shared/app-icon';
 import { errorHintKey, todayIso } from '../../shared/format';
 import { SupersetRole, supersetLetter, supersetRole } from '../../shared/superset';
 import { TemplateService } from '../../templates/data-access/template.service';
-import { TemplateExercise, WorkoutTemplate } from '../../templates/models/template.model';
+import { WorkoutTemplate } from '../../templates/models/template.model';
 import { WorkoutService } from '../data-access/workout.service';
 import { Workout } from '../models/workout.model';
 
@@ -65,15 +65,21 @@ export class NewWorkoutSheet implements OnInit {
   readonly template = input<WorkoutTemplate | null>(null);
   readonly closed = output<void>();
 
-  /** The template's exercises in order, each with its place in a superset. */
+  /**
+   * The exercises the new workout starts with (from the template, else from
+   * the workout being re-run), in order, each with its place in a superset.
+   */
   readonly plan = computed<
-    { ex: TemplateExercise; role: SupersetRole; letter: string | null }[]
+    { id: string | number; name: string; target: string | null; role: SupersetRole; letter: string | null }[]
   >(() => {
-    const list = [...(this.template()?.exercises ?? [])].sort(
-      (a, b) => a.orderInTemplate - b.orderInTemplate,
-    );
+    const tpl = this.template();
+    const list = tpl
+      ? [...(tpl.exercises ?? [])].sort((a, b) => a.orderInTemplate - b.orderInTemplate)
+      : [...(this.source()?.exercises ?? [])].sort((a, b) => a.orderInWorkout - b.orderInWorkout);
     return list.map((ex, i) => ({
-      ex,
+      id: ex.id,
+      name: ex.name,
+      target: ex.targetSets && ex.targetReps ? `${ex.targetSets} × ${ex.targetReps}` : null,
       role: supersetRole(list, i),
       letter: supersetLetter(list, i),
     }));

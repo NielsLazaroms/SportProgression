@@ -12,6 +12,7 @@ import {
 import { WorkoutsService } from './workouts.service';
 import { CreateWorkoutDto } from './dto/create-workout.dto';
 import { UpdateWorkoutDto } from './dto/update-workout.dto';
+import { PlannedWorkoutDto } from './dto/planned-workout.dto';
 import {
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -51,6 +52,15 @@ export class WorkoutsController {
   @Post()
   create(@Body() dto: CreateWorkoutDto, @Req() req) {
     return this.workoutsService.create(dto, req.user.userId);
+  }
+
+  @ApiOperation({
+    summary: 'Create a workout that already has exercises with target sets x reps',
+  })
+  @ApiOkResponse({ type: Workout })
+  @Post('planned')
+  createPlanned(@Body() dto: PlannedWorkoutDto, @Req() req) {
+    return this.workoutsService.createPlanned(dto, req.user.userId);
   }
 
   @ApiOperation({

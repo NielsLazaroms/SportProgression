@@ -27,6 +27,15 @@ export class WorkoutService {
     return this.http.patch<Workout>(`${this.baseUrl}/${id}`, workout);
   }
 
+  /** A new workout that starts with exercises and their target sets × reps. */
+  createPlanned(plan: {
+    name: string;
+    date: string;
+    exercises: { exerciseDefinitionId: number; targetSets: number; targetReps: number; notes?: string }[];
+  }): Observable<Workout> {
+    return this.http.post<Workout>(`${this.baseUrl}/planned`, plan);
+  }
+
   /** Re-run: copies a workout's exercises (not sets) into a new one dated today. */
   duplicateWorkout(
     id: string,

@@ -6,10 +6,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Workout } from './workouts.entity';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { CreateWorkoutDto } from './dto/create-workout.dto';
 import { UpdateWorkoutDto } from './dto/update-workout.dto';
 import { WorkoutExercise } from '../exercises/workout-exercise.entity';
+import { ExerciseDefinition } from '../exercise-definitions/exercise-definition.entity';
+import { PlannedWorkoutDto } from './dto/planned-workout.dto';
 
 @Injectable()
 export class WorkoutsService {
@@ -46,7 +48,7 @@ export class WorkoutsService {
 
   /**
    * Full workout tree (exercises ordered, each with ordered sets) for the
-   * detail view — one request instead of three.
+   * detail view: one request instead of three.
    */
   async findOneWithDetails(id: string, userId: string) {
     const workout = await this.workoutRepository.findOne({
@@ -68,8 +70,56 @@ export class WorkoutsService {
   }
 
   /**
+   * A workout that starts with a ready-made plan (a suggestion the user
+   * accepted): exercises in order with target sets x reps, nothing logged yet.
+   */
+  async createPlanned(dto: PlannedWorkoutDto, userId: string) {
+    const ids = [...new Set(dto.exercises.map((e) => e.exerciseDefinitionId))];
+    const definitions = await this.dataSource
+      .getRepository(ExerciseDefinition)
+      .findBy({ id: In(ids) });
+    const byId = new Map(definitions.map((d) => [d.id, d]));
+    for (const id of ids) {
+      if (!byId.has(id)) {
+        throw new NotFoundException(`Exercise definition with ID ${id} not found`);
+      }
+    }
+    const newId = await this.dataSource.transaction(async (manager) => {
+      const workout = await manager.save(
+        manager.create(Workout, {
+          date: dto.date,
+          name: dto.name,
+          description: dto.description || undefined,
+          userId,
+        }),
+      );
+      let order = 1;
+      for (const item of dto.exercises) {
+        const def = byId.get(item.exerciseDefinitionId)!;
+        await manager.save(
+          manager.create(WorkoutExercise, {
+            workoutId: workout.id,
+            exerciseDefinitionId: def.id,
+            name: def.name,
+            type: def.type,
+            muscleGroup: def.muscleGroup,
+            orderInWorkout: order++,
+            targetSets: item.targetSets,
+            targetReps: item.targetReps,
+            targetWeightKg: item.targetWeightKg ?? null,
+            planNote: item.planNote || null,
+            notes: item.notes || undefined,
+          }),
+        );
+      }
+      return workout.id;
+    });
+    return this.findOneWithDetails(newId, userId);
+  }
+
+  /**
    * "Re-run" a previous workout: copies its exercises (not its sets) into a
-   * new workout (name, date and note can be overridden). Sets are deliberately left empty — nothing has been lifted
+   * new workout (name, date and note can be overridden). Sets are deliberately left empty: nothing has been lifted
    * yet, and the logging screen shows last time's sets as the target to beat.
    */
   async duplicate(
@@ -130,7 +180,7 @@ export class WorkoutsService {
 
   /**
    * Mark a workout as finished. Requires at least one exercise, and every
-   * exercise must have at least one logged set — no empty exercises/workouts.
+   * exercise must have at least one logged set: no empty exercises/workouts.
    */
   async finish(id: string, userId: string) {
     const workout = await this.findOneWithDetails(id, userId);

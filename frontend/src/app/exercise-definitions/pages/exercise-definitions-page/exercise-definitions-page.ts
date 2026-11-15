@@ -21,6 +21,7 @@ import {
   MnLanguageService,
   MnModalService,
   MnTranslatePipe,
+  KeyboardMode,
   ModalBuilder,
   ConfirmationTone,
   ActionStyle,
@@ -269,6 +270,7 @@ export class ExerciseDefinitionsPage implements OnInit {
         })
         .cancelAction({ label: this.lang.t('action.cancel') })
         .mobileBottomSheet(true)
+        .keyboard(KeyboardMode.ENABLED)
         .build(),
     );
     ref.afterClosed$.subscribe(({ result }) => {

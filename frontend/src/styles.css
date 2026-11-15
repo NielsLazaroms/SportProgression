@@ -34,7 +34,7 @@
   --color-on-surface-variant: #b6bbc6;
   --color-on-background: #eceef2;
   --color-outline: #8d93a0; /* quiet text, icons */
-  --color-outline-variant: #4a4e58; /* decorative hairlines (used at 20–60%) */
+  --color-outline-variant: #4a4e58; /* decorative hairlines (used at 20-60%) */
   --color-control: #7a808c; /* boundary of inputs and outlined buttons: >= 3:1 */
 
   /* Brand accent: fill and text tone are the same teal. */
@@ -205,7 +205,7 @@
   outline-offset: 2px;
 }
 
-/* Frosted card — the recurring surface of the whole app */
+/* Frosted card: the recurring surface of the whole app */
 @utility glass-card {
   background: var(--card-bg);
   backdrop-filter: var(--card-blur);
@@ -260,4 +260,17 @@ body:has(mn-bottom-sheet) mn-alert-outlet > div {
    reach 3:1 against its surroundings. */
 :is(input, textarea, select).border-base-300 {
   border-color: var(--color-control);
+}
+
+/* Workout page: a just-logged set row lights up once, so the eye finds it. */
+@keyframes set-flash {
+  from {
+    background-color: color-mix(in srgb, var(--color-success) 22%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.set-flash {
+  animation: set-flash 1.6s ease-out 1;
 }

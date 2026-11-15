@@ -44,7 +44,7 @@ export class ExerciseDefinitionsService implements OnApplicationBootstrap {
 
     // Existing catalogs: make sure the standard bodyweight exercises exist and
     // are marked as such (they predate the bodyweight type). Only the shared,
-    // ownerless defaults are touched — never an exercise a user created.
+    // ownerless defaults are touched: never an exercise a user created.
     for (const def of DEFAULT_EXERCISES.filter((d) => d.bodyweight)) {
       const existing = await this.findByName(def.name);
       if (!existing) {
@@ -155,7 +155,7 @@ export class ExerciseDefinitionsService implements OnApplicationBootstrap {
     );
     if (inUse > 0) {
       throw new ConflictException(
-        'This exercise has logged workouts and cannot be deleted',
+        'This exercise is used in workouts and cannot be deleted',
       );
     }
     await this.exerciseDefinitionRepository.delete(id);
