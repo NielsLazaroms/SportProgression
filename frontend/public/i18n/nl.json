@@ -553,5 +553,8 @@
   "progress.ex.history.all": "Alle {{n}} sessies",
   "profile.totals.workouts": "{{n}} workouts",
   "profile.totals.workouts.one": "{{n}} workout",
-  "profile.totals.volume": "{{v}} kg verzet"
+  "profile.totals.volume": "{{v}} kg verzet",
+  "history.count": "{{n}} workouts gelogd",
+  "history.count.one": "{{n}} workout gelogd",
+  "history.since": "Sinds {{date}}"
 }
