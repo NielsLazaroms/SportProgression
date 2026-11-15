@@ -57,6 +57,17 @@ export class User {
   @Column({ type: 'simple-json', nullable: true })
   ignoredMuscleGroups?: string[] | null;
 
+  /**
+   * Weekdays the user prefers to train on, 1 = Monday ... 7 = Sunday. Weekly
+   * plans are laid out on these days.
+   */
+  @Column({ type: 'simple-json', nullable: true })
+  trainingDays?: number[] | null;
+
+  /** The user's own wishes for how plans should look ("pull day: 3 back, 2 biceps"). */
+  @Column({ type: 'varchar', length: 300, nullable: true })
+  coachNote?: string | null;
+
   @OneToMany(() => Workout, (workout) => workout.user)
   workouts: Workout[];
 

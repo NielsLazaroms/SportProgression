@@ -57,6 +57,28 @@ export class AccountService {
     return this.muscleGroups(userId);
   }
 
+  /** What the AI coach should take into account: preferred weekdays and a free note. */
+  async coachPreferences(userId: string) {
+    const user = await this.dataSource.getRepository(User).findOneBy({ id: userId });
+    if (!user) throw new NotFoundException();
+    return {
+      trainingDays: [...(user.trainingDays ?? [])].sort((a, b) => a - b),
+      note: user.coachNote ?? '',
+    };
+  }
+
+  async setCoachPreferences(userId: string, trainingDays: number[], note?: string) {
+    const days = [...new Set(trainingDays)].sort((a, b) => a - b);
+    const result = await this.dataSource
+      .getRepository(User)
+      .update(
+        { id: userId },
+        { trainingDays: days.length ? days : null, coachNote: note?.trim() || null },
+      );
+    if (!result.affected) throw new NotFoundException();
+    return this.coachPreferences(userId);
+  }
+
   /** Everything the app stores about this user, as one portable document. */
   async export(userId: string) {
     const user = await this.dataSource
@@ -91,6 +113,8 @@ export class AccountService {
         lastName: user.lastName ?? null,
         memberSince: user.createdAt,
         ignoredMuscleGroups: user.ignoredMuscleGroups ?? [],
+        trainingDays: user.trainingDays ?? [],
+        coachNote: user.coachNote ?? null,
       },
       myExercises: exercises.map((e) => ({
         name: e.name,

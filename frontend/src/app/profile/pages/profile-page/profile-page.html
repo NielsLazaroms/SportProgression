@@ -165,6 +165,51 @@
     </div>
   }
 
+  <!-- What the AI coach should take into account (only for users with the AI role) -->
+  @if (canUseAi() && coachLoaded()) {
+    <h2 id="days-label" class="mb-2 mt-8 font-display text-lg font-bold text-on-surface">
+      {{ 'profile.days' | mnTranslate }}
+    </h2>
+    <div class="glass-card rounded-xl px-4 py-4">
+      <p class="mb-3 text-sm text-on-surface-variant">{{ 'profile.days.hint' | mnTranslate }}</p>
+      <div role="group" aria-labelledby="days-label" class="grid grid-cols-7 gap-1">
+        @for (d of weekdays; track d) {
+          <button
+            type="button"
+            (click)="toggleDay(d)"
+            [attr.aria-pressed]="trainingDays().includes(d)"
+            [attr.aria-label]="'profile.day.' + d | mnTranslate"
+            class="flex min-h-11 min-w-0 items-center justify-center rounded-lg border text-sm font-bold transition-colors"
+            [class.border-primary-container]="trainingDays().includes(d)"
+            [class.bg-primary-container]="trainingDays().includes(d)"
+            [class.text-on-primary-container]="trainingDays().includes(d)"
+            [class.border-control]="!trainingDays().includes(d)"
+            [class.text-on-surface-variant]="!trainingDays().includes(d)"
+          >
+            {{ 'profile.day.short.' + d | mnTranslate }}
+          </button>
+        }
+      </div>
+
+      <label for="coach-note" class="mb-1 mt-5 block text-sm font-semibold text-on-surface">
+        {{ 'profile.coachNote' | mnTranslate }}
+      </label>
+      <p id="coach-note-hint" class="mb-2 text-sm text-on-surface-variant">{{ 'profile.coachNote.hint' | mnTranslate }}</p>
+      <textarea
+        id="coach-note"
+        rows="3"
+        maxlength="300"
+        aria-describedby="coach-note-hint"
+        [value]="coachNote()"
+        (input)="coachNote.set($any($event.target).value)"
+        (blur)="saveCoach()"
+        [placeholder]="'profile.coachNote.ph' | mnTranslate"
+        class="w-full rounded-lg border border-base-300 bg-base-100 p-3 text-sm text-base-content"
+      ></textarea>
+      <p class="sr-only" role="status" aria-live="polite">{{ coachAnnouncement() }}</p>
+    </div>
+  }
+
   <!-- Your data -->
   <h2 class="mb-2 mt-8 font-display text-lg font-bold text-on-surface">
     {{ 'profile.data' | mnTranslate }}

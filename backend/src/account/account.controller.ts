@@ -3,6 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { AccountService } from './account.service';
+import { CoachPreferencesDto } from './coach-preferences.dto';
 import { IgnoredMuscleGroupsDto } from './ignored-muscle-groups.dto';
 
 @ApiTags('Account')
@@ -28,6 +29,18 @@ export class AccountController {
   @Put('muscle-groups')
   setMuscleGroups(@Req() req, @Body() dto: IgnoredMuscleGroupsDto) {
     return this.account.setIgnoredMuscleGroups(req.user.userId, dto.ignored);
+  }
+
+  @ApiOperation({ summary: 'Preferred training days and the note for the AI coach' })
+  @Get('coach-preferences')
+  coachPreferences(@Req() req) {
+    return this.account.coachPreferences(req.user.userId);
+  }
+
+  @ApiOperation({ summary: 'Save preferred training days and the note for the AI coach' })
+  @Put('coach-preferences')
+  setCoachPreferences(@Req() req, @Body() dto: CoachPreferencesDto) {
+    return this.account.setCoachPreferences(req.user.userId, dto.trainingDays, dto.note);
   }
 
   @ApiOperation({ summary: 'Permanently delete the account and all its data' })

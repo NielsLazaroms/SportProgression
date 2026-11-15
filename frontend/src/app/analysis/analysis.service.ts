@@ -24,7 +24,6 @@ export interface SuggestedExercise {
   reps: number;
   /** Suggested working weight; null when the exercise was never logged. */
   weightKg: number | null;
-  note: string;
 }
 
 export interface SuggestedWorkout {
@@ -48,6 +47,14 @@ export interface Suggestion {
    * (index in `days`, 0 for a single `plan`), so the same plan is not saved twice.
    */
   savedIndexes?: number[];
+}
+
+/** What the AI coach takes into account when planning. */
+export interface CoachPreferences {
+  /** Preferred training days, 1 = Monday ... 7 = Sunday. */
+  trainingDays: number[];
+  /** The user's own wishes for how plans should look. */
+  note: string;
 }
 
 /** A muscle group and whether the user trains it (off = the analysis leaves it alone). */
@@ -108,6 +115,17 @@ export class AnalysisService {
   /** The day and user the kept results belong to. */
   private day = '';
   private user = '';
+
+  coachPreferences(): Observable<CoachPreferences> {
+    return this.http.get<CoachPreferences>(`${environment.backendUrl}/account/coach-preferences`);
+  }
+
+  /** Saves the preferences; stored suggestions are dropped because they no longer fit. */
+  setCoachPreferences(prefs: CoachPreferences): Observable<CoachPreferences> {
+    return this.http
+      .put<CoachPreferences>(`${environment.backendUrl}/account/coach-preferences`, prefs)
+      .pipe(tap(() => this.clearAll()));
+  }
 
   muscleGroups(): Observable<MuscleGroupChoice[]> {
     return this.http.get<{ groups: MuscleGroupChoice[] }>(this.accountUrl).pipe(map((r) => r.groups));

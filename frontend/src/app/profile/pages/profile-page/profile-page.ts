@@ -35,6 +35,16 @@ export class ProfilePage implements OnInit {
   private readonly modal = inject(MnModalService);
   private readonly analysis = inject(AnalysisService);
 
+  readonly canUseAi = this.auth.canUseAi;
+  /** Preferred training days (1 = Monday ... 7 = Sunday) and the note for the AI coach. */
+  readonly weekdays = [1, 2, 3, 4, 5, 6, 7];
+  readonly trainingDays = signal<number[]>([]);
+  readonly coachNote = signal('');
+  readonly coachLoaded = signal(false);
+  readonly coachAnnouncement = signal('');
+  /** What the server has, so an unchanged note is not saved again on blur. */
+  private coachSaved = '';
+
   /** Muscle groups with whether the user trains them; untrained ones are skipped by the analysis. */
   readonly muscleGroups = signal<MuscleGroupChoice[]>([]);
   readonly savingMuscles = signal(false);
@@ -82,6 +92,16 @@ export class ProfilePage implements OnInit {
       this.auth.checkAuth().subscribe();
     }
     // Optional section: without the list it simply stays hidden.
+    this.analysis.coachPreferences().subscribe({
+      next: (p) => {
+        this.trainingDays.set(p.trainingDays);
+        this.coachNote.set(p.note);
+        this.coachSaved = JSON.stringify(p);
+        this.coachLoaded.set(true);
+      },
+      // Optional section: it stays hidden when it cannot be loaded.
+      error: () => undefined,
+    });
     this.analysis.muscleGroups().subscribe({
       next: (groups) => this.muscleGroups.set(groups),
       error: () => undefined,
@@ -93,6 +113,30 @@ export class ProfilePage implements OnInit {
       },
       // Unknown stays "-": a made-up 0 would be wrong.
       error: () => undefined,
+    });
+  }
+
+  toggleDay(day: number): void {
+    const days = this.trainingDays();
+    this.trainingDays.set(
+      days.includes(day) ? days.filter((d) => d !== day) : [...days, day].sort((a, b) => a - b),
+    );
+    this.saveCoach();
+  }
+
+  /** Saves days and note when something changed (chips save at once, the note on leaving the field). */
+  saveCoach(): void {
+    const prefs = { trainingDays: this.trainingDays(), note: this.coachNote().trim().slice(0, 300) };
+    const wanted = JSON.stringify(prefs);
+    if (wanted === this.coachSaved) return;
+    const before = this.coachSaved;
+    this.coachSaved = wanted;
+    this.analysis.setCoachPreferences(prefs).subscribe({
+      next: () => this.coachAnnouncement.set(this.lang.t('profile.coach.saved')),
+      error: (err) => {
+        this.coachSaved = before;
+        this.alerts.error(this.lang.t('profile.coach.err'), this.lang.t(errorHintKey(err)));
+      },
     });
   }
 

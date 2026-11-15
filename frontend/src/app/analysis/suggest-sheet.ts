@@ -57,6 +57,13 @@ const TEMPLATE_NAME_MAX = 100;
             </button>
           }
         </div>
+        <p class="mt-2 text-sm text-on-surface-variant">
+          @if (preferredDays().length) {
+            {{ 'suggest.days.preferred' | mnTranslate: { days: preferredDaysText() } }}
+          } @else {
+            {{ 'suggest.days.noPreferred' | mnTranslate }}
+          }
+        </p>
         <button
           type="button"
           (click)="load(false)"
@@ -95,7 +102,15 @@ const TEMPLATE_NAME_MAX = 100;
                 }
                 <span class="block hyphens-auto break-words font-display text-lg font-bold leading-snug text-on-surface">{{ plan.title }}</span>
               </h3>
-              <p class="mt-1 hyphens-auto text-sm leading-relaxed text-on-surface-variant">{{ plan.reason }}</p>
+              <!-- In a weekly plan every description takes exactly three lines, so the cards line up. -->
+              <p
+                class="mt-1 hyphens-auto text-sm leading-relaxed text-on-surface-variant"
+                [class.line-clamp-3]="plans().length > 1"
+                [style.min-height]="plans().length > 1 ? '3lh' : null"
+                [attr.title]="plans().length > 1 ? plan.reason : null"
+              >
+                {{ plan.reason }}
+              </p>
 
               <ul class="mt-3 overflow-hidden rounded-lg border border-outline-variant/30">
                 @for (ex of plan.exercises; track $index; let first = $first) {
@@ -104,9 +119,6 @@ const TEMPLATE_NAME_MAX = 100;
                       <span class="min-w-0 break-words font-semibold text-on-surface">{{ ex.name }}</span>
                       <span class="tnum shrink-0 whitespace-nowrap font-semibold text-on-surface-variant">{{ target(ex) }}</span>
                     </div>
-                    @if (ex.note) {
-                      <p class="mt-0.5 hyphens-auto text-xs leading-relaxed text-on-surface-variant">{{ ex.note }}</p>
-                    }
                   </li>
                 }
               </ul>
@@ -202,6 +214,8 @@ export class SuggestSheet implements OnInit {
 
   readonly dayOptions = [2, 3, 4, 5, 6];
   readonly days = signal(3);
+  /** The user's preferred weekdays from Profile (1 = Monday ... 7 = Sunday). */
+  readonly preferredDays = signal<number[]>([]);
   /** Week mode starts with the question how many days to train. */
   readonly choosingDays = signal(false);
 
@@ -246,6 +260,12 @@ export class SuggestSheet implements OnInit {
     return n === 2 || n === 4 ? 'lg:grid-cols-2' : 'lg:grid-cols-3';
   });
 
+  preferredDaysText(): string {
+    return this.preferredDays()
+      .map((d) => this.lang.t('profile.day.short.' + d))
+      .join(', ');
+  }
+
   ngOnInit(): void {
     if (this.mode() !== 'week') {
       this.load(false);
@@ -258,6 +278,15 @@ export class SuggestSheet implements OnInit {
       this.load(false);
     } else {
       this.choosingDays.set(true);
+      // Start from the number of days the user said they like to train.
+      this.service.coachPreferences().subscribe({
+        next: (p) => {
+          this.preferredDays.set(p.trainingDays);
+          const n = p.trainingDays.length;
+          if (this.choosingDays() && this.dayOptions.includes(n)) this.days.set(n);
+        },
+        error: () => undefined,
+      });
     }
   }
 
@@ -299,7 +328,7 @@ export class SuggestSheet implements OnInit {
     return `${base} · ${ex.bodyweight ? '+' : ''}${kg}`;
   }
 
-  /** Creates the workout with its targets; the suggested weight and Claude's note travel along as the plan. */
+  /** Creates the workout with its targets; the suggested weight travels along as part of the plan. */
   start(plan: SuggestedWorkout, index: number): void {
     if (this.busy()) return;
     this.busy.set('start' + index);
@@ -308,13 +337,11 @@ export class SuggestSheet implements OnInit {
         name: plan.title,
         date: todayIso(),
         exercises: plan.exercises.map((ex) => {
-          const note = ex.note?.trim().slice(0, 255);
           return {
             exerciseDefinitionId: ex.exerciseDefinitionId,
             targetSets: ex.sets,
             targetReps: ex.reps,
             ...(ex.weightKg != null && ex.weightKg > 0 ? { targetWeightKg: ex.weightKg } : {}),
-            ...(note ? { planNote: note } : {}),
           };
         }),
       })

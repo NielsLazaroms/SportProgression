@@ -50,7 +50,7 @@ On an empty database the API seeds a starter catalog of common exercises.
 - Finish (lock) / reopen workouts, re-run a finished workout through the normal new-workout flow
 - Progress: weekly consistency, streak, muscle-group balance, per-exercise charts (estimated 1RM, top weight, volume, reps) and records
 - AI analysis on request (Claude): this week's workouts, or one finished workout compared with its earlier sessions. Limited to 10 per hour per account; the logged sets and notes are sent to Anthropic. The week analysis flags muscle groups you skipped, except the ones you switch off under Profile
-- AI plan on request (Claude): a suggested next workout or a whole training week with sets × reps and suggested weights, using only catalog exercises; start it as a workout or save it as a template
+- AI plan on request (Claude): a suggested next workout or a whole training week with sets × reps and suggested weights, using only catalog exercises; start it as a workout or save it as a template. Plans follow the training days and the "how I like to train" note set on Profile
 - Shared exercise catalog (rename/delete your own entries), history with search, English + Dutch, sidebar layout on desktop
 
 ## Tests
