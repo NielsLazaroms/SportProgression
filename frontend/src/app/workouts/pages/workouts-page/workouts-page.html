@@ -120,10 +120,11 @@
 
       <!-- Templates: quiet one-line rows under the button, one tap to start -->
       @if (templatesLoaded() && templates().length) {
-        <h2 id="home-templates-title" class="mb-2 mt-6 text-sm font-semibold text-on-surface-variant">
+        <h2 id="home-templates-title" class="mb-2 mt-6 px-1 text-sm font-semibold text-on-surface-variant">
           {{ 'home.templates.title' | mnTranslate }}
         </h2>
-        <ul aria-labelledby="home-templates-title" class="space-y-2">
+        <!-- Same grouped list as Scheduled and Last workouts: one card, thin dividers -->
+        <ul aria-labelledby="home-templates-title" class="glass-card divide-y divide-outline-variant/25 overflow-hidden rounded-2xl">
           @for (t of shownTemplates(); track t.id) {
             <li>
               <button
@@ -131,11 +132,11 @@
                 (click)="startTemplate(t)"
                 [attr.aria-label]="'templates.startNamed' | mnTranslate: { name: t.name }"
                 [attr.aria-busy]="startingTemplateId() === t.id"
-                class="glass-card flex min-h-14 w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-left transition-colors active:bg-surface-variant/30"
+                class="flex min-h-16 w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-surface-variant/30"
               >
                 <span class="min-w-0 flex-1">
                   <span class="block truncate font-bold text-on-surface">{{ t.name }}</span>
-                  <span class="tnum block text-xs text-on-surface-variant">
+                  <span class="tnum mt-0.5 block text-sm text-on-surface-variant">
                     @if (startingTemplateId() === t.id) {
                       {{ 'templates.starting' | mnTranslate }}
                     } @else {
@@ -143,12 +144,16 @@
                     }
                   </span>
                 </span>
-                <span class="shrink-0 text-primary"><app-icon [data]="{ name: 'play', size: 18 }" /></span>
+                <!-- The same tinted circle as the + on Goals: the home screen's sign for "do this" -->
+                <!-- pl-0.5: a triangle looks centred only when it sits slightly right of the middle -->
+                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 pl-0.5 text-primary" aria-hidden="true">
+                  <app-icon [data]="{ name: 'play', size: 18 }" />
+                </span>
               </button>
             </li>
           }
         </ul>
-        <a routerLink="/templates" class="inline-flex min-h-11 items-center text-sm font-semibold text-primary">
+        <a routerLink="/templates" class="mt-1 inline-flex min-h-11 items-center px-1 text-sm font-semibold text-primary">
           {{ (templates().length > shownTemplates().length ? 'home.templates.all' : 'home.templates.manage') | mnTranslate: { n: templates().length } }}
         </a>
       }
@@ -187,16 +192,12 @@
 
     <!-- Last workouts: plain rows, the full list lives in History -->
     <section aria-labelledby="home-recent-title">
-      <h2 id="home-recent-title" class="mb-2 text-sm font-semibold text-on-surface-variant">
+      <h2 id="home-recent-title" class="mb-2 px-1 text-sm font-semibold text-on-surface-variant">
         {{ 'home.recent' | mnTranslate }}
       </h2>
 
       @if (loading()) {
-        <div class="space-y-2">
-          @for (i of [1, 2, 3]; track i) {
-            <mn-skeleton [data]="{ shape: 'rectangle', height: '56px' }" class="rounded-lg" />
-          }
-        </div>
+        <mn-skeleton [data]="{ shape: 'rectangle', height: '256px' }" class="rounded-2xl" />
       } @else if (loadError(); as hint) {
         <div class="glass-card flex flex-col items-start gap-2 rounded-2xl p-4" role="alert">
           <p class="font-bold text-on-surface">{{ 'home.error.title' | mnTranslate }}</p>
@@ -212,16 +213,16 @@
       } @else if (!workouts().length) {
         <p class="glass-card rounded-2xl p-4 text-on-surface-variant">{{ 'home.empty.hint' | mnTranslate }}</p>
       } @else {
-        <ul class="space-y-2">
+        <ul class="glass-card divide-y divide-outline-variant/25 overflow-hidden rounded-2xl">
           @for (w of latest(); track w.id) {
-            <li class="glass-card flex items-center gap-1 rounded-2xl pr-2">
+            <li class="flex items-center gap-1">
               <a
                 [routerLink]="['/workouts', w.id]"
-                class="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-2xl py-2.5 pl-4 pr-1 transition-colors active:bg-surface-variant/30"
+                class="flex min-h-16 min-w-0 flex-1 items-center gap-4 py-3.5 pl-4 pr-1 transition-colors active:bg-surface-variant/30"
               >
                 <span class="min-w-0 flex-1">
                   <span class="block truncate font-bold text-on-surface">{{ w.name }}</span>
-                  <span class="block text-xs text-on-surface-variant">
+                  <span class="mt-0.5 block text-sm text-on-surface-variant">
                     {{ rel(w.date) }}@if (!w.completedAt) {<span>, {{ 'badge.inProgress' | mnTranslate }}</span>}
                   </span>
                 </span>
@@ -232,18 +233,18 @@
                   (click)="reRun(w)"
                   [attr.aria-label]="'action.rerunNamed' | mnTranslate: { name: w.name }"
                   [title]="'action.rerun' | mnTranslate"
-                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/15 active:bg-primary/25"
+                  class="mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary transition-colors active:bg-primary/25"
                 >
                   <app-icon [data]="{ name: 'rotate-ccw', size: 18 }" />
                 </button>
               } @else {
-                <span class="w-9 shrink-0"></span>
+                <span class="mr-2 w-11 shrink-0"></span>
               }
             </li>
           }
         </ul>
         @if (workouts().length > latest().length) {
-          <a routerLink="/history" class="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary">
+          <a routerLink="/history" class="mt-1 inline-flex min-h-11 items-center px-1 text-sm font-semibold text-primary">
             {{ 'home.seeAllCount' | mnTranslate: { n: workouts().length } }}
           </a>
         }
