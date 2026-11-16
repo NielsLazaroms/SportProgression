@@ -115,6 +115,8 @@ export class AuthService {
       picture: user.picture,
       // Whether the AI features (analysis, plans) are available to this user.
       aiAccess: hasAiAccess(user),
+      // When the account was made: Home only shows its first steps to new accounts.
+      createdAt: user.createdAt,
     };
   }
 

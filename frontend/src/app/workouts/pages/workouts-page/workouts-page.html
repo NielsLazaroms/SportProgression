@@ -159,17 +159,26 @@
       }
     </section>
 
+    <!-- New here: first steps instead of a row of empty boxes -->
+    @if (showStart()) {
+      <app-getting-started [steps]="startSteps()" (act)="startAct($event)" (hide)="hideStart()" />
+    }
+
     <!-- What is planned: missed first, then today and the coming days -->
-    <app-home-schedule
-      [trainedDates]="trainedDates()"
-      (open)="openPlan.set($event)"
-      (generate)="suggestMode.set('week')"
-    />
+    @if (!showStart() || plans().length) {
+      <app-home-schedule
+        [trainedDates]="trainedDates()"
+        (open)="openPlan.set($event)"
+        (generate)="suggestMode.set('week')"
+      />
+    }
   </div>
 
   <div class="min-w-0">
     <!-- Goals: where you stand, and adding one without leaving home -->
-    <app-home-goals-row [class.mb-8]="!canUseAi()" />
+    @if (!showStart() || goalCount()) {
+      <app-home-goals-row [class.mb-8]="!canUseAi()" />
+    }
 
     <!-- Coach: one quiet row; the three AI actions live behind it -->
     @if (canUseAi()) {
@@ -191,6 +200,7 @@
     }
 
     <!-- Last workouts: plain rows, the full list lives in History -->
+    @if (!showStart() || workouts().length) {
     <section aria-labelledby="home-recent-title">
       <h2 id="home-recent-title" class="mb-2 px-1 text-sm font-semibold text-on-surface-variant">
         {{ 'home.recent' | mnTranslate }}
@@ -250,8 +260,17 @@
         }
       }
     </section>
+    }
   </div>
 </main>
+
+@if (showPrograms()) {
+  <app-starter-programs-sheet (added)="onProgramAdded($event)" (closed)="showPrograms.set(false)" />
+}
+
+@if (goalSheetOpen()) {
+  <app-goal-sheet (saved)="onGoalSaved($event)" (closed)="goalSheetOpen.set(false)" />
+}
 
 @if (openPlan(); as p) {
   <app-scheduled-sheet [item]="p.item" [status]="p.status" (closed)="openPlan.set(null)" />

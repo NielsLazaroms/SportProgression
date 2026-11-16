@@ -13,6 +13,8 @@ export interface UserProfile {
   picture?: string;
   /** The AI role: whether analysis and plan features are available to this user. */
   aiAccess?: boolean;
+  /** When the account was made (ISO date and time). */
+  createdAt?: string;
 }
 
 export interface AuthConfig {

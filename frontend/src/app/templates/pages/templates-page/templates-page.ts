@@ -18,6 +18,7 @@ import { errorHintKey, plural } from '../../../shared/format';
 import { supersetLetter } from '../../../shared/superset';
 import { TemplateStarter } from '../../data-access/template-starter';
 import { TemplateService } from '../../data-access/template.service';
+import { StarterProgramsSheet } from '../../components/starter-programs-sheet';
 import {
   WorkoutTemplate,
 } from '../../models/template.model';
@@ -26,7 +27,7 @@ import {
 @Component({
   selector: 'app-templates-page',
   standalone: true,
-  imports: [AppHeader, RouterLink, AppIcon, MnSkeleton, MnTranslatePipe, PlanTemplateSheet],
+  imports: [AppHeader, RouterLink, AppIcon, MnSkeleton, MnTranslatePipe, PlanTemplateSheet, StarterProgramsSheet],
   templateUrl: './templates-page.html',
 })
 export class TemplatesPage implements OnInit {
@@ -40,6 +41,8 @@ export class TemplatesPage implements OnInit {
   /** The template being put on a day. */
   readonly planning = signal<WorkoutTemplate | null>(null);
   readonly loading = signal(true);
+  /** The starter program picker, offered while there are no templates yet. */
+  readonly showPrograms = signal(false);
   /** i18n key explaining why loading failed; null when it worked. */
   readonly loadError = signal<string | null>(null);
 

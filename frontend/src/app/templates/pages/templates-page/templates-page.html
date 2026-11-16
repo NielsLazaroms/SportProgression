@@ -34,9 +34,17 @@
         {{ 'templates.empty.title' | mnTranslate }}
       </h2>
       <p class="mt-1 text-on-surface-variant">{{ 'templates.empty.hint' | mnTranslate }}</p>
+      <button
+        type="button"
+        (click)="showPrograms.set(true)"
+        class="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+      >
+        <app-icon [data]="{ name: 'layers', size: 18 }" />
+        {{ 'programs.pick' | mnTranslate }}
+      </button>
       <a
         routerLink="/templates/new"
-        class="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+        class="glass-card mt-2 flex min-h-13 w-full items-center justify-center gap-2 rounded-xl px-4 text-lg font-bold text-on-surface transition-colors hover:text-primary"
       >
         <app-icon [data]="{ name: 'plus', size: 18 }" />
         {{ 'templates.new' | mnTranslate }}
@@ -139,4 +147,8 @@
 
 @if (planning(); as t) {
   <app-plan-template-sheet [template]="t" (closed)="planning.set(null)" />
+}
+
+@if (showPrograms()) {
+  <app-starter-programs-sheet (added)="showPrograms.set(false); load()" (closed)="showPrograms.set(false)" />
 }

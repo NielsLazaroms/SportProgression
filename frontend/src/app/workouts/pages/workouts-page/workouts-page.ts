@@ -24,6 +24,11 @@ import { TemplateService } from '../../../templates/data-access/template.service
 import { TemplateStarter } from '../../../templates/data-access/template-starter';
 import { WorkoutTemplate } from '../../../templates/models/template.model';
 import { NewWorkoutSheet } from '../../components/new-workout-sheet';
+import { GettingStarted, StartStep, StartStepId } from '../../components/getting-started';
+import { GoalService } from '../../../progress/data-access/goal.service';
+import { Goal } from '../../../progress/models/goal.model';
+import { GoalSheet } from '../../../progress/components/goal-sheet';
+import { StarterProgramsSheet } from '../../../templates/components/starter-programs-sheet';
 import {
   compactKg,
   errorHintKey,
@@ -31,6 +36,11 @@ import {
   relativeDay,
   todayIso,
 } from '../../../shared/format';
+
+/** How long an account counts as new and gets the Get started card. */
+const NEW_ACCOUNT_DAYS = 30;
+/** From this many logged workouts on, someone is past getting started. */
+const NEW_ACCOUNT_WORKOUTS = 3;
 
 /** yyyy-mm-dd plus `n` days, in local time. */
 function addDays(day: string, n: number): string {
@@ -71,6 +81,9 @@ function yesterdayIso(): string {
     AiSheet,
     AnalysisSheet,
     SuggestSheet,
+    GettingStarted,
+    GoalSheet,
+    StarterProgramsSheet,
   ],
   templateUrl: './workouts-page.html',
 })
@@ -289,9 +302,140 @@ export class WorkoutsPage implements OnInit {
     });
   }
 
+  // ---- Get started: first steps for someone new, instead of empty boxes ----
+  private readonly auth = inject(AuthService);
+  private readonly goalService = inject(GoalService);
+  /** Plans on the schedule (shared with the calendar). */
+  readonly plans = this.schedule.items;
+  /** Number of goals; null until known, so the card does not flash in. */
+  readonly goalCount = signal<number | null>(null);
+  /** Pieces of equipment set in My gym (AI users only); null until known. */
+  readonly gymCount = signal<number | null>(null);
+  readonly goalSheetOpen = signal(false);
+  readonly showPrograms = signal(false);
+  /** Bumped by "Hide" so the stored choice is read again. */
+  private readonly hiddenTick = signal(0);
+  /** Per account: someone else signing in on this device still gets the card. */
+  readonly startHidden = computed(() => {
+    this.hiddenTick();
+    const id = this.auth.profile()?.id;
+    if (!id) return true;
+    try {
+      return localStorage.getItem('getting-started-hidden:' + id) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  readonly startSteps = computed<StartStep[]>(() => {
+    const workout: StartStep = {
+      id: 'workout',
+      icon: 'plus',
+      title: 'start.workout',
+      hint: 'start.workout.hint',
+      done: this.workouts().length > 0,
+    };
+    const goal: StartStep = {
+      id: 'goal',
+      icon: 'target',
+      title: 'start.goal',
+      hint: 'start.goal.hint',
+      done: (this.goalCount() ?? 0) > 0,
+    };
+    const planned = this.plans().length > 0;
+    if (this.canUseAi()) {
+      return [
+        { id: 'gym', icon: 'dumbbell', title: 'start.gym', hint: 'start.gym.hint', done: (this.gymCount() ?? 0) > 0 },
+        { id: 'plan', icon: 'sparkles', title: 'start.planAi', hint: 'start.planAi.hint', done: planned },
+        workout,
+        goal,
+      ];
+    }
+    return [
+      workout,
+      { id: 'template', icon: 'layers', title: 'start.program', hint: 'start.program.hint', done: this.templates().length > 0 },
+      { id: 'plan', icon: 'calendar', title: 'start.plan', hint: 'start.plan.hint', done: planned },
+      goal,
+    ];
+  });
+
+  /**
+   * Only for someone who is just starting: an account from the last 30 days
+   * with fewer than 3 workouts logged. A user with real history never gets
+   * it, also when their account looks new (a moved or imported database).
+   */
+  readonly isNewAccount = computed(() => {
+    if (this.workouts().length >= NEW_ACCOUNT_WORKOUTS) return false;
+    const created = Date.parse(this.auth.profile()?.createdAt ?? '');
+    if (Number.isNaN(created)) return this.workouts().length === 0;
+    return Date.now() - created < NEW_ACCOUNT_DAYS * 24 * 60 * 60 * 1000;
+  });
+
+  /** Shown to new accounts once everything it needs is known, until all steps are done or it is hidden. */
+  readonly showStart = computed(
+    () =>
+      this.isNewAccount() &&
+      !this.loading() &&
+      !this.loadError() &&
+      this.templatesLoaded() &&
+      this.goalCount() !== null &&
+      (!this.canUseAi() || this.gymCount() !== null) &&
+      !this.startHidden() &&
+      !this.startHiddenNow() &&
+      this.startSteps().some((s) => !s.done),
+  );
+
+  startAct(id: StartStepId): void {
+    if (id === 'workout') this.openNew();
+    else if (id === 'goal') this.goalSheetOpen.set(true);
+    else if (id === 'plan' && this.canUseAi()) this.suggestMode.set('week');
+    else if (id === 'plan') void this.router.navigate(['/schedule']);
+    else if (id === 'template') this.showPrograms.set(true);
+    else if (id === 'gym') void this.router.navigate(['/my-gym']);
+  }
+
+  hideStart(): void {
+    const id = this.auth.profile()?.id;
+    try {
+      if (id) localStorage.setItem('getting-started-hidden:' + id, '1');
+    } catch {
+      /* storage unavailable: the card comes back on the next visit */
+    }
+    this.startHiddenNow.set(true);
+    this.hiddenTick.update((n) => n + 1);
+  }
+  /** Hidden for this visit even when storage is unavailable. */
+  private readonly startHiddenNow = signal(false);
+
+  /** A program was added: its templates (and maybe this week) are there now. */
+  onProgramAdded(made: WorkoutTemplate[]): void {
+    this.showPrograms.set(false);
+    this.templates.update((list) => [...made, ...list]);
+  }
+
+  onGoalSaved(list: Goal[]): void {
+    this.goalCount.set(list.length);
+    this.goalSheetOpen.set(false);
+  }
+
+  private loadStart(): void {
+    this.goalService.getAll().subscribe({
+      next: (list) => this.goalCount.set(list.length),
+      // Unknown: leave the card out rather than nag about a goal that may exist.
+      error: () => undefined,
+    });
+    if (this.canUseAi()) {
+      this.analysis.myGym().subscribe({
+        next: (g) => this.gymCount.set(g.items.filter((i) => i.owned).length),
+        error: () => undefined,
+      });
+    }
+  }
+
   ngOnInit(): void {
     this.load();
     this.schedule.load();
+    this.loadStart();
     // The calendar sends people here to let the coach plan their week.
     if (this.route.snapshot.queryParamMap.get('coach') === 'week' && this.canUseAi()) {
       this.suggestMode.set('week');
