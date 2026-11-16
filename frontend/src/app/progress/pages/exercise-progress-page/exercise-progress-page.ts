@@ -4,6 +4,7 @@ import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MnLanguageService, MnSkeleton, MnTranslatePipe } from 'mn-angular-lib';
 import { AppIcon } from '../../../shared/app-icon';
+import { GoalsSection } from '../../components/goals-section';
 import { AppHeader } from '../../../layout/app-header';
 import { ProgressService } from '../../data-access/progress.service';
 import {
@@ -75,7 +76,7 @@ const APP_TITLE = 'Iron Pulse';
 @Component({
   selector: 'app-exercise-progress-page',
   standalone: true,
-  imports: [AppHeader, AppIcon, BodyweightTag, RouterLink, MnSkeleton, MnTranslatePipe],
+  imports: [AppHeader, AppIcon, BodyweightTag, RouterLink, MnSkeleton, MnTranslatePipe, GoalsSection],
   templateUrl: './exercise-progress-page.html',
 })
 export class ExerciseProgressPage implements OnInit, OnDestroy {

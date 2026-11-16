@@ -2,11 +2,15 @@ import { Component, DestroyRef, OnInit, computed, inject, input, output, signal 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { MnAlertService, MnLanguageService, MnTranslatePipe } from 'mn-angular-lib';
-import { concatMap, from, map, switchMap, tap, toArray } from 'rxjs';
+import { Observable, concatMap, forkJoin, from, map, of, switchMap, tap, toArray } from 'rxjs';
 import { supersetLetter } from '../shared/superset';
 import { AppIcon } from '../shared/app-icon';
 import { errorHintKey, formatKg, todayIso } from '../shared/format';
 import { TemplateService } from '../templates/data-access/template.service';
+import { ScheduleService } from '../schedule/schedule.service';
+import { addDays, assignDates } from '../schedule/schedule-dates';
+import { repeatWeeks } from '../schedule/schedule.model';
+import { RepeatWeeksPicker } from '../schedule/repeat-weeks-picker';
 import { AiError, aiError } from './ai-error';
 import { AiSheet } from './ai-sheet';
 import { AiErrorBox, AiLoading } from './ai-states';
@@ -19,7 +23,8 @@ const TEMPLATE_NAME_MAX = 100;
  * Sheet that asks Claude for a plan and lets the user act on it: the next
  * workout (`mode="workout"`, asked right away) or a whole week (`mode="week"`,
  * after choosing the number of training days). Each proposed workout can be
- * started as a workout with targets or saved as a template.
+ * started as a workout with targets or saved as a template; a week is put on
+ * the schedule as a whole, on the dates shown on its days.
  *
  *   @if (suggestMode(); as mode) {
  *     <app-suggest-sheet [mode]="mode" (closed)="suggestMode.set(null)" />
@@ -28,7 +33,7 @@ const TEMPLATE_NAME_MAX = 100;
 @Component({
   selector: 'app-suggest-sheet',
   standalone: true,
-  imports: [AppIcon, AiSheet, AiLoading, AiErrorBox, MnTranslatePipe],
+  imports: [AppIcon, AiSheet, AiLoading, AiErrorBox, MnTranslatePipe, RepeatWeeksPicker],
   template: `
     @let week = mode() === 'week';
     <app-ai-sheet
@@ -87,6 +92,16 @@ const TEMPLATE_NAME_MAX = 100;
         @if (summary(); as text) {
           <p class="mb-4 hyphens-auto px-1 leading-relaxed text-on-surface-variant">{{ text }}</p>
         }
+        <!-- Checked by the app, not by the coach: a week should train everything the lifter trains -->
+        @if (week && uncovered().length) {
+          <div class="mb-4 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3" role="status">
+            <p class="text-sm font-bold text-on-surface">{{ 'suggest.uncovered.title' | mnTranslate: { groups: uncoveredText() } }}</p>
+            <button type="button" (click)="load(true)" class="mt-1 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary">
+              <app-icon [data]="{ name: 'rotate-ccw', size: 16 }" />
+              {{ 'suggest.again.week' | mnTranslate }}
+            </button>
+          </div>
+        }
 
         <div class="grid gap-3" [class]="gridClass()">
           @for (plan of plans(); track $index; let i = $index) {
@@ -128,6 +143,9 @@ const TEMPLATE_NAME_MAX = 100;
                   </li>
                 }
               </ul>
+              @if (hasEstimate(plan)) {
+                <p class="mt-1.5 text-xs text-on-surface-variant">{{ 'suggest.estimateHint' | mnTranslate }}</p>
+              }
 
               <div class="mt-auto grid grid-cols-1 gap-2 pt-4">
                 <button
@@ -135,11 +153,12 @@ const TEMPLATE_NAME_MAX = 100;
                   (click)="start(plan, i)"
                   [attr.aria-label]="'suggest.startNamed' | mnTranslate: { name: plan.title }"
                   [attr.aria-disabled]="busy() !== null ? 'true' : null"
-                  class="flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-3 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+                  class="flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-3 font-bold transition-transform active:scale-[0.98]"
+                  [class]="week ? saveLook : 'bg-primary text-lg text-on-primary-container'"
                   [class.opacity-70]="busy() !== null"
                 >
                   <app-icon [data]="{ name: 'play', size: 18 }" />
-                  {{ (busy() === 'start' + i ? 'action.creating' : 'suggest.start') | mnTranslate }}
+                  {{ (busy() === 'start' + i ? 'action.creating' : week ? 'suggest.startNow' : 'suggest.start') | mnTranslate }}
                 </button>
                 <!-- One element for both states: pressing it must not drop keyboard focus. -->
                 @let isSaved = saved().has(i);
@@ -163,6 +182,42 @@ const TEMPLATE_NAME_MAX = 100;
           }
         </div>
 
+        @if (week && plans().length) {
+          <!-- The answer to "plan my week": put it on the calendar. -->
+          <div class="mt-4">
+            @if (!scheduled()) {
+              <app-repeat-weeks-picker class="mb-3" [value]="repeat()" (valueChange)="repeat.set($event)" />
+              @if (overlapping().length) {
+                <label class="mb-3 flex min-h-11 cursor-pointer items-start gap-3 rounded-xl bg-surface-container-high px-3 py-2.5 text-sm text-on-surface">
+                  <input
+                    type="checkbox"
+                    class="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-primary)]"
+                    [checked]="replace()"
+                    (change)="replace.set($any($event.target).checked)"
+                  />
+                  <span>{{ (overlapping().length === 1 ? 'suggest.replace.one' : 'suggest.replace') | mnTranslate: { n: overlapping().length } }}</span>
+                </label>
+              }
+            }
+            <button
+              type="button"
+              (click)="scheduleWeek()"
+              [attr.aria-disabled]="scheduled() || busy() !== null ? 'true' : null"
+              class="flex min-h-13 w-full items-center justify-center gap-2 rounded-xl px-4 text-lg font-bold transition-transform active:scale-[0.98] lg:w-auto lg:px-6"
+              [class]="scheduled() ? savedLook : 'bg-primary text-on-primary-container'"
+              [class.opacity-70]="!scheduled() && busy() !== null"
+            >
+              <app-icon [data]="{ name: scheduled() ? 'check' : 'calendar-days', size: 18 }" />
+              {{ (scheduled() ? 'suggest.scheduled' : busy() === 'schedule' ? 'action.saving' : repeat() > 1 ? 'suggest.scheduleWeeks' : 'suggest.schedule') | mnTranslate: { n: repeat() } }}
+            </button>
+            <p class="mt-2 px-1 text-xs leading-relaxed text-on-surface-variant">
+              {{ 'suggest.scheduleHint' | mnTranslate }}
+              @if (repeat() > 1 && !scheduled()) {
+                {{ 'schedule.repeat.hint' | mnTranslate }}
+              }
+            </p>
+          </div>
+        }
         @if (week && plans().length > 1) {
           <div class="mt-4 lg:flex lg:items-center lg:gap-4">
             <button
@@ -210,6 +265,7 @@ const TEMPLATE_NAME_MAX = 100;
 export class SuggestSheet implements OnInit {
   private readonly service = inject(AnalysisService);
   private readonly templates = inject(TemplateService);
+  private readonly schedule = inject(ScheduleService);
   private readonly router = inject(Router);
   private readonly alerts = inject(MnAlertService);
   private readonly lang = inject(MnLanguageService);
@@ -245,6 +301,30 @@ export class SuggestSheet implements OnInit {
   /** Indexes of the plans already saved as a template. */
   readonly saved = signal<Set<number>>(new Set());
   readonly allSaved = computed(() => this.plans().every((_, i) => this.saved().has(i)));
+  /** How many weeks in a row the week is put on the schedule. */
+  readonly repeat = signal(1);
+  /** Take the workouts already planned in those weeks off the schedule first. */
+  readonly replace = signal(true);
+  /** Muscle groups the lifter trains that this week leaves out (checked by the server). */
+  readonly uncovered = computed(() => this.suggestion()?.uncovered ?? []);
+  /** Planned workouts, not started yet, in the weeks this plan would fill. */
+  readonly overlapping = computed(() => {
+    const first = this.dates()[0];
+    if (!first) return [];
+    const last = addDays(first, 7 * this.repeat() - 1);
+    const today = todayIso();
+    return this.schedule
+      .items()
+      .filter((i) => !i.workoutId && i.date >= first && i.date <= last && i.date >= today);
+  });
+  /** The week is on the schedule already. */
+  readonly scheduled = signal(false);
+  /** Week mode: the date each proposed day goes on, in plan order. */
+  readonly dates = computed(() =>
+    this.mode() === 'week'
+      ? assignDates(this.plans().map((p) => p.weekdayNumber), todayIso(), this.preferredDays())
+      : [],
+  );
 
   /** "Save as template": the tinted outline secondary; once saved a calm, readable "Saved". */
   readonly saveLook = 'bg-primary/15 text-primary active:bg-primary/25';
@@ -279,6 +359,7 @@ export class SuggestSheet implements OnInit {
       this.load(false);
       return;
     }
+    this.schedule.load();
     // A weekly plan made (or being made) earlier today is shown right away.
     const known = this.service.knownWeekDays(this.lang.locale);
     if (known && this.dayOptions.includes(known)) {
@@ -286,16 +367,17 @@ export class SuggestSheet implements OnInit {
       this.load(false);
     } else {
       this.choosingDays.set(true);
-      // Start from the number of days the user said they like to train.
-      this.service.coachPreferences().subscribe({
-        next: (p) => {
-          this.preferredDays.set(p.trainingDays);
-          const n = p.trainingDays.length;
-          if (this.choosingDays() && this.dayOptions.includes(n)) this.days.set(n);
-        },
-        error: () => undefined,
-      });
     }
+    // Start from the number of days the user said they like to train; the
+    // days themselves place a plan on dates when the coach gave none.
+    this.service.coachPreferences().subscribe({
+      next: (p) => {
+        this.preferredDays.set(p.trainingDays);
+        const n = p.trainingDays.length;
+        if (this.choosingDays() && this.dayOptions.includes(n)) this.days.set(n);
+      },
+      error: () => undefined,
+    });
   }
 
   load(fresh: boolean): void {
@@ -311,6 +393,7 @@ export class SuggestSheet implements OnInit {
       next: (r) => {
         this.suggestion.set(r);
         this.saved.set(new Set(r.savedIndexes ?? []));
+        this.scheduled.set(!!r.scheduled);
         this.loading.set(false);
       },
       error: (err) => {
@@ -321,11 +404,71 @@ export class SuggestSheet implements OnInit {
     });
   }
 
-  /** "Day 1 · Monday": the weekday is Claude's proposal and can be missing. */
-  dayLabel(plan: SuggestedWorkout, index: number): string {
+  /** "Day 1, wed 18 nov": the date the day goes on when the week is scheduled. */
+  dayLabel(_plan: SuggestedWorkout, index: number): string {
     const day = this.lang.t('suggest.day', { n: index + 1 });
-    const weekday = plan.weekday?.trim();
-    return weekday ? `${day}, ${weekday.toLowerCase()}` : day;
+    const date = this.dates()[index];
+    if (!date) return day;
+    const text = new Date(`${date}T00:00:00`).toLocaleDateString(this.lang.locale === 'nl' ? 'nl-NL' : 'en-GB', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+    return `${day}, ${text}`;
+  }
+
+  /** "Back, Abs" in the user's language. */
+  uncoveredText(): string {
+    return this.uncovered()
+      .map((g) => this.lang.translateIfPresent('muscle.' + g) ?? g)
+      .join(', ');
+  }
+
+  /**
+   * Puts every day of the week on its date. With "replace" ticked, the
+   * workouts already planned in those weeks are taken off first, so the week
+   * is not doubled.
+   */
+  scheduleWeek(): void {
+    const suggestion = this.suggestion();
+    if (this.busy() || this.scheduled() || !suggestion) return;
+    const dates = this.dates();
+    this.busy.set('schedule');
+    const weeks = this.repeat();
+    const old = this.replace() ? this.overlapping() : [];
+    const clear: Observable<unknown> = old.length
+      ? forkJoin(old.map((i) => this.schedule.remove(i.id)))
+      : of(null);
+    clear
+      .pipe(switchMap(() => this.schedule.create(
+        repeatWeeks(this.plans().map((plan, i) => ({
+          date: dates[i],
+          name: plan.title.trim().slice(0, TEMPLATE_NAME_MAX) || this.lang.t('suggest.title.workout'),
+          ...(plan.reason ? { note: plan.reason.slice(0, 255) } : {}),
+          exercises: plan.exercises.map((ex) => ({
+            exerciseDefinitionId: ex.exerciseDefinitionId,
+            targetSets: ex.sets,
+            targetReps: ex.reps,
+            ...(ex.weightKg != null && ex.weightKg > 0 ? { targetWeightKg: ex.weightKg } : {}),
+            ...(ex.supersetGroup != null ? { supersetGroup: ex.supersetGroup } : {}),
+          })),
+        })), weeks),
+      )))
+      .subscribe({
+        next: () => {
+          this.busy.set(null);
+          this.scheduled.set(true);
+          this.service.markScheduled(suggestion);
+          this.alerts.success(
+            weeks > 1 ? this.lang.t('suggest.toast.scheduledWeeks', { n: weeks }) : this.lang.t('suggest.toast.scheduled'),
+            this.lang.t('suggest.toast.scheduled.hint'),
+          );
+        },
+        error: (err) => {
+          this.busy.set(null);
+          this.alerts.error(this.lang.t('suggest.toast.schedule.err'), this.lang.t(errorHintKey(err)));
+        },
+      });
   }
 
   /** "3 × 8 · 70 kg"; bodyweight shows "+10 kg" only when extra weight is suggested. */
@@ -333,7 +476,12 @@ export class SuggestSheet implements OnInit {
     const base = `${ex.sets} × ${ex.reps}`;
     if (ex.weightKg == null || !(ex.weightKg > 0)) return base;
     const kg = `${formatKg(ex.weightKg, this.lang.locale)} ${this.lang.t('unit.kg')}`;
-    return `${base} · ${ex.bodyweight ? '+' : ''}${kg}`;
+    return `${base} · ${ex.weightEstimated ? '≈ ' : ''}${ex.bodyweight ? '+' : ''}${kg}`;
+  }
+
+  /** At least one weight is a starting estimate, so say what the ≈ means. */
+  hasEstimate(plan: SuggestedWorkout): boolean {
+    return plan.exercises.some((ex) => ex.weightEstimated);
   }
 
   /** Creates the workout with its targets; the suggested weight travels along as part of the plan. */

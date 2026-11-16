@@ -1,0 +1,193 @@
+@let title = (isEdit() ? 'goals.sheet.edit' : 'goals.sheet.add') | mnTranslate;
+
+<mn-bottom-sheet [maxHeightVh]="92" [ariaLabel]="title" (dismiss)="closed.emit()">
+  <div class="mx-auto max-h-[82dvh] w-full max-w-xl overflow-y-auto overscroll-contain px-5 pt-2">
+    <div class="mb-5 flex items-center justify-between gap-3">
+      <h2 class="min-w-0 font-display text-xl font-bold text-on-surface">{{ title }}</h2>
+      <button
+        type="button"
+        (click)="closed.emit()"
+        [attr.aria-label]="'action.close' | mnTranslate"
+        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/50"
+      >
+        <app-icon [data]="{ name: 'x', size: 22 }" />
+      </button>
+    </div>
+
+    <form class="space-y-5" (ngSubmit)="save()">
+      <!-- What kind of goal. On an exercise page the goal is about that exercise. -->
+      @if (!presetExercise()) {
+      <div role="radiogroup" [attr.aria-label]="'goals.form.kind' | mnTranslate" class="grid grid-cols-2 gap-1 rounded-xl bg-surface-container-high p-1">
+        @for (k of ['lift', 'muscle']; track k) {
+          <button
+            type="button"
+            role="radio"
+            [attr.aria-checked]="kind() === k"
+            (click)="setKind($any(k))"
+            class="flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors"
+            [class]="kind() === k ? 'bg-surface-container text-primary shadow-sm' : 'text-on-surface-variant'"
+          >
+            <app-icon [data]="{ name: k === 'lift' ? 'dumbbell' : 'target', size: 18 }" />
+            {{ ('goals.kind.' + k) | mnTranslate }}
+          </button>
+        }
+      </div>
+      <p class="-mt-3 px-1 text-sm text-on-surface-variant">{{ ('goals.kind.' + kind() + '.hint') | mnTranslate }}</p>
+      }
+
+      @if (kind() === 'lift') {
+        <!-- Exercise -->
+        <!-- Opened on request only: the picker grabs focus and would hide the rest behind the keyboard. -->
+        @if (choosing()) {
+          <app-exercise-picker
+            [definitions]="definitions()"
+            [busy]="creatingExercise()"
+            titleKey="goals.form.chooseExercise"
+            (pick)="pick($event)"
+            (create)="createExercise($event)"
+            (closed)="choosing.set(false)"
+          />
+        } @else if (!exercise()) {
+          <button
+            type="button"
+            (click)="startChoosing()"
+            class="flex min-h-12 w-full items-center gap-3 rounded-lg border border-dashed border-outline-variant/60 px-3 text-left font-semibold text-primary"
+          >
+            <app-icon [data]="{ name: 'dumbbell', size: 18 }" />
+            <span class="min-w-0 flex-1">{{ 'goals.form.chooseExercise' | mnTranslate }}</span>
+            <app-icon [data]="{ name: 'chevron-right', size: 18 }" />
+          </button>
+        } @else if (exercise(); as ex) {
+          <div>
+            <p class="mb-1 text-sm font-semibold text-on-surface-variant">{{ 'goals.form.exercise' | mnTranslate }}</p>
+            <div class="flex min-h-12 items-center gap-3 rounded-lg bg-surface-container-high px-3">
+              <span class="min-w-0 flex-1 font-bold text-on-surface [overflow-wrap:anywhere]">{{ ex.name }}</span>
+              @if (ex.bodyweight) { <app-bw-tag [short]="true" /> }
+              <button type="button" (click)="startChoosing()" class="inline-flex min-h-11 shrink-0 items-center px-1 text-sm font-semibold text-primary">
+                {{ 'goals.form.change' | mnTranslate }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Target set -->
+          <div>
+            <p class="mb-1 text-sm font-semibold text-on-surface-variant">{{ 'goals.form.target' | mnTranslate }}</p>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="min-w-0">
+                <label for="goal-weight" class="mb-1 block text-xs font-semibold text-on-surface-variant">
+                  {{ (ex.bodyweight ? 'bw.extraKg' : 'goals.form.weight') | mnTranslate }}
+                </label>
+                <input
+                  id="goal-weight"
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  appDecimalInput
+                  [ngModel]="weightKg()"
+                  (ngModelChange)="weightKg.set($event)"
+                  [ngModelOptions]="{ standalone: true }"
+                  [placeholder]="ex.bodyweight ? '0' : ''"
+                  class="tnum h-12 w-full rounded-lg border border-control bg-surface-container px-3 text-center text-lg font-bold text-on-surface outline-none focus:border-primary"
+                />
+              </div>
+              <app-target-stepper
+                [value]="reps()"
+                [min]="1"
+                [max]="100"
+                [label]="'goals.form.reps' | mnTranslate"
+                [inputLabel]="'goals.form.reps' | mnTranslate"
+                [decLabel]="'goals.form.reps.dec' | mnTranslate"
+                [incLabel]="'goals.form.reps.inc' | mnTranslate"
+                (valueChange)="reps.set($event)"
+              />
+            </div>
+            <p class="mt-1.5 px-1 text-xs text-on-surface-variant">{{ 'goals.form.target.hint' | mnTranslate }}</p>
+          </div>
+        }
+      } @else {
+        <!-- Muscle group -->
+        <div>
+          <p id="goal-muscle-label" class="mb-2 text-sm font-semibold text-on-surface-variant">{{ 'goals.form.muscle' | mnTranslate }}</p>
+          <div role="radiogroup" aria-labelledby="goal-muscle-label" class="flex flex-wrap gap-2">
+            @for (m of muscles; track m) {
+              <button
+                type="button"
+                role="radio"
+                [attr.aria-checked]="muscle() === m"
+                (click)="muscle.set(m)"
+                class="min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors"
+                [class]="muscle() === m ? 'border-primary bg-primary/15 text-primary' : 'border-outline-variant/50 text-on-surface'"
+              >
+                {{ muscleLabel(m) }}
+              </button>
+            }
+          </div>
+        </div>
+        <div class="max-w-[14rem]">
+          <app-target-stepper
+            [value]="setsPerWeek()"
+            [min]="1"
+            [max]="60"
+            [label]="'goals.form.setsPerWeek' | mnTranslate"
+            [inputLabel]="'goals.form.setsPerWeek' | mnTranslate"
+            [decLabel]="'goals.form.sets.dec' | mnTranslate"
+            [incLabel]="'goals.form.sets.inc' | mnTranslate"
+            (valueChange)="setsPerWeek.set($event)"
+          />
+        </div>
+        <p class="-mt-3 px-1 text-xs text-on-surface-variant">{{ 'goals.form.setsPerWeek.hint' | mnTranslate }}</p>
+      }
+
+      <!-- When and why -->
+      <mn-lib-input-field
+        [props]="{ id: 'goal-date', type: 'date', label: ('goals.form.date' | mnTranslate) + ' (' + ('action.optional' | mnTranslate) + ')', fullWidth: true }"
+        [ngModel]="targetDate()"
+        (ngModelChange)="targetDate.set($event ?? '')"
+        [ngModelOptions]="{ standalone: true }"
+      />
+      <div>
+        <label for="goal-note" class="mb-1 block text-sm font-semibold text-on-surface-variant">
+          {{ 'goals.form.note' | mnTranslate }}
+          <span class="font-normal">({{ 'action.optional' | mnTranslate }})</span>
+        </label>
+        <textarea
+          id="goal-note"
+          rows="2"
+          [attr.maxlength]="noteMax"
+          [ngModel]="note()"
+          (ngModelChange)="note.set($event ?? '')"
+          [ngModelOptions]="{ standalone: true }"
+          [placeholder]="'goals.form.note.ph' | mnTranslate"
+          class="w-full rounded-lg border border-base-300 bg-base-100 p-3 text-sm text-base-content"
+        ></textarea>
+        <p class="mt-1 px-1 text-xs text-on-surface-variant">{{ 'goals.form.note.hint' | mnTranslate }}</p>
+      </div>
+
+      <div class="sticky bottom-0 -mx-5 flex flex-col gap-2 bg-surface-container px-5 pb-5 pt-3">
+        @if (block(); as b) {
+          <p id="goal-block" class="px-1 text-sm text-on-surface-variant">{{ b | mnTranslate }}</p>
+        }
+        <div class="flex gap-3">
+          @if (isEdit()) {
+            <button mnButton type="button" [data]="{ color: 'gray', size: 'lg', wrap: true }" class="min-w-0 flex-1" (click)="remove()">
+              {{ 'action.delete' | mnTranslate }}
+            </button>
+          } @else {
+            <button mnButton type="button" [data]="{ color: 'gray', size: 'lg', wrap: true }" class="min-w-0 flex-1" (click)="closed.emit()">
+              {{ 'action.cancel' | mnTranslate }}
+            </button>
+          }
+          <button
+            mnButton
+            type="submit"
+            [data]="{ color: 'primary', size: 'lg', wrap: true, disabled: !!block() || saving() }"
+            [attr.aria-describedby]="block() ? 'goal-block' : null"
+            class="min-w-0 flex-1"
+          >
+            {{ (saving() ? 'goals.form.saving' : 'action.save') | mnTranslate }}
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</mn-bottom-sheet>

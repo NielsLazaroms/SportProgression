@@ -31,20 +31,20 @@ interface Tab {
         [attr.aria-label]="'nav.label' | mnTranslate"
         class="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 mx-auto max-w-md rounded-[1.75rem] border border-outline-variant/25 bg-surface-container-high/85 shadow-[0_10px_30px_rgb(0_0_0/0.35)] backdrop-blur-xl lg:hidden"
       >
-        <div class="flex items-stretch justify-around gap-1 p-1.5">
+        <div class="flex items-stretch justify-around gap-0.5 p-1.5">
           @for (tab of tabs; track tab.path) {
             @let on = isActive(tab);
             <a
               [routerLink]="tab.path"
               [attr.aria-current]="on ? 'page' : null"
-              class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] px-1 py-1.5 transition-colors"
+              class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] px-0.5 py-1.5 transition-colors"
               [class.bg-primary/15]="on"
               [class.text-primary]="on"
               [class.text-on-surface-variant]="!on"
             >
               <app-icon [data]="{ name: tab.icon, size: 20 }" />
-              <!-- Shrinks on narrow screens and wraps as a last resort: never cut off (large text, 320px) -->
-              <span class="max-w-full text-center text-[clamp(0.625rem,3.5vw,0.6875rem)] font-semibold leading-tight [overflow-wrap:anywhere]">{{ tab.labelKey | mnTranslate }}</span>
+              <!-- Five tabs: the label shrinks on narrow screens instead of breaking inside a word -->
+              <span class="max-w-full whitespace-nowrap text-center text-[clamp(0.625rem,3.4vw,0.6875rem)] font-semibold leading-tight tracking-tight">{{ tab.labelKey | mnTranslate }}</span>
             </a>
           }
         </div>
@@ -109,6 +109,7 @@ export class Shell {
     // Templates are opened from the Workouts tab.
     { path: '/workouts', labelKey: 'nav.workouts', icon: 'dumbbell', also: ['/templates'] },
     { path: '/history', labelKey: 'nav.history', icon: 'history' },
+    { path: '/schedule', labelKey: 'nav.calendar', icon: 'calendar' },
     { path: '/progress', labelKey: 'nav.progress', icon: 'chart-column' },
     { path: '/profile', labelKey: 'nav.profile', icon: 'user' },
   ];

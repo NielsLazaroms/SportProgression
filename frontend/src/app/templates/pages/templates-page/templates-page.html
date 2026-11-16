@@ -57,6 +57,17 @@
           <div class="flex items-start gap-1">
             <h3 class="min-w-0 flex-1 font-display text-xl font-bold leading-snug text-on-surface [overflow-wrap:anywhere]">{{ t.name }}</h3>
             <div class="-mr-2 -mt-2 flex shrink-0 items-center">
+              @if (t.exercises.length) {
+                <button
+                  type="button"
+                  (click)="planning.set(t)"
+                  [attr.aria-label]="'schedule.plan.named' | mnTranslate: { name: t.name }"
+                  [attr.title]="'schedule.plan.button' | mnTranslate"
+                  class="flex h-11 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-primary"
+                >
+                  <app-icon [data]="{ name: 'calendar-days', size: 18 }" />
+                </button>
+              }
               <a
                 [routerLink]="['/templates', t.id]"
                 [attr.aria-label]="'templates.editNamed' | mnTranslate: { name: t.name }"
@@ -125,3 +136,7 @@
     </a>
   }
 </main>
+
+@if (planning(); as t) {
+  <app-plan-template-sheet [template]="t" (closed)="planning.set(null)" />
+}

@@ -36,6 +36,8 @@
         {{ 'progress.empty.cta' | mnTranslate }}
       </a>
     </div>
+    <!-- Setting a goal is a fine first step, even before anything is logged. -->
+    <app-goals-section class="mt-6" />
   } @else if (summary(); as s) {
     <!-- The answer first: are my lifts going up? -->
     <section class="mb-6 px-1" aria-labelledby="progress-head">
@@ -44,6 +46,8 @@
       </h2>
       <p class="tnum mt-1 text-on-surface-variant">{{ headlineSub() }}</p>
     </section>
+
+    <app-goals-section />
 
     <!-- ============ Twelve weeks as one line: is the work going up? ============ -->
     @if (chart(); as c) {

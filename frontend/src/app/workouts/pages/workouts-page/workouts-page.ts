@@ -1,11 +1,16 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { MnLanguageService, MnSkeleton, MnTranslatePipe } from 'mn-angular-lib';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { MnAlertService, MnLanguageService, MnSkeleton, MnTranslatePipe } from 'mn-angular-lib';
 import { AiSheet } from '../../../analysis/ai-sheet';
 import { AnalysisSheet } from '../../../analysis/analysis-sheet';
 import { AnalysisService } from '../../../analysis/analysis.service';
 import { SuggestSheet } from '../../../analysis/suggest-sheet';
 import { AppIcon } from '../../../shared/app-icon';
+import { HomeGoalsRow } from '../../../progress/components/home-goals-row';
+import { ScheduleService } from '../../../schedule/schedule.service';
+import { ScheduleStatus, ScheduledWorkout, scheduleStatus } from '../../../schedule/schedule.model';
+import { ScheduledSheet } from '../../../schedule/scheduled-sheet';
+import { HomeSchedule } from '../../../schedule/home-schedule';
 import { AppHeader } from '../../../layout/app-header';
 import { AuthService } from '../../../auth/data-access/auth.service';
 import { WorkoutService } from '../../data-access/workout.service';
@@ -13,9 +18,7 @@ import { ProgressService } from '../../../progress/data-access/progress.service'
 import { ProgressSummary } from '../../../progress/models/progress.model';
 import {
   Workout,
-  workoutRepCount,
   workoutSetCount,
-  workoutVolumeKg,
 } from '../../models/workout.model';
 import { TemplateService } from '../../../templates/data-access/template.service';
 import { TemplateStarter } from '../../../templates/data-access/template-starter';
@@ -56,6 +59,9 @@ function yesterdayIso(): string {
   selector: 'app-workouts-page',
   standalone: true,
   imports: [
+    HomeGoalsRow,
+    HomeSchedule,
+    ScheduledSheet,
     AppHeader,
     RouterLink,
     AppIcon,
@@ -76,6 +82,29 @@ export class WorkoutsPage implements OnInit {
   /** Id of the template that is being started right now. */
   readonly startingTemplateId = this.starter.startingId;
   private readonly lang = inject(MnLanguageService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly alerts = inject(MnAlertService);
+  private readonly schedule = inject(ScheduleService);
+
+  /** Days with a logged set: a plan on such a day counts as trained, not missed. */
+  readonly trainedDates = computed(
+    () =>
+      new Set(
+        this.workouts()
+          .filter((w) => workoutSetCount(w) > 0)
+          .map((w) => String(w.date).slice(0, 10)),
+      ),
+  );
+  /** The plan for today that has not been started yet. */
+  readonly todaysPlan = computed(
+    () => this.schedule.items().find((i) => i.date === todayIso() && !i.workoutId) ?? null,
+  );
+  /** Today's plan as the main action; a workout already under way comes first. */
+  readonly planToStart = computed(() => (this.unfinished() ? null : this.todaysPlan()));
+  /** The planned workout whose sheet is open. */
+  readonly openPlan = signal<{ item: ScheduledWorkout; status: ScheduleStatus } | null>(null);
+  readonly startingPlan = signal(false);
 
   /** The AI role: without it Home shows no AI entry point at all. */
   readonly canUseAi = inject(AuthService).canUseAi;
@@ -169,16 +198,23 @@ export class WorkoutsPage implements OnInit {
     const monday = mondayOf(today);
     const preferred = new Set(this.preferredDays());
     const t = (k: string, p?: Record<string, string | number>) => this.lang.t(k, p);
+    const plans = this.schedule.items();
+    const trained = this.trainedDates();
     return Array.from({ length: 7 }, (_, i) => {
       const date = addDays(monday, i);
+      const plan = plans.find((p) => p.date === date && !p.workoutId) ?? null;
       const done = this.workouts().filter(
         (w) => String(w.date).slice(0, 10) === date && workoutSetCount(w) > 0,
       );
       const sets = done.reduce((n, w) => n + workoutSetCount(w), 0);
       const name = t('profile.day.' + (i + 1));
-      const state: 'trained' | 'planned' | 'missed' | 'rest' = done.length
+      const state: 'trained' | 'scheduled' | 'missedPlan' | 'planned' | 'missed' | 'rest' = done.length
         ? 'trained'
-        : preferred.has(i + 1)
+        : plan
+          ? date >= today
+            ? 'scheduled'
+            : 'missedPlan'
+          : preferred.has(i + 1)
           ? date >= today
             ? 'planned'
             : 'missed'
@@ -186,7 +222,9 @@ export class WorkoutsPage implements OnInit {
       const label =
         state === 'trained'
           ? t('home.day.trained', { day: name, name: done.map((w) => w.name).join(', '), n: sets })
-          : t('home.day.' + state, { day: name });
+          : plan
+            ? t('home.day.' + state, { day: name, name: plan.name })
+            : t('home.day.' + state, { day: name });
       return {
         date,
         short: t('profile.day.short.' + (i + 1)),
@@ -194,6 +232,8 @@ export class WorkoutsPage implements OnInit {
         state,
         label,
         workoutId: done[0]?.id ?? null,
+        plan,
+        planStatus: plan ? scheduleStatus(plan, today, trained) : null,
       };
     });
   });
@@ -229,22 +269,34 @@ export class WorkoutsPage implements OnInit {
     return parts.join(' ');
   }
 
-  /** What a workout amounted to: volume, or reps for bodyweight-only work. */
-  load_(w: Workout): string {
-    const kg = workoutVolumeKg(w);
-    if (kg > 0) return `${this.volumeText(kg)} ${this.lang.t('unit.kg')}`;
-    const reps = workoutRepCount(w);
-    return reps > 0 ? `${reps} ${this.lang.t(plural(reps, 'unit.reps'))}` : '';
-  }
-
   pickCoach(id: 'analyse' | 'workout' | 'week'): void {
     this.showCoach.set(false);
     if (id === 'analyse') this.showAnalysis.set(true);
     else this.suggestMode.set(id);
   }
 
+  /** Today's plan becomes a workout with its targets, then the logging screen opens. */
+  startTodaysPlan(): void {
+    const plan = this.todaysPlan();
+    if (!plan || this.startingPlan()) return;
+    this.startingPlan.set(true);
+    this.schedule.start(plan.id).subscribe({
+      next: (w) => void this.router.navigate(['/workouts', w.id]).finally(() => this.startingPlan.set(false)),
+      error: (err) => {
+        this.startingPlan.set(false);
+        this.alerts.error(this.lang.t('schedule.toast.start.err'), this.lang.t(errorHintKey(err)));
+      },
+    });
+  }
+
   ngOnInit(): void {
     this.load();
+    this.schedule.load();
+    // The calendar sends people here to let the coach plan their week.
+    if (this.route.snapshot.queryParamMap.get('coach') === 'week' && this.canUseAi()) {
+      this.suggestMode.set('week');
+      void this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    }
     if (this.canUseAi()) {
       this.analysis.coachPreferences().subscribe({
         next: (p) => this.preferredDays.set(p.trainingDays),

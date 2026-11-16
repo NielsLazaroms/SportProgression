@@ -76,6 +76,12 @@ export const routes: Routes = [
           ).then((m) => m.TemplateEditorPage),
       },
       {
+        path: 'schedule',
+        title: 'nav.calendar',
+        loadComponent: () =>
+          import('./schedule/schedule-page').then((m) => m.SchedulePage),
+      },
+      {
         path: 'progress',
         title: 'nav.progress',
         loadComponent: () =>

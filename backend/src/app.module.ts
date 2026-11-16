@@ -19,6 +19,8 @@ import { ProgressModule } from './progress/progress.module';
 import { AccountModule } from './account/account.module';
 import { TemplatesModule } from './templates/templates.module';
 import { AnalysisModule } from './analysis/analysis.module';
+import { GoalsModule } from './goals/goals.module';
+import { WorkoutScheduleModule } from './schedule/schedule.module';
 
 @Module({
   imports: [
@@ -59,6 +61,8 @@ import { AnalysisModule } from './analysis/analysis.module';
     ProgressModule,
     AccountModule,
     TemplatesModule,
+    GoalsModule,
+    WorkoutScheduleModule,
     AnalysisModule,
     AuthModule,
   ],

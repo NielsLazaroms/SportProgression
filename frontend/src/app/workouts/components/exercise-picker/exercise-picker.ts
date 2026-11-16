@@ -54,6 +54,8 @@ export class ExercisePicker implements AfterViewInit {
   readonly busy = input(false);
   /** i18n key of the marker on entries that are already in the list. */
   readonly usedLabel = input('picker.inWorkout');
+  /** i18n key of the heading while browsing the catalog. */
+  readonly titleKey = input('detail.addExercise');
 
   readonly pick = output<ExerciseDefinition>();
   readonly create = output<{ name: string; muscleGroup: string; type: ExerciseType }>();

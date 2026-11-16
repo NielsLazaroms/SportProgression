@@ -242,6 +242,8 @@
         </section>
 
         <!-- ============ Records: your best sets in plain words ============ -->
+        <app-goals-section [exercise]="{ id: h.exerciseDefinitionId, name: h.name, bodyweight: h.bodyweight }" />
+
         @let heavy = h.records.maxWeight;
         @let most = h.records.mostReps;
         @let showHeavy = !!heavy && heavy.weightKg > 0;

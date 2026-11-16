@@ -5,6 +5,7 @@ import {
   LucideChartColumn,
   LucideCheck,
   LucideChevronRight,
+  LucideChevronLeft,
   LucideCirclePlus,
   LucideCircleUserRound,
   LucideClock,
@@ -74,6 +75,7 @@ import {
     LucideChartColumn,
     LucideCheck,
     LucideChevronRight,
+    LucideChevronLeft,
     LucideCirclePlus,
     LucideCircleUserRound,
     LucideClock,
@@ -119,6 +121,7 @@ import {
       @case ('chart-column') { <svg lucideChartColumn [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('check') { <svg lucideCheck [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('chevron-right') { <svg lucideChevronRight [style.width.px]="size()" [style.height.px]="size()"></svg> }
+      @case ('chevron-left') { <svg lucideChevronLeft [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('plus-circle') { <svg lucideCirclePlus [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('circle-user-round') { <svg lucideCircleUserRound [style.width.px]="size()" [style.height.px]="size()"></svg> }
       @case ('history') { <svg lucideClock [style.width.px]="size()" [style.height.px]="size()"></svg> }

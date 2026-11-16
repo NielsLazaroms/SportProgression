@@ -14,39 +14,45 @@
         <p class="tnum mt-1 text-on-surface-variant">{{ line }}</p>
       }
 
-      <!-- The week as seven days: a filled tick for a day trained, an outline for a training day still to come -->
+      <!-- The week as seven days. Every day opens the calendar on that day, where its workouts and plans can be opened or planned. -->
       <ol class="mt-4 grid grid-cols-7 gap-1.5" [attr.aria-label]="'home.week.title' | mnTranslate">
         @for (d of weekDays(); track d.date) {
           <li class="min-w-0">
-            @if (d.workoutId) {
-              <a
-                [routerLink]="['/workouts', d.workoutId]"
-                [attr.aria-label]="d.label"
-                class="glass-card flex flex-col items-center gap-1.5 rounded-xl py-2.5 transition-colors active:bg-surface-variant/40"
-                [class.active-glow]="d.today"
-              >
-                <span class="text-xs" [class]="d.today ? 'font-bold text-on-surface' : 'text-on-surface-variant'">{{ d.short }}</span>
-                <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-on-primary-container">
-                  <app-icon [data]="{ name: 'check', size: 16 }" />
-                </span>
-              </a>
-            } @else {
-              <div
-                class="glass-card flex flex-col items-center gap-1.5 rounded-xl py-2.5"
-                [class.active-glow]="d.today"
-                role="img"
-                [attr.aria-label]="d.label"
-              >
-                <span class="text-xs" [class]="d.today ? 'font-bold text-on-surface' : 'text-on-surface-variant'">{{ d.short }}</span>
-                @if (d.state === 'planned') {
+            <a
+              routerLink="/schedule"
+              [queryParams]="{ day: d.date }"
+              [attr.aria-label]="d.label + '. ' + ('home.day.openCalendar' | mnTranslate)"
+              class="glass-card flex flex-col items-center gap-1.5 rounded-xl py-2.5 transition-colors active:bg-surface-variant/40"
+              [class.active-glow]="d.today"
+            >
+              <span class="text-xs" [class]="d.today ? 'font-bold text-on-surface' : 'text-on-surface-variant'">{{ d.short }}</span>
+              @switch (d.state) {
+                @case ('trained') {
+                  <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-on-primary-container">
+                    <app-icon [data]="{ name: 'check', size: 16 }" />
+                  </span>
+                }
+                @case ('scheduled') {
+                  <span class="flex h-7 w-7 items-center justify-center rounded-full border-2 border-primary bg-primary/15 text-primary">
+                    <app-icon [data]="{ name: 'dumbbell', size: 14 }" />
+                  </span>
+                }
+                @case ('missedPlan') {
+                  <span class="flex h-7 w-7 items-center justify-center rounded-full border-2 border-dashed border-outline text-on-surface-variant">
+                    <app-icon [data]="{ name: 'dumbbell', size: 14 }" />
+                  </span>
+                }
+                @case ('planned') {
                   <span class="h-7 w-7 rounded-full border-2 border-primary/70"></span>
-                } @else if (d.state === 'missed') {
+                }
+                @case ('missed') {
                   <span class="h-7 w-7 rounded-full border-2 border-dashed border-outline-variant"></span>
-                } @else {
+                }
+                @default {
                   <span class="flex h-7 w-7 items-center justify-center"><span class="h-1.5 w-1.5 rounded-full bg-outline-variant"></span></span>
                 }
-              </div>
-            }
+              }
+            </a>
           </li>
         }
       </ol>
@@ -77,14 +83,29 @@
 
     <!-- Start: one button. It is the filled one unless a workout is waiting. -->
     <section class="mb-8">
-      @if (unfinished()) {
+      @if (planToStart(); as plan) {
+        <!-- Today is planned: starting that plan is the one filled action -->
+        <button
+          type="button"
+          (click)="startTodaysPlan()"
+          [attr.aria-busy]="startingPlan()"
+          class="mb-2 flex min-h-13 w-full flex-col items-center justify-center rounded-xl bg-primary px-4 py-2 text-on-primary-container transition-transform active:scale-[0.98]"
+        >
+          <span class="text-xs font-semibold opacity-80">{{ 'home.plannedToday' | mnTranslate }}</span>
+          <span class="flex items-center gap-2 text-lg font-bold">
+            <app-icon [data]="{ name: 'play', size: 18 }" />
+            {{ startingPlan() ? ('action.creating' | mnTranslate) : ('home.startPlan' | mnTranslate: { name: plan.name }) }}
+          </span>
+        </button>
+      }
+      @if (unfinished() || todaysPlan()) {
         <button
           type="button"
           (click)="openNew()"
           class="glass-card flex min-h-13 w-full items-center justify-center gap-2 rounded-xl px-4 text-lg font-bold text-on-surface transition-colors hover:text-primary active:scale-[0.98]"
         >
           <app-icon [data]="{ name: 'plus', size: 18 }" />
-          {{ 'home.startNew' | mnTranslate }}
+          {{ (unfinished() ? 'home.startNew' : 'home.startOther') | mnTranslate }}
         </button>
       } @else {
         <button
@@ -132,9 +153,19 @@
         </a>
       }
     </section>
+
+    <!-- What is planned: missed first, then today and the coming days -->
+    <app-home-schedule
+      [trainedDates]="trainedDates()"
+      (open)="openPlan.set($event)"
+      (generate)="suggestMode.set('week')"
+    />
   </div>
 
   <div class="min-w-0">
+    <!-- Goals: where you stand, and adding one without leaving home -->
+    <app-home-goals-row [class.mb-8]="!canUseAi()" />
+
     <!-- Coach: one quiet row; the three AI actions live behind it -->
     @if (canUseAi()) {
       <section class="mb-8">
@@ -194,7 +225,6 @@
                     {{ rel(w.date) }}@if (!w.completedAt) {<span>, {{ 'badge.inProgress' | mnTranslate }}</span>}
                   </span>
                 </span>
-                <span class="tnum shrink-0 text-sm font-semibold text-on-surface-variant">{{ load_(w) }}</span>
               </a>
               @if (w.completedAt && (w.exercises?.length ?? 0) > 0) {
                 <button
@@ -221,6 +251,10 @@
     </section>
   </div>
 </main>
+
+@if (openPlan(); as p) {
+  <app-scheduled-sheet [item]="p.item" [status]="p.status" (closed)="openPlan.set(null)" />
+}
 
 @if (showNew()) {
   <app-new-workout-sheet [source]="rerunSource()" (closed)="showNew.set(false)" />

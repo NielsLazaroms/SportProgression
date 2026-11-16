@@ -13,6 +13,7 @@ import {
 } from 'mn-angular-lib';
 import { AppHeader } from '../../../layout/app-header';
 import { AppIcon } from '../../../shared/app-icon';
+import { PlanTemplateSheet } from '../../../schedule/plan-template-sheet';
 import { errorHintKey, plural } from '../../../shared/format';
 import { supersetLetter } from '../../../shared/superset';
 import { TemplateStarter } from '../../data-access/template-starter';
@@ -25,7 +26,7 @@ import {
 @Component({
   selector: 'app-templates-page',
   standalone: true,
-  imports: [AppHeader, RouterLink, AppIcon, MnSkeleton, MnTranslatePipe],
+  imports: [AppHeader, RouterLink, AppIcon, MnSkeleton, MnTranslatePipe, PlanTemplateSheet],
   templateUrl: './templates-page.html',
 })
 export class TemplatesPage implements OnInit {
@@ -36,6 +37,8 @@ export class TemplatesPage implements OnInit {
   private readonly modal = inject(MnModalService);
 
   readonly templates = signal<WorkoutTemplate[]>([]);
+  /** The template being put on a day. */
+  readonly planning = signal<WorkoutTemplate | null>(null);
   readonly loading = signal(true);
   /** i18n key explaining why loading failed; null when it worked. */
   readonly loadError = signal<string | null>(null);

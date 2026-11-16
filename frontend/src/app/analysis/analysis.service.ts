@@ -22,8 +22,10 @@ export interface SuggestedExercise {
   bodyweight: boolean;
   sets: number;
   reps: number;
-  /** Suggested working weight; null when the exercise was never logged. */
+  /** Suggested working weight; null only when the log gives no basis for one. */
   weightKg: number | null;
+  /** The weight is the coach's starting estimate (the exercise is not in the recent log). */
+  weightEstimated?: boolean;
   /** Same number on neighbouring exercises = one superset; null on its own. */
   supersetGroup?: number | null;
 }
@@ -33,6 +35,8 @@ export interface SuggestedWorkout {
   reason: string;
   /** Week plans only: the weekday Claude proposes for this workout, in the user's language. */
   weekday?: string;
+  /** Week plans only: the same day as 1 (Monday) to 7 (Sunday); missing on older answers. */
+  weekdayNumber?: number | null;
   exercises: SuggestedExercise[];
 }
 
@@ -49,6 +53,10 @@ export interface Suggestion {
    * (index in `days`, 0 for a single `plan`), so the same plan is not saved twice.
    */
   savedIndexes?: number[];
+  /** Week plans only: muscle groups the lifter trains that the week leaves out. */
+  uncovered?: string[];
+  /** Client side only: the week was put on the schedule, so it is not scheduled twice. */
+  scheduled?: boolean;
 }
 
 /** What the AI coach takes into account when planning. */
@@ -152,11 +160,16 @@ export class AnalysisService {
     return this.run<AnalysisResult>('a', `workout|${id}|${locale}`, `${this.baseUrl}/workouts/${id}`, { locale }, fresh);
   }
 
-  /** A proposal for the next workout; kept like the analyses. */
-  suggestWorkout(locale: string, fresh = false): Observable<Suggestion> {
+  /**
+   * A proposal for the next workout, or for `date` when scheduling ahead; kept
+   * like the analyses (per day it is for, so two days never share one plan).
+   */
+  suggestWorkout(locale: string, fresh = false, date?: string): Observable<Suggestion> {
     const today = todayIso();
     const url = `${this.baseUrl}/suggest/workout`;
-    return this.run<Suggestion>('s', `workout|${today}|${locale}`, url, { today, locale }, fresh);
+    const ahead = date && date > today ? date : null;
+    const key = ahead ? `workout|${today}|${locale}|for ${ahead}` : `workout|${today}|${locale}`;
+    return this.run<Suggestion>('s', key, url, { today, locale, ...(ahead ? { date: ahead } : {}) }, fresh);
   }
 
   /** A proposal for a week with `days` training days. */
@@ -186,6 +199,12 @@ export class AnalysisService {
     if (!suggestion.savedIndexes?.includes(index)) {
       suggestion.savedIndexes = [...(suggestion.savedIndexes ?? []), index];
     }
+    this.persist();
+  }
+
+  /** Remembers that this weekly plan was put on the schedule. */
+  markScheduled(suggestion: Suggestion): void {
+    suggestion.scheduled = true;
     this.persist();
   }
 

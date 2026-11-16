@@ -12,7 +12,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AiAccessGuard } from './ai-access.guard';
-import { AnalyseDto, SuggestWeekDto } from './analysis.dto';
+import { AnalyseDto, SuggestWeekDto, SuggestWorkoutDto } from './analysis.dto';
 import { AnalysisService } from './analysis.service';
 
 /**
@@ -50,8 +50,8 @@ export class AnalysisController {
   @ApiOperation({ summary: 'Suggest the next workout' })
   @HttpCode(200)
   @Post('suggest/workout')
-  suggestWorkout(@Req() req, @Body() dto: AnalyseDto) {
-    return this.analysis.suggestWorkout(req.user.userId, dto.today, dto.locale);
+  suggestWorkout(@Req() req, @Body() dto: SuggestWorkoutDto) {
+    return this.analysis.suggestWorkout(req.user.userId, dto.today, dto.locale, dto.date);
   }
 
   @ApiOperation({ summary: 'Suggest a whole training week' })

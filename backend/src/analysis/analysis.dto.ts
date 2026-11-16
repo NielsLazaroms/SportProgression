@@ -13,6 +13,14 @@ export class AnalyseDto {
   locale?: 'en' | 'nl';
 }
 
+export class SuggestWorkoutDto extends AnalyseDto {
+  /** The day the workout is for (scheduling ahead); the next session when left out. */
+  @IsOptional()
+  @Matches(/^(19|20)\d{2}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' })
+  @IsDateString({ strict: true })
+  date?: string;
+}
+
 export class SuggestWeekDto extends AnalyseDto {
   /** How many days the user wants to train that week. */
   @IsInt()

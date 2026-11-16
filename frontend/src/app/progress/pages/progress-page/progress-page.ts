@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { MnLanguageService, MnSkeleton, MnTranslatePipe } from 'mn-angular-lib';
 import { AppIcon } from '../../../shared/app-icon';
 import { AppHeader } from '../../../layout/app-header';
+import { GoalsSection } from '../../components/goals-section';
 import { ProgressService } from '../../data-access/progress.service';
 import {
   ExerciseOverview,
@@ -41,7 +42,7 @@ const SEARCH_THRESHOLD = 6;
 @Component({
   selector: 'app-progress-page',
   standalone: true,
-  imports: [AppHeader, AppIcon, RouterLink, MnSkeleton, MnTranslatePipe],
+  imports: [AppHeader, AppIcon, RouterLink, MnSkeleton, MnTranslatePipe, GoalsSection],
   templateUrl: './progress-page.html',
 })
 export class ProgressPage implements OnInit {

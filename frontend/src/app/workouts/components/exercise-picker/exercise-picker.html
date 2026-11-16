@@ -1,12 +1,12 @@
 <section
   class="glass-card mb-4 rounded-2xl p-4"
   role="group"
-  [attr.aria-label]="'detail.addExercise' | mnTranslate"
+  [attr.aria-label]="titleKey() | mnTranslate"
   (keydown.escape)="closed.emit()"
 >
   <div class="mb-3 flex items-center justify-between gap-2">
     <p class="min-w-0 font-display font-bold text-on-surface">
-      {{ (creating() ? 'detail.newExercise' : 'detail.addExercise') | mnTranslate }}
+      {{ (creating() ? 'detail.newExercise' : titleKey()) | mnTranslate }}
     </p>
     <button
       type="button"
