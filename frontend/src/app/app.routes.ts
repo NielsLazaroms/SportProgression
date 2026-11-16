@@ -113,6 +113,20 @@ export const routes: Routes = [
             './exercise-definitions/pages/exercise-definitions-page/exercise-definitions-page'
           ).then((m) => m.ExerciseDefinitionsPage),
       },
+      {
+        path: 'my-gym',
+        title: 'gym.title',
+        loadComponent: () =>
+          import('./gym/my-gym-page').then((m) => m.MyGymPage),
+      },
+      {
+        path: 'muscle-groups',
+        title: 'muscles.title',
+        loadComponent: () =>
+          import('./muscle-groups/muscle-groups-page').then(
+            (m) => m.MuscleGroupsPage,
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

@@ -1,6 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { STANDARD_MUSCLE_GROUPS } from '../exercise-definitions/default-exercises';
 import { DataSource, In } from 'typeorm';
+import {
+  EQUIPMENT_LIST,
+  GYM_EQUIPMENT,
+  cleanEquipment,
+  describeEquipment,
+} from './gym-equipment';
 import { User } from '../users/user.entity';
 import { Workout } from '../workouts/workouts.entity';
 import { WorkoutExercise } from '../exercises/workout-exercise.entity';
@@ -79,6 +85,43 @@ export class AccountService {
     return this.coachPreferences(userId);
   }
 
+  /**
+   * The standard gym equipment with whether the user's gym has it, followed by
+   * the other machines they added themselves (always owned).
+   */
+  async gymEquipment(userId: string) {
+    const user = await this.dataSource.getRepository(User).findOneBy({ id: userId });
+    if (!user) throw new NotFoundException();
+    const owned = new Set(user.gymEquipment ?? []);
+    return {
+      name: user.gymName ?? '',
+      items: [
+        ...EQUIPMENT_LIST.map((e) => ({
+          name: e.key,
+          group: e.group,
+          owned: owned.has(e.key),
+          custom: false,
+        })),
+        ...[...owned]
+          .filter((name) => !(name in GYM_EQUIPMENT))
+          .map((name) => ({ name, group: 'other', owned: true, custom: true })),
+      ],
+    };
+  }
+
+  async setGymEquipment(userId: string, equipment: string[], name?: string) {
+    const clean = cleanEquipment(equipment);
+    const result = await this.dataSource.getRepository(User).update(
+      { id: userId },
+      {
+        gymEquipment: clean.length ? clean : null,
+        ...(name === undefined ? {} : { gymName: name.trim() || null }),
+      },
+    );
+    if (!result.affected) throw new NotFoundException();
+    return this.gymEquipment(userId);
+  }
+
   /** Everything the app stores about this user, as one portable document. */
   async export(userId: string) {
     const user = await this.dataSource
@@ -115,6 +158,8 @@ export class AccountService {
         ignoredMuscleGroups: user.ignoredMuscleGroups ?? [],
         trainingDays: user.trainingDays ?? [],
         coachNote: user.coachNote ?? null,
+        gymName: user.gymName ?? null,
+        gymEquipment: describeEquipment(user.gymEquipment) ?? [],
       },
       myExercises: exercises.map((e) => ({
         name: e.name,

@@ -68,6 +68,18 @@ export class User {
   @Column({ type: 'varchar', length: 300, nullable: true })
   coachNote?: string | null;
 
+  /**
+   * What the user's gym has: keys of the standard equipment (see
+   * account/gym-equipment.ts) and names of other machines. Empty means not
+   * set, and plans then assume a fully equipped gym.
+   */
+  @Column({ type: 'simple-json', nullable: true })
+  gymEquipment?: string[] | null;
+
+  /** What the user calls their gym ("040FIT Heeze"); only shown in the app. */
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  gymName?: string | null;
+
   @OneToMany(() => Workout, (workout) => workout.user)
   workouts: Workout[];
 

@@ -47,15 +47,11 @@ export class ProfilePage implements OnInit {
   /** What the server has, so an unchanged note is not saved again on blur. */
   private coachSaved = '';
 
-  /** Muscle groups with whether the user trains them; untrained ones are skipped by the analysis. */
+  /** Muscle groups with whether the user trains them, for the row that opens the muscle groups page. */
   readonly muscleGroups = signal<MuscleGroupChoice[]>([]);
-  readonly savingMuscles = signal(false);
-  /** Read out by screen readers after a toggle: "Glutes switched off". */
-  readonly muscleAnnouncement = signal('');
-  /** A toggle made while a save is running: sent right after it. */
-  private musclesDirty = false;
-  /** Last choice the server confirmed, to fall back on when a save fails. */
-  private musclesConfirmed: MuscleGroupChoice[] | null = null;
+
+  /** The user's gym in short, for the row that opens My gym; null until loaded. */
+  readonly gym = signal<{ name: string; count: number } | null>(null);
 
   /** The format being prepared, or null. */
   readonly exporting = signal<ExportFormat | null>(null);
@@ -105,6 +101,11 @@ export class ProfilePage implements OnInit {
       // Optional section: it stays hidden when it cannot be loaded.
       error: () => undefined,
     });
+    this.analysis.myGym().subscribe({
+      next: (g) => this.gym.set({ name: g.name, count: g.items.filter((i) => i.owned).length }),
+      // Optional section: it stays hidden when it cannot be loaded.
+      error: () => undefined,
+    });
     this.analysis.muscleGroups().subscribe({
       next: (groups) => this.muscleGroups.set(groups),
       error: () => undefined,
@@ -147,59 +148,20 @@ export class ProfilePage implements OnInit {
     return this.lang.translateIfPresent('muscle.' + name) ?? name;
   }
 
-  /**
-   * Switches one group on or off and saves the choice right away. The chips
-   * stay enabled meanwhile (a disabled button loses the keyboard focus): a
-   * toggle made during a save is shown at once and sent in a follow-up save.
-   */
-  toggleMuscle(name: string): void {
-    const before = this.muscleGroups();
-    const group = before.find((g) => g.name === name);
-    if (!group) return;
-    if (!this.savingMuscles()) this.musclesConfirmed = before;
-    this.muscleGroups.set(
-      before.map((g) => (g.name === name ? { ...g, trained: !g.trained } : g)),
-    );
-    this.muscleAnnouncement.set(
-      this.lang.t(group.trained ? 'profile.muscles.off' : 'profile.muscles.on', {
-        name: this.muscleLabel(name),
-      }),
-    );
-    this.saveMuscles();
+  /** "All trained", or which groups are skipped on purpose. */
+  musclesSummary(): string {
+    const skipped = this.muscleGroups().filter((g) => !g.trained).map((g) => this.muscleLabel(g.name));
+    if (!skipped.length) return this.lang.t('profile.muscles.all');
+    return this.lang.t('profile.muscles.skipped', { groups: skipped.join(', ') });
   }
 
-  /** One save at a time; the latest choice always wins. */
-  private saveMuscles(): void {
-    if (this.savingMuscles()) {
-      this.musclesDirty = true;
-      return;
-    }
-    this.savingMuscles.set(true);
-    this.analysis
-      .setIgnoredMuscleGroups(
-        this.muscleGroups()
-          .filter((g) => !g.trained)
-          .map((g) => g.name),
-      )
-      .subscribe({
-        next: (groups) => {
-          this.savingMuscles.set(false);
-          this.musclesConfirmed = groups;
-          if (this.musclesDirty) {
-            this.musclesDirty = false;
-            this.saveMuscles();
-            return;
-          }
-          this.muscleGroups.set(groups);
-        },
-        error: (err) => {
-          this.savingMuscles.set(false);
-          this.musclesDirty = false;
-          if (this.musclesConfirmed) this.muscleGroups.set(this.musclesConfirmed);
-          this.muscleAnnouncement.set('');
-          this.alerts.error(this.lang.t('profile.muscles.err'), this.lang.t(errorHintKey(err)));
-        },
-      });
+  /** "040FIT Heeze, 19 items", or a nudge to set it up. */
+  gymSummary(): string {
+    const g = this.gym();
+    if (!g) return '';
+    if (!g.count) return this.lang.t('profile.gym.notSet');
+    const items = this.lang.t(g.count === 1 ? 'profile.gym.items.one' : 'profile.gym.items', { n: this.countText(g.count) });
+    return g.name ? `${g.name}, ${items}` : items;
   }
 
   /** "38 workouts, 245k kg moved": the all-time totals as one line under the name. */

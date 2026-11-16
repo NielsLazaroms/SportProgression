@@ -36,6 +36,23 @@ export const DEFAULT_EXERCISES: {
   { name: 'Hanging Leg Raise', muscleGroup: 'Abs', bodyweight: true },
   { name: 'Push-up', muscleGroup: 'Chest', bodyweight: true },
   { name: 'Dip', muscleGroup: 'Triceps', bodyweight: true },
+  // One exercise for each machine in the gym equipment list that had none,
+  // so the coach can plan it when the lifter's gym has that machine.
+  { name: 'Smith Machine Squat', muscleGroup: 'Legs' },
+  { name: 'Hack Squat', muscleGroup: 'Legs' },
+  { name: 'Machine Chest Press', muscleGroup: 'Chest' },
+  { name: 'Pec Deck', muscleGroup: 'Chest' },
+  { name: 'Machine Row', muscleGroup: 'Back' },
+  { name: 'Machine Shoulder Press', muscleGroup: 'Shoulders' },
+  { name: 'Machine Crunch', muscleGroup: 'Abs' },
+  { name: 'Kettlebell Swing', muscleGroup: 'Glutes' },
+  { name: 'Incline Bench Press', muscleGroup: 'Chest' },
+  { name: 'Decline Bench Press', muscleGroup: 'Chest' },
+  { name: 'Machine Biceps Curl', muscleGroup: 'Biceps' },
+  { name: 'Machine Triceps Extension', muscleGroup: 'Triceps' },
+  { name: 'Hip Abduction', muscleGroup: 'Glutes' },
+  { name: 'Hip Adduction', muscleGroup: 'Legs' },
+  { name: 'Back Extension', muscleGroup: 'Back', bodyweight: true },
 ];
 
 /** The muscle groups of the starter catalog: the ones everyone is judged on. */

@@ -42,20 +42,25 @@ export class ExerciseDefinitionsService implements OnApplicationBootstrap {
       return;
     }
 
-    // Existing catalogs: make sure the standard bodyweight exercises exist and
-    // are marked as such (they predate the bodyweight type). Only the shared,
-    // ownerless defaults are touched: never an exercise a user created.
-    for (const def of DEFAULT_EXERCISES.filter((d) => d.bodyweight)) {
+    // Existing catalogs: add starter exercises that were added to the list
+    // later (a name that already exists, ignoring case, is left alone), and
+    // mark the standard bodyweight exercises as such (they predate the
+    // bodyweight type). Only shared, ownerless defaults are changed: never an
+    // exercise a user created.
+    let added = 0;
+    for (const def of DEFAULT_EXERCISES) {
       const existing = await this.findByName(def.name);
       if (!existing) {
         await this.exerciseDefinitionRepository.save(
           this.exerciseDefinitionRepository.create({
             name: def.name,
             muscleGroup: def.muscleGroup,
-            type: ExerciseType.BODYWEIGHT,
+            type: typeOf(def.bodyweight),
           }),
         );
+        added++;
       } else if (
+        def.bodyweight &&
         !existing.createdByUserId &&
         existing.type !== ExerciseType.BODYWEIGHT
       ) {
@@ -67,6 +72,7 @@ export class ExerciseDefinitionsService implements OnApplicationBootstrap {
         });
       }
     }
+    if (added) this.logger.log(`Added ${added} new default exercises`);
   }
 
   /**

@@ -67,6 +67,21 @@ export interface CoachPreferences {
   note: string;
 }
 
+/** Equipment and whether the user's gym has it. Custom items are machines the user typed in. */
+export interface GymEquipmentItem {
+  name: string;
+  /** Where the app shows it; machines the user typed in are 'other'. */
+  group: 'free_weights' | 'stations' | 'legs' | 'upper' | 'other';
+  owned: boolean;
+  custom: boolean;
+}
+
+/** The user's gym: what they call it and what it has. */
+export interface MyGym {
+  name: string;
+  items: GymEquipmentItem[];
+}
+
 /** A muscle group and whether the user trains it (off = the analysis leaves it alone). */
 export interface MuscleGroupChoice {
   name: string;
@@ -136,6 +151,17 @@ export class AnalysisService {
   setCoachPreferences(prefs: CoachPreferences): Observable<CoachPreferences> {
     return this.http
       .put<CoachPreferences>(`${environment.backendUrl}/account/coach-preferences`, prefs)
+      .pipe(tap(() => this.clearAll()));
+  }
+
+  myGym(): Observable<MyGym> {
+    return this.http.get<MyGym>(`${environment.backendUrl}/account/equipment`);
+  }
+
+  /** Saves the gym; stored suggestions are dropped because they may no longer fit. */
+  setMyGym(gym: { name: string; equipment: string[] }): Observable<MyGym> {
+    return this.http
+      .put<MyGym>(`${environment.backendUrl}/account/equipment`, gym)
       .pipe(tap(() => this.clearAll()));
   }
 

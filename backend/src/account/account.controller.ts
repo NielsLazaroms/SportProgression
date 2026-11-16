@@ -5,6 +5,7 @@ import type { Response } from 'express';
 import { AccountService } from './account.service';
 import { CoachPreferencesDto } from './coach-preferences.dto';
 import { IgnoredMuscleGroupsDto } from './ignored-muscle-groups.dto';
+import { GymEquipmentDto } from './gym-equipment.dto';
 
 @ApiTags('Account')
 @ApiBearerAuth()
@@ -41,6 +42,18 @@ export class AccountController {
   @Put('coach-preferences')
   setCoachPreferences(@Req() req, @Body() dto: CoachPreferencesDto) {
     return this.account.setCoachPreferences(req.user.userId, dto.trainingDays, dto.note);
+  }
+
+  @ApiOperation({ summary: 'Equipment and machines the user\'s gym has, for the AI coach' })
+  @Get('equipment')
+  gymEquipment(@Req() req) {
+    return this.account.gymEquipment(req.user.userId);
+  }
+
+  @ApiOperation({ summary: 'Save the equipment and machines the user\'s gym has' })
+  @Put('equipment')
+  setGymEquipment(@Req() req, @Body() dto: GymEquipmentDto) {
+    return this.account.setGymEquipment(req.user.userId, dto.equipment, dto.name);
   }
 
   @ApiOperation({ summary: 'Permanently delete the account and all its data' })

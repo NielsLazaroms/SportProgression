@@ -58,36 +58,45 @@
     </section>
   }
 
-  @if (muscleGroups().length) {
+  @if (muscleGroups().length || (canUseAi() && gym())) {
+    <!-- What and where I train: two rows that each open their own page -->
     <section class="mb-8">
-      <h2 id="muscles-label" class="mb-2 px-1 text-sm font-semibold text-on-surface-variant">
-        {{ 'profile.muscles' | mnTranslate }}
-      </h2>
-      <!-- Never disabled while saving: a disabled button drops the keyboard focus. -->
-      <div
-        role="group"
-        aria-labelledby="muscles-label"
-        [attr.aria-busy]="savingMuscles()"
-        class="grid grid-cols-2 gap-1.5 min-[380px]:grid-cols-3 sm:grid-cols-4"
-      >
-        @for (g of muscleGroups(); track g.name) {
-          <!-- Equal tiles in an even grid, like the days above: a tick and a teal tint when on, plain and quiet when off -->
-          <button
-            type="button"
-            (click)="toggleMuscle(g.name)"
-            [attr.aria-pressed]="g.trained"
-            class="flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-semibold transition-colors"
-            [class]="g.trained ? 'bg-primary/15 text-primary' : 'glass-card text-on-surface-variant'"
+      <h2 class="mb-2 px-1 text-sm font-semibold text-on-surface-variant">{{ 'profile.training' | mnTranslate }}</h2>
+      <div class="space-y-2">
+        @if (muscleGroups().length) {
+          <a
+            routerLink="/muscle-groups"
+            class="glass-card flex min-h-16 items-center gap-3 rounded-2xl px-4 py-3 transition-colors active:bg-surface-variant/30"
           >
-            @if (g.trained) {
-              <app-icon [data]="{ name: 'check', size: 14 }" />
-            }
-            <span class="min-w-0 truncate">{{ muscleLabel(g.name) }}</span>
-          </button>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+              <app-icon [data]="{ name: 'flame', size: 20 }" />
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block font-bold text-on-surface">{{ 'muscles.title' | mnTranslate }}</span>
+              <span class="block truncate text-sm text-on-surface-variant">{{ musclesSummary() }}</span>
+            </span>
+            <span class="text-outline"><app-icon [data]="{ name: 'chevron-right', size: 20 }" /></span>
+          </a>
+        }
+        @if (canUseAi() && gym()) {
+          <a
+            routerLink="/my-gym"
+            class="glass-card flex min-h-16 items-center gap-3 rounded-2xl px-4 py-3 transition-colors active:bg-surface-variant/30"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+              <app-icon [data]="{ name: 'dumbbell', size: 20 }" />
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block font-bold text-on-surface">{{ 'gym.title' | mnTranslate }}</span>
+              <span class="block truncate text-sm text-on-surface-variant">{{ gymSummary() }}</span>
+            </span>
+            <span class="text-outline"><app-icon [data]="{ name: 'chevron-right', size: 20 }" /></span>
+          </a>
         }
       </div>
-      <p class="mt-2 px-1 text-xs text-on-surface-variant">{{ 'profile.muscles.hint' | mnTranslate }}</p>
-      <p class="sr-only" role="status" aria-live="polite">{{ muscleAnnouncement() }}</p>
+      @if (canUseAi() && gym()) {
+        <p class="mt-2 px-1 text-xs text-on-surface-variant">{{ 'profile.gym.hint' | mnTranslate }}</p>
+      }
     </section>
   }
 
@@ -191,19 +200,25 @@
         type="button"
         (click)="deleteAccount()"
         [disabled]="deleting()"
-        class="glass-card flex min-h-14 w-full flex-col justify-center rounded-2xl px-4 py-2.5 text-left transition-colors active:bg-error/10 disabled:opacity-60"
+        class="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-error/40 bg-error/10 px-4 py-3 text-left transition-colors hover:bg-error/15 active:bg-error/20 disabled:opacity-60"
       >
-        <span class="block font-bold text-error">{{ 'profile.delete' | mnTranslate }}</span>
-        <span class="block text-xs text-on-surface-variant">{{ 'profile.delete.hint' | mnTranslate }}</span>
+        <!-- Red tile and icon: clearly the dangerous one, not just another row -->
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-error/15 text-error">
+          <app-icon [data]="{ name: 'trash-2', size: 20 }" />
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="block font-bold text-error">{{ 'profile.delete' | mnTranslate }}</span>
+          <span class="block text-xs text-on-surface-variant">{{ 'profile.delete.hint' | mnTranslate }}</span>
+        </span>
       </button>
     </div>
   </section>
 
-  <!-- Sign out: quiet, at the very end -->
+  <!-- Sign out: an outlined accent button, easy to find at the very end -->
   <button
     type="button"
     (click)="logout()"
-    class="glass-card flex min-h-13 w-full items-center justify-center gap-2 rounded-xl px-4 text-lg font-bold text-on-surface transition-colors hover:text-error"
+    class="flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/60 bg-primary/10 px-4 text-lg font-bold text-primary transition-colors hover:bg-primary/15 active:bg-primary/20"
   >
     <app-icon [data]="{ name: 'log-out', size: 18 }" />
     {{ 'profile.signOut' | mnTranslate }}
