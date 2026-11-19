@@ -6,6 +6,7 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
+        android:manageSpaceActivity="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Translucent.NoTitleBar">
 
@@ -62,6 +63,17 @@
         </activity>
 
         <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
+
+        <!-- Must exist: LauncherActivity enables it at every start (the "Site settings"
+             shortcut) and the app crashes on launch without it. It also opens the site's
+             data and permissions from Android's "Manage storage". -->
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.customtabs.trusted.MANAGE_SPACE_URL"
+                android:value="@string/launch_url" />
+        </activity>
 
         <!-- Hands the splash image to Chrome. -->
         <provider
