@@ -1,0 +1,49 @@
+# What the deploy from GitHub Actions may do: apply the app's own objects in
+# its own namespace and watch the rollout. Nothing else: no Secrets, no RBAC,
+# no network rules or quota, nothing outside app-sportprogression. The
+# Ingress is read only, so CI cannot point another host at this app; change
+# it with ./k8s/deploy.sh.
+#
+# Not part of k8s/kustomization.yaml on purpose (CI must not edit its own
+# rights). Applied once by k8s/ci-access/setup.sh, as root.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ci-deployer
+  namespace: app-sportprogression
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ci-deployer
+  namespace: app-sportprogression
+rules:
+  - apiGroups: [""]
+    resources: [configmaps, services]
+    verbs: [get, list, create, patch]
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [get, list, watch, create, patch]
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ci-deployer
+  namespace: app-sportprogression
+subjects:
+  - kind: ServiceAccount
+    name: ci-deployer
+    namespace: app-sportprogression
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ci-deployer

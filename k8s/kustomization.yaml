@@ -2,23 +2,28 @@
 # The platform owns the namespace, its quota and network rules, and the
 # Secret "database" with the credentials for the shared PostgreSQL.
 #
-# Deploy:   ./k8s/deploy.sh            (builds, loads the images, applies)
+# Deploy:   "Deploy" workflow on GitHub (by hand), or ./k8s/deploy.sh
 # Preview:  kubectl kustomize k8s/
+#
+# secret.yaml is not part of this: it is git-ignored, so the CI runner does
+# not have it, and the CI deploy user may not touch Secrets. deploy.sh applies
+# it on its own when the file exists.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: app-sportprogression
 
 resources:
   - configmap.yaml
-  # Create secret.yaml from secret.example.yaml first (it is not committed).
-  - secret.yaml
   - backend.yaml
   - frontend.yaml
   - ingress.yaml
 
-# deploy.sh replaces COMMIT with the git commit the images were built from.
+# The images live in GitHub's registry (ghcr.io); the deploy replaces COMMIT
+# with the git commit they were built from.
 images:
   - name: sportprogression-backend
+    newName: ghcr.io/nielslazaroms/sportprogression-backend
     newTag: COMMIT
   - name: sportprogression-frontend
+    newName: ghcr.io/nielslazaroms/sportprogression-frontend
     newTag: COMMIT

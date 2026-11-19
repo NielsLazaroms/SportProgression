@@ -1,0 +1,46 @@
+# Builds the signed APK (android/build.sh) and publishes it as a GitHub
+# Release. The latest one is always at
+# https://github.com/NielsLazaroms/SportProgression/releases/latest/download/iron-pulse.apk
+name: Android
+
+# Only by hand: Actions tab, "Run workflow".
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: android
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The full history: the versionCode is the commit count.
+          fetch-depth: 0
+
+      - name: Release key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          printf '%s' "$KEYSTORE_B64" | base64 -d > android/release.jks
+          printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=ironpulse\nkeyPassword=%s\n' \
+            "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" > android/keystore.properties
+
+      - name: Build
+        run: ./android/build.sh
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="1.0.$(git rev-list --count HEAD)"
+          gh release create "android-$VERSION" \
+            "android/dist/iron-pulse-$VERSION.apk" android/dist/iron-pulse.apk \
+            --target "$GITHUB_SHA" --title "Iron Pulse $VERSION (Android)" \
+            --notes "Install iron-pulse.apk on the phone. It installs over the previous version."

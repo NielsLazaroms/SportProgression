@@ -18,7 +18,18 @@ app's own icon, splash and colours. It is the live site, so:
 
 ## Building
 
-Needs only Docker.
+From GitHub: Actions tab, "Android", "Run workflow". It builds the APK
+(`.github/workflows/android.yml`) and publishes it as a Release. The latest
+one is always at
+
+https://github.com/NielsLazaroms/SportProgression/releases/latest/download/iron-pulse.apk
+
+The release key comes
+from the repository secrets `ANDROID_KEYSTORE_B64` (the base64 of
+`release.jks`) and `ANDROID_KEYSTORE_PASSWORD`; the build stops when they are
+missing or when the key does not match `assetlinks.json`.
+
+Locally it needs only Docker.
 
 ```bash
 ./android/build.sh

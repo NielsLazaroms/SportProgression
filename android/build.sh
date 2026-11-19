@@ -22,6 +22,11 @@ run() {
   docker run --rm -v "$HERE:/src" -v sportprogression-gradle-cache:/home/gradle/.gradle -w /src "$IMAGE" "$@"
 }
 
+if [ ! -f keystore.properties ] && [ -n "${CI:-}" ]; then
+  # A fresh key in CI would sign an APK that cannot update the installed app.
+  echo "keystore.properties is missing: CI writes it from the repository secrets"; exit 1
+fi
+
 if [ ! -f keystore.properties ]; then
   echo "== making the release key (once)"
   PASS="$(openssl rand -base64 24 | tr -d '/+=')"
@@ -52,5 +57,9 @@ FP="$(run apksigner verify --print-certs "$OUT" | sed -n 's/.*SHA-256 digest: //
   | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//')"
 echo "== $OUT"
 echo "   certificate SHA-256: $FP"
-grep -q "$FP" ../frontend/public/.well-known/assetlinks.json 2>/dev/null \
-  || echo "   NOT in frontend/public/.well-known/assetlinks.json yet: add it and deploy, or the app shows a URL bar."
+if ! grep -q "$FP" ../frontend/public/.well-known/assetlinks.json 2>/dev/null; then
+  echo "   NOT in frontend/public/.well-known/assetlinks.json yet: add it and deploy, or the app shows a URL bar."
+  [ -z "${CI:-}" ] || exit 1
+fi
+# A fixed name for the "latest release" download link.
+cp "$OUT" dist/iron-pulse.apk

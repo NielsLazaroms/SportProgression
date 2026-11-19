@@ -1,0 +1,55 @@
+# Build both images, push them to ghcr.io and roll them out on
+# the platform VM. The SSH key there can only run one script, which applies
+# the manifests in app-sportprogression (k8s/ci-access/).
+name: Deploy
+
+# Only by hand: Actions tab, "Run workflow".
+on:
+  workflow_dispatch:
+
+# Never two at once: the backend runs migrations on startup without a lock.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push the images
+        run: |
+          TAG="${GITHUB_SHA::12}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          for part in backend frontend; do
+            IMAGE="ghcr.io/nielslazaroms/sportprogression-$part:$TAG"
+            docker build --platform linux/amd64 \
+              --label "org.opencontainers.image.source=https://github.com/${{ github.repository }}" \
+              -t "$IMAGE" "$part"
+            docker push "$IMAGE"
+          done
+
+      - name: Roll out
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          kubectl kustomize k8s/ | sed "s/:COMMIT\$/:$TAG/" \
+            | ssh -T -i ~/.ssh/deploy -o IdentitiesOnly=yes "$DEPLOY_HOST"
+          echo "Deployed $TAG to https://sportprogression.mn-platform.tech" >> "$GITHUB_STEP_SUMMARY"

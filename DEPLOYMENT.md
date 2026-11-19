@@ -35,10 +35,43 @@ All in `k8s/`:
 | `secret.example.yaml` | Template for `secret.yaml` (git-ignored): JWT secrets, Google sign-in, Claude API key, AI e-mails |
 | `backend.yaml`, `frontend.yaml` | Deployments and Services |
 | `ingress.yaml` | The host, Traefik and the Let's Encrypt certificate |
-| `kustomization.yaml` | Ties it together; `deploy.sh` fills in the image tag |
+| `kustomization.yaml` | Ties it together (without `secret.yaml`); the deploy fills in the image tag |
 | `deploy.sh` | Builds, loads the images into k3s and applies, all over SSH |
+| `ci-access/` | The narrow access the GitHub Actions deploy has on the VM (see below) |
 
 ## Deploying
+
+**From GitHub:** Actions tab, "Deploy", "Run workflow" (on `main`).
+`.github/workflows/deploy.yml` builds both images, pushes them to
+`ghcr.io/nielslazaroms/sportprogression-*`, renders `k8s/` and sends it over
+SSH to the VM, where k3s pulls the images. A push alone deploys nothing, and
+two deploys never run at once.
+
+What CI can do on the VM is kept small, because the VM is shared with other
+apps. The SSH key in the repository secrets logs in as `sportprogression-ci`,
+which can run exactly one script: apply the manifests in
+`app-sportprogression` as the ServiceAccount `ci-deployer` and wait for the
+rollout. That Role (`k8s/ci-access/rbac.yaml`) covers ConfigMaps, Services and
+Deployments only: no Secrets, no RBAC, no other namespaces, and the Ingress is
+read only. The namespace enforces Pod Security "baseline". So these still
+need `./k8s/deploy.sh` from your machine:
+
+- changes to `k8s/secret.yaml` (CI never has it);
+- changes to `k8s/ingress.yaml`;
+- deploying uncommitted work.
+
+| Secret or variable (Settings, Environments, `production`, only `main`) | |
+| --- | --- |
+| `DEPLOY_SSH_KEY` | Private key of `sportprogression-ci` |
+| `DEPLOY_KNOWN_HOSTS` | The VM's host keys, so CI connects to nothing else |
+| `DEPLOY_HOST` (variable) | `sportprogression-ci@77.42.22.102` |
+
+The user, its script, the sudoers rule, the Role and the Pod Security label
+are made by `k8s/ci-access/setup.sh <public key>` (again to replace the key)
+and removed by `k8s/ci-access/setup.sh --remove`. They live outside
+platform-manager.
+
+### By hand
 
 Needs Docker, kubectl (only to render the files, offline) and SSH access as
 root to the VM (77.42.22.102). The Kubernetes API is firewalled to one home
@@ -50,8 +83,9 @@ cp k8s/secret.example.yaml k8s/secret.yaml   # once; fill it in (openssl rand -b
 ```
 
 The images are tagged with the git commit (`-dirty` with uncommitted
-changes), imported into k3s with `k3s ctr images import`, and used with
-`imagePullPolicy: IfNotPresent`, so no registry is needed.
+changes) and named like the registry images, imported into k3s with
+`k3s ctr images import`, and used with `imagePullPolicy: IfNotPresent`, so k3s
+does not pull them. The script also applies `k8s/secret.yaml`.
 
 Google sign-in needs `https://sportprogression.mn-platform.tech/api/auth/google/callback`
 under "Authorised redirect URIs" of the OAuth client in Google Cloud.
