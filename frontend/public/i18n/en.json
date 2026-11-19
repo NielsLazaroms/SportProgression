@@ -471,6 +471,8 @@
   "suggest.focus.go": "Plan my workout",
   "suggest.focus.change": "Change focus",
   "suggest.focus.asked": "You asked for: {{asked}}",
+  "suggest.earlier": "Show the workout from earlier today",
+  "suggest.earlier.week": "Show the week plan from earlier today",
   "suggest.loading.1": "Reading your recent workouts",
   "suggest.loading.2": "Choosing exercises and weights",
   "suggest.loading.3": "Writing your plan",

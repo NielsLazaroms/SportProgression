@@ -245,12 +245,15 @@ export class AnalysisService {
   }
 
   /**
-   * The latest plan of this kind asked for today (or being made right now),
-   * with the number of days (week) and what was asked, so reopening the sheet
-   * shows it without asking again. Workouts for a later day do not count. Null
-   * when there is none.
+   * The latest plan of this kind asked for today (or being made right now,
+   * `running`), with the number of days (week) and what was asked, so
+   * reopening the sheet can start from those choices. Workouts for a later day
+   * do not count. Null when there is none.
    */
-  knownPlan(kind: 'week' | 'workout', locale: string): { days: number | null; request: PlanRequest } | null {
+  knownPlan(
+    kind: 'week' | 'workout',
+    locale: string,
+  ): { days: number | null; request: PlanRequest; running: boolean } | null {
     this.sync();
     const today = todayIso();
     const parse = (key: string) => {
@@ -262,9 +265,13 @@ export class AnalysisService {
       return { days: Number.isInteger(days) ? days : null, request: parseRequestKey(ask) };
     };
     const running = [...this.inFlight.keys()].filter((k) => k.startsWith('s:')).map((k) => k.slice(2));
-    for (const key of [...running, ...[...this.suggestions.keys()].reverse()]) {
+    for (const key of running) {
       const known = parse(key);
-      if (known) return known;
+      if (known) return { ...known, running: true };
+    }
+    for (const key of [...this.suggestions.keys()].reverse()) {
+      const known = parse(key);
+      if (known) return { ...known, running: false };
     }
     return null;
   }

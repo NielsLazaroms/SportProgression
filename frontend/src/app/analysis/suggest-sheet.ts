@@ -31,7 +31,8 @@ const TEMPLATE_NAME_MAX = 100;
  * Sheet that asks Claude for a plan and lets the user act on it: the next
  * workout (`mode="workout"`) or a whole week (`mode="week"`, after choosing
  * the number of training days). Both first ask what the plan should focus on
- * (Legs, Push, Pull... and a short note), unless a plan was made earlier today. Each proposed workout can be
+ * (Legs, Push, Pull... and a short note); a plan made earlier today fills in
+ * those choices and can be opened again from there. Each proposed workout can be
  * started as a workout with targets or saved as a template; a week is put on
  * the schedule as a whole, on the dates shown on its days.
  *
@@ -93,6 +94,17 @@ const TEMPLATE_NAME_MAX = 100;
         >
           {{ (week ? 'suggest.days.go' : 'suggest.focus.go') | mnTranslate }}
         </button>
+        @if (earlier(); as e) {
+          <!-- The plan made earlier today, without asking (and paying) again -->
+          <button
+            type="button"
+            (click)="showEarlier(e)"
+            class="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-primary"
+          >
+            <app-icon [data]="{ name: 'rotate-ccw', size: 16 }" />
+            {{ (week ? 'suggest.earlier.week' : 'suggest.earlier') | mnTranslate }}
+          </button>
+        }
         <p class="mt-3 px-1 text-xs leading-relaxed text-on-surface-variant">{{ 'coach.disclosure' | mnTranslate }}</p>
       } @else if (loading()) {
         <app-ai-loading message="suggest.loading" [steps]="loadingSteps" />
@@ -306,6 +318,8 @@ export class SuggestSheet implements OnInit {
   readonly request = signal<PlanRequest>(NO_PLAN_REQUEST);
   /** The ask of the plan on screen, as "Push, short session"; empty when nothing was asked. */
   readonly askedText = signal('');
+  /** The choices of a plan made earlier today, to open it again from the questions. */
+  readonly earlier = signal<{ days: number | null; request: PlanRequest } | null>(null);
 
   readonly loading = signal(false);
   /** The answer on screen; the service keeps the same object, with what was saved from it. */
@@ -382,13 +396,19 @@ export class SuggestSheet implements OnInit {
 
   ngOnInit(): void {
     const week = this.mode() === 'week';
-    // A plan made (or being made) earlier today is shown right away, with what was asked for it.
+    // The questions always come first, so the user says what they want before
+    // a plan is made. A plan made earlier today fills them in; one that is
+    // still being made is waited for instead of asked again.
     const known = this.service.knownPlan(week ? 'week' : 'workout', this.lang.locale);
-    if (known && (!week || (known.days != null && this.dayOptions.includes(known.days)))) {
+    const usable = known && (!week || (known.days != null && this.dayOptions.includes(known.days)));
+    if (usable) {
       if (known.days != null) this.days.set(known.days);
       this.request.set(known.request);
+    }
+    if (usable && known.running) {
       this.load(false);
     } else {
+      if (usable) this.earlier.set({ days: known.days, request: known.request });
       this.asking.set(true);
     }
     if (!week) return;
@@ -399,7 +419,7 @@ export class SuggestSheet implements OnInit {
       next: (p) => {
         this.preferredDays.set(p.trainingDays);
         const n = p.trainingDays.length;
-        if (this.asking() && this.dayOptions.includes(n)) this.days.set(n);
+        if (this.asking() && !this.earlier() && this.dayOptions.includes(n)) this.days.set(n);
       },
       error: () => undefined,
     });
@@ -431,6 +451,13 @@ export class SuggestSheet implements OnInit {
         this.error.set(aiError(err, 'suggest.err.failed', 'suggest.err.failed'));
       },
     });
+  }
+
+  /** Opens the plan made earlier today with the choices it was made with (kept, so no new request). */
+  showEarlier(e: { days: number | null; request: PlanRequest }): void {
+    if (e.days != null) this.days.set(e.days);
+    this.request.set(e.request);
+    this.load(false);
   }
 
   /** "Day 1, wed 18 nov": the date the day goes on when the week is scheduled. */

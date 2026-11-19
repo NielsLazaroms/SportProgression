@@ -471,6 +471,8 @@
   "suggest.focus.go": "Plan mijn workout",
   "suggest.focus.change": "Andere focus",
   "suggest.focus.asked": "Je vroeg om: {{asked}}",
+  "suggest.earlier": "Toon de workout van eerder vandaag",
+  "suggest.earlier.week": "Toon het weekplan van eerder vandaag",
   "suggest.loading.1": "Je laatste workouts worden gelezen",
   "suggest.loading.2": "Oefeningen en gewichten kiezen",
   "suggest.loading.3": "Je plan wordt geschreven",
