@@ -54,6 +54,11 @@ export function cleanEquipment(items: string[]): string[] {
   return out;
 }
 
+/** The machines the user typed in themselves (not one of the common keys). */
+export function customMachines(stored: string[] | null | undefined): string[] {
+  return (stored ?? []).filter((item) => !(item in GYM_EQUIPMENT));
+}
+
 /** What the coach reads: English names, or undefined when the user set nothing (a full gym). */
 export function describeEquipment(stored: string[] | null | undefined): string[] | undefined {
   const names = (stored ?? []).map((item) => GYM_EQUIPMENT[item] ?? item);

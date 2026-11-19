@@ -26,7 +26,7 @@ import { STANDARD_MUSCLE_GROUPS } from '../exercise-definitions/default-exercise
 import { GoalView, GoalsService } from '../goals/goals.service';
 import { GoalKind } from '../goals/goal.entity';
 import { ScheduledWorkout } from '../schedule/scheduled-workout.entity';
-import { describeEquipment } from '../account/gym-equipment';
+import { customMachines, describeEquipment } from '../account/gym-equipment';
 import { PlanFocus } from './analysis.dto';
 
 const MODEL = 'claude-opus-5-5';
@@ -79,6 +79,10 @@ const WORKOUT_TASK =
 
 const PlannedExerciseSchema = z.object({
   exerciseId: z.number().describe('The "id" of an exercise from "catalog". Never an id that is not in the catalog.'),
+  muscleGroup: z
+    .string()
+    .nullable()
+    .describe('Only for a catalog entry marked "newMachine": the one muscle group it trains most, as the catalog names them (Chest, Back, Shoulders, Biceps, Triceps, Legs, Glutes or Abs). Null for every other exercise.'),
   sets: z.number().describe('Working sets, usually 2 to 5.'),
   reps: z.number().describe('Target reps per set.'),
   weightKg: z
@@ -131,6 +135,8 @@ Supersets. A superset is two (at most three) exercises done back to back, shown 
 "planned" lists the workouts already on the lifter's schedule for the next two weeks, each with its date, weekday and muscle groups. Treat them as fixed: do not plan hard work for a muscle group on the day before or after a planned workout that trains it, and do not plan a session that repeats one that is already planned for the same days.
 
 When "recent" is empty the lifter is new here: give a simple, balanced starting plan with common exercises, use null for every weight, and say in the reason or summary that it is a general starting point until they have logged some training. Workouts or exercises in "recent" that are clearly test input are ignored without mentioning them.
+
+A catalog entry marked "newMachine" is a machine the lifter added to their gym that is not an exercise yet: plan it like any other exercise when it fits the session, and always when the lifter asks for it, and give its "muscleGroup"; it becomes one of their exercises. Estimate its weight like any exercise that is not in "recent".
 
 Every exercise must come from "catalog" and is referred to by its id. Do not repeat an exercise within one workout. Keep the text short and plain, without flattery and without medical advice. Do not use dashes as punctuation.`;
 
@@ -248,7 +254,7 @@ export class AnalysisService {
     date?: string,
     request?: PlanRequest,
   ) {
-    const { log, catalog, recentIds } = await this.planningLog(userId, today);
+    const { log, ...ctx } = await this.planningLog(userId, today);
     const day = today ?? new Date().toISOString().slice(0, 10);
     // A workout for a later day (put on the schedule) is planned for that day, not for "next".
     const forDay = date && date > day ? date : null;
@@ -272,7 +278,7 @@ export class AnalysisService {
     return {
       scope: 'workout' as Scope,
       basedOnHistory: log.recent.length > 0,
-      plan: this.checkPlan(plan, catalog, recentIds),
+      plan: await this.checkPlan(plan, ctx),
     };
   }
 
@@ -284,7 +290,7 @@ export class AnalysisService {
     locale: 'en' | 'nl' = 'en',
     request?: PlanRequest,
   ) {
-    const { log, catalog, recentIds } = await this.planningLog(userId, today);
+    const { log, ...ctx } = await this.planningLog(userId, today);
     const week = await this.ask(
       'week suggestion',
       PLAN_SYSTEM,
@@ -299,12 +305,19 @@ export class AnalysisService {
         request: describeRequest(request),
       },
     );
-    const plans = week.days.slice(0, days).map((d) => ({
-      ...this.checkPlan(d, catalog, recentIds),
-      weekday: (d.weekday ?? '').trim().slice(0, 20),
-      // Used to put the plan on dates; null when the model gave no usable day.
-      weekdayNumber: weekdayNumber(d.weekdayNumber),
-    }));
+    // One day after the other, so a machine used on two days becomes one exercise.
+    const plans: (CheckedPlan & {
+      weekday: string;
+      weekdayNumber: number | null;
+    })[] = [];
+    for (const d of week.days.slice(0, days)) {
+      plans.push({
+        ...(await this.checkPlan(d, ctx)),
+        weekday: (d.weekday ?? '').trim().slice(0, 20),
+        // Used to put the plan on dates; null when the model gave no usable day.
+        weekdayNumber: weekdayNumber(d.weekdayNumber),
+      });
+    }
     return {
       scope: 'week' as Scope,
       basedOnHistory: log.recent.length > 0,
@@ -335,9 +348,24 @@ export class AnalysisService {
         .getRawMany<{ id: number }>()
     ).map((r) => Number(r.id));
     const goals = await this.goals.list(userId, day);
+    const user = await this.users.findOneBy({ id: userId });
+    // Machines the user typed into My gym: an exercise with that name (anyone's) is plannable.
+    const machines = customMachines(user?.gymEquipment);
+    const machineIds = machines.length
+      ? (
+          await this.definitions
+            .createQueryBuilder('d')
+            .select('d.id', 'id')
+            .where('LOWER(d.name) IN (:...names)', {
+              names: machines.map((m) => m.toLowerCase()),
+            })
+            .getRawMany<{ id: number }>()
+        ).map((r) => Number(r.id))
+      : [];
     // A goal exercise must be plannable even when it is someone else's and never logged yet.
     const wantedIds = [
       ...usedIds,
+      ...machineIds,
       ...goals.flatMap((g) => (g.kind === GoalKind.LIFT ? [g.exerciseDefinitionId] : [])),
     ];
     const definitions = await this.definitions.find({
@@ -349,6 +377,13 @@ export class AnalysisService {
       order: { muscleGroup: 'ASC', name: 'ASC' },
     });
     const catalog = new Map(definitions.map((d) => [d.id, d]));
+    // The other machines have no exercise yet: offered under negative ids, made into one when planned.
+    const known = new Set(definitions.map((d) => d.name.trim().toLowerCase()));
+    const newMachines = new Map(
+      machines
+        .filter((m) => !known.has(m.trim().toLowerCase()))
+        .map((m, i) => [-(i + 1), m.trim().slice(0, 80)] as const),
+    );
     // Exercises the model can see the lifter's own weights for; any other weight is its estimate.
     const recentIds = new Set(
       recent.flatMap((w) =>
@@ -358,10 +393,11 @@ export class AnalysisService {
           .filter((id): id is number => id != null),
       ),
     );
-    const user = await this.users.findOneBy({ id: userId });
     return {
+      userId,
       catalog,
       recentIds,
+      newMachines,
       log: {
         today: day,
         weekday: new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' }),
@@ -379,43 +415,51 @@ export class AnalysisService {
           note: user?.coachNote || undefined,
           equipment: describeEquipment(user?.gymEquipment),
         },
-        catalog: definitions.map((d) => ({
-          id: d.id,
-          name: d.name,
-          muscleGroup: d.muscleGroup || undefined,
-          bodyweight: d.type === ExerciseType.BODYWEIGHT || undefined,
-        })),
+        catalog: [
+          ...definitions.map((d) => ({
+            id: d.id,
+            name: d.name,
+            muscleGroup: d.muscleGroup || undefined,
+            bodyweight: d.type === ExerciseType.BODYWEIGHT || undefined,
+          })),
+          ...[...newMachines].map(([id, name]) => ({
+            id,
+            name,
+            newMachine: true,
+          })),
+        ],
       },
     };
   }
 
   /** Keeps only real catalog exercises and sane numbers; names come from the catalog, not from the model. */
-  private checkPlan(
+  private async checkPlan(
     plan: PlannedWorkout,
-    catalog: Map<number, ExerciseDefinition>,
-    recentIds: Set<number>,
-  ) {
+    ctx: PlanContext,
+  ): Promise<CheckedPlan> {
+    const { catalog, recentIds } = ctx;
     const seen = new Set<number>();
-    const exercises = plan.exercises.flatMap((e) => {
-      const def = catalog.get(Math.round(e.exerciseId));
-      if (!def || seen.has(def.id)) return [];
+    const exercises: (CheckedExercise & { superset: number | null })[] = [];
+    for (const e of plan.exercises) {
+      const id = Math.round(e.exerciseId);
+      const def =
+        catalog.get(id) ?? (await this.machineExercise(id, e.muscleGroup, ctx));
+      if (!def || seen.has(def.id)) continue;
       seen.add(def.id);
       const weight = e.weightKg == null || !(e.weightKg >= 0) ? null : Math.min(2000, Math.round(e.weightKg * 2) / 2);
-      return [
-        {
-          exerciseDefinitionId: def.id,
-          name: def.name,
-          muscleGroup: def.muscleGroup ?? null,
-          bodyweight: def.type === ExerciseType.BODYWEIGHT,
-          sets: clamp(Math.round(e.sets), 1, 10),
-          reps: clamp(Math.round(e.reps), 1, 100),
-          weightKg: weight,
-          // Not based on the lifter's own sets: the app shows it as a starting estimate.
-          weightEstimated: weight != null && weight > 0 && !recentIds.has(def.id),
-          superset: e.superset == null ? null : Math.round(e.superset),
-        },
-      ];
-    });
+      exercises.push({
+        exerciseDefinitionId: def.id,
+        name: def.name,
+        muscleGroup: def.muscleGroup ?? null,
+        bodyweight: def.type === ExerciseType.BODYWEIGHT,
+        sets: clamp(Math.round(e.sets), 1, 10),
+        reps: clamp(Math.round(e.reps), 1, 100),
+        weightKg: weight,
+        // Not based on the lifter's own sets: the app shows it as a starting estimate.
+        weightEstimated: weight != null && weight > 0 && !recentIds.has(def.id),
+        superset: e.superset == null ? null : Math.round(e.superset),
+      });
+    }
     if (!exercises.length) {
       this.logger.warn('A suggestion came back without any usable exercise');
       throw new BadGatewayException({ code: 'analysis_failed' });
@@ -430,6 +474,42 @@ export class AnalysisService {
         supersetGroup: groups[i],
       })),
     };
+  }
+
+  /**
+   * The exercise for a My gym machine the coach planned (a negative id from
+   * "newMachines"): made once as the user's own exercise, with the muscle
+   * group the coach gave when it is a known one. Null for any other id.
+   */
+  private async machineExercise(
+    id: number,
+    muscleGroup: string | null | undefined,
+    ctx: PlanContext,
+  ): Promise<ExerciseDefinition | null> {
+    const name = ctx.newMachines.get(id);
+    if (!name) return null;
+    const group = STANDARD_MUSCLE_GROUPS.find(
+      (g) => g.toLowerCase() === muscleGroup?.trim().toLowerCase(),
+    );
+    // Names are unique across the catalog; one made meanwhile is used as it is.
+    const def =
+      (await this.definitions
+        .createQueryBuilder('d')
+        .where('LOWER(d.name) = LOWER(:name)', { name })
+        .getOne()) ??
+      (await this.definitions.save(
+        this.definitions.create({
+          name,
+          type: ExerciseType.STRENGTH,
+          muscleGroup: group,
+          createdByUserId: ctx.userId,
+        }),
+      ));
+    // A week plan can use the same machine on several days: made only once.
+    ctx.newMachines.delete(id);
+    ctx.catalog.set(id, def);
+    ctx.catalog.set(def.id, def);
+    return def;
   }
 
   /**
@@ -586,6 +666,35 @@ export function describePlanned(items: ScheduledWorkout[]) {
     muscleGroups: [...new Set(i.exercises.map((e) => e.muscleGroup).filter((g): g is string => !!g))],
   }));
   return list.length ? list : undefined;
+}
+
+/** What checking a plan needs: the usable exercises and the gym machines that can become one. */
+interface PlanContext {
+  userId: string;
+  catalog: Map<number, ExerciseDefinition>;
+  recentIds: Set<number>;
+  /** My gym machines without an exercise yet, by the negative id the coach saw. */
+  newMachines: Map<number, string>;
+}
+
+/** One exercise of a checked plan, as the app gets it. */
+export interface CheckedExercise {
+  exerciseDefinitionId: number;
+  name: string;
+  muscleGroup: string | null;
+  bodyweight: boolean;
+  sets: number;
+  reps: number;
+  weightKg: number | null;
+  weightEstimated: boolean;
+  supersetGroup?: number | null;
+}
+
+/** A plan with only real exercises and sane numbers. */
+export interface CheckedPlan {
+  title: string;
+  reason: string;
+  exercises: CheckedExercise[];
 }
 
 /** What the lifter asked for in one plan. */
