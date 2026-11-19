@@ -1,0 +1,57 @@
+// A Trusted Web Activity: the app opens https://sportprogression.mn-platform.tech
+// in Chrome, full screen. Every deploy of the site is live in the app at once;
+// a new APK is only needed when something in this folder changes.
+plugins {
+    id 'com.android.application'
+}
+
+// Signing: android/keystore.properties (git-ignored) points at the release key.
+// Without it the release build is left unsigned.
+def keystoreProps = new Properties()
+def keystoreFile = rootProject.file('keystore.properties')
+if (keystoreFile.exists()) {
+    keystoreFile.withInputStream { keystoreProps.load(it) }
+}
+
+android {
+    namespace 'tech.mnplatform.sportprogression'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'tech.mnplatform.sportprogression'
+        minSdk 24
+        targetSdk 36
+        // build.sh passes the git commit count, so every APK installs over the last one.
+        versionCode((project.findProperty('versionCode') ?: '1') as int)
+        versionName project.findProperty('versionName') ?: '1.0'
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreFile.exists()) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (keystoreFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
+}

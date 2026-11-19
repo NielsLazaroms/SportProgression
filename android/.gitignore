@@ -1,0 +1,10 @@
+# The release key and its passwords: never commit these (public repository).
+keystore.properties
+*.jks
+*.keystore
+
+.gradle/
+build/
+app/build/
+local.properties
+dist/

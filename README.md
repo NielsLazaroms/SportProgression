@@ -60,6 +60,7 @@ The API applies it on its next start. `npm run migration:revert` undoes the last
 ## Deployment
 
 Docker images and Kubernetes manifests: see [DEPLOYMENT.md](DEPLOYMENT.md).
+The Android app: see [android/README.md](android/README.md).
 
 ## Features
 

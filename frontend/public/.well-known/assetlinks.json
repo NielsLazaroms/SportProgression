@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "tech.mnplatform.sportprogression",
+      "sha256_cert_fingerprints": [
+        "2E:89:32:DB:F7:4F:95:88:E7:8A:4D:5C:AF:57:AD:AF:9A:1C:80:21:61:0F:46:81:6C:DA:AB:53:07:8A:7E:21"
+      ]
+    }
+  }
+]

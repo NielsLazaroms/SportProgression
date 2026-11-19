@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Iron Pulse</string>
+    <string name="host" translatable="false">sportprogression.mn-platform.tech</string>
+    <string name="launch_url" translatable="false">https://sportprogression.mn-platform.tech/</string>
+    <string name="file_provider_authority" translatable="false">tech.mnplatform.sportprogression.fileprovider</string>
+    <string name="asset_statements" translatable="false">
+        [{
+            \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+            \"target\": {
+                \"namespace\": \"web\",
+                \"site\": \"https://sportprogression.mn-platform.tech\"
+            }
+        }]
+    </string>
+</resources>
