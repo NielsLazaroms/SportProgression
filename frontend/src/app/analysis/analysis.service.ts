@@ -6,6 +6,43 @@ import { AuthService } from '../auth/data-access/auth.service';
 import { todayIso } from '../shared/format';
 import { Workout } from '../workouts/models/workout.model';
 
+/** What a plan can be asked to focus on; the same keys the server knows. */
+export const PLAN_FOCUSES = ['legs', 'push', 'pull', 'upper', 'lower', 'full_body'] as const;
+export type PlanFocus = (typeof PLAN_FOCUSES)[number];
+
+/** Longest wish the server accepts for one plan. */
+export const PLAN_NOTE_MAX = 120;
+
+/** What the user asks for in this one plan: a focus and a short note, both optional. */
+export interface PlanRequest {
+  focus: PlanFocus | null;
+  note: string;
+}
+
+export const NO_PLAN_REQUEST: PlanRequest = { focus: null, note: '' };
+
+/** The request as sent to the server: only what was asked. */
+function requestBody(r?: PlanRequest): { focus?: PlanFocus; note?: string } {
+  const note = r?.note.trim().slice(0, PLAN_NOTE_MAX) ?? '';
+  return { ...(r?.focus ? { focus: r.focus } : {}), ...(note ? { note } : {}) };
+}
+
+/** Key part for a request, so plans with another focus or note are kept apart. */
+function requestKey(r?: PlanRequest): string {
+  const body = requestBody(r);
+  return body.focus || body.note ? `|ask:${body.focus ?? ''}:${encodeURIComponent(body.note ?? '')}` : '';
+}
+
+/** The request back from a key part made by requestKey. */
+function parseRequestKey(part: string | undefined): PlanRequest {
+  if (!part?.startsWith('ask:')) return { ...NO_PLAN_REQUEST };
+  const [, focus, note] = part.split(':');
+  return {
+    focus: (PLAN_FOCUSES as readonly string[]).includes(focus) ? (focus as PlanFocus) : null,
+    note: decodeURIComponent(note ?? ''),
+  };
+}
+
 /** What the coach (Claude) wrote, already split into sections. */
 export interface Analysis {
   headline: string;
@@ -190,34 +227,46 @@ export class AnalysisService {
    * A proposal for the next workout, or for `date` when scheduling ahead; kept
    * like the analyses (per day it is for, so two days never share one plan).
    */
-  suggestWorkout(locale: string, fresh = false, date?: string): Observable<Suggestion> {
+  suggestWorkout(locale: string, fresh = false, date?: string, request?: PlanRequest): Observable<Suggestion> {
     const today = todayIso();
     const url = `${this.baseUrl}/suggest/workout`;
     const ahead = date && date > today ? date : null;
-    const key = ahead ? `workout|${today}|${locale}|for ${ahead}` : `workout|${today}|${locale}`;
-    return this.run<Suggestion>('s', key, url, { today, locale, ...(ahead ? { date: ahead } : {}) }, fresh);
+    const key = (ahead ? `workout|${today}|${locale}|for ${ahead}` : `workout|${today}|${locale}`) + requestKey(request);
+    const body = { today, locale, ...(ahead ? { date: ahead } : {}), ...requestBody(request) };
+    return this.run<Suggestion>('s', key, url, body, fresh);
   }
 
   /** A proposal for a week with `days` training days. */
-  suggestWeek(days: number, locale: string, fresh = false): Observable<Suggestion> {
+  suggestWeek(days: number, locale: string, fresh = false, request?: PlanRequest): Observable<Suggestion> {
     const today = todayIso();
     const url = `${this.baseUrl}/suggest/week`;
-    return this.run<Suggestion>('s', `week|${days}|${today}|${locale}`, url, { today, locale, days }, fresh);
+    const key = `week|${days}|${today}|${locale}` + requestKey(request);
+    return this.run<Suggestion>('s', key, url, { today, locale, days, ...requestBody(request) }, fresh);
   }
 
   /**
-   * The number of days of a weekly plan that was already asked for today (or is
-   * being made right now), so reopening the sheet shows it without asking
-   * "how many days" again. Null when there is none.
+   * The latest plan of this kind asked for today (or being made right now),
+   * with the number of days (week) and what was asked, so reopening the sheet
+   * shows it without asking again. Workouts for a later day do not count. Null
+   * when there is none.
    */
-  knownWeekDays(locale: string): number | null {
+  knownPlan(kind: 'week' | 'workout', locale: string): { days: number | null; request: PlanRequest } | null {
     this.sync();
-    const fits = (key: string) => key.startsWith('week|') && key.endsWith(`|${todayIso()}|${locale}`);
-    const key =
-      [...this.inFlight.keys()].filter((k) => k.startsWith('s:')).map((k) => k.slice(2)).find(fits) ??
-      [...this.suggestions.keys()].reverse().find(fits);
-    const days = key ? Number(key.split('|')[1]) : NaN;
-    return Number.isInteger(days) ? days : null;
+    const today = todayIso();
+    const parse = (key: string) => {
+      const parts = key.split('|');
+      if (parts[0] !== kind) return null;
+      const [day, lang, ask] = kind === 'week' ? parts.slice(2) : parts.slice(1);
+      if (day !== today || lang !== locale || (ask !== undefined && !ask.startsWith('ask:'))) return null;
+      const days = kind === 'week' ? Number(parts[1]) : NaN;
+      return { days: Number.isInteger(days) ? days : null, request: parseRequestKey(ask) };
+    };
+    const running = [...this.inFlight.keys()].filter((k) => k.startsWith('s:')).map((k) => k.slice(2));
+    for (const key of [...running, ...[...this.suggestions.keys()].reverse()]) {
+      const known = parse(key);
+      if (known) return known;
+    }
+    return null;
   }
 
   /** Remembers that proposal number `index` of this suggestion became a template. */

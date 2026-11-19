@@ -51,13 +51,25 @@ export class AnalysisController {
   @HttpCode(200)
   @Post('suggest/workout')
   suggestWorkout(@Req() req, @Body() dto: SuggestWorkoutDto) {
-    return this.analysis.suggestWorkout(req.user.userId, dto.today, dto.locale, dto.date);
+    return this.analysis.suggestWorkout(
+      req.user.userId,
+      dto.today,
+      dto.locale,
+      dto.date,
+      { focus: dto.focus, note: dto.note },
+    );
   }
 
   @ApiOperation({ summary: 'Suggest a whole training week' })
   @HttpCode(200)
   @Post('suggest/week')
   suggestWeek(@Req() req, @Body() dto: SuggestWeekDto) {
-    return this.analysis.suggestWeek(req.user.userId, dto.days, dto.today, dto.locale);
+    return this.analysis.suggestWeek(
+      req.user.userId,
+      dto.days,
+      dto.today,
+      dto.locale,
+      { focus: dto.focus, note: dto.note },
+    );
   }
 }

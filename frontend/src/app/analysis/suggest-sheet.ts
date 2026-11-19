@@ -14,15 +14,24 @@ import { RepeatWeeksPicker } from '../schedule/repeat-weeks-picker';
 import { AiError, aiError } from './ai-error';
 import { AiSheet } from './ai-sheet';
 import { AiErrorBox, AiLoading } from './ai-states';
-import { AnalysisService, SuggestedExercise, SuggestedWorkout, Suggestion } from './analysis.service';
+import {
+  AnalysisService,
+  NO_PLAN_REQUEST,
+  PlanRequest,
+  SuggestedExercise,
+  SuggestedWorkout,
+  Suggestion,
+} from './analysis.service';
+import { PlanFocusPicker } from './plan-focus-picker';
 
 /** Longest template name the server accepts. */
 const TEMPLATE_NAME_MAX = 100;
 
 /**
  * Sheet that asks Claude for a plan and lets the user act on it: the next
- * workout (`mode="workout"`, asked right away) or a whole week (`mode="week"`,
- * after choosing the number of training days). Each proposed workout can be
+ * workout (`mode="workout"`) or a whole week (`mode="week"`, after choosing
+ * the number of training days). Both first ask what the plan should focus on
+ * (Legs, Push, Pull... and a short note), unless a plan was made earlier today. Each proposed workout can be
  * started as a workout with targets or saved as a template; a week is put on
  * the schedule as a whole, on the dates shown on its days.
  *
@@ -33,7 +42,7 @@ const TEMPLATE_NAME_MAX = 100;
 @Component({
   selector: 'app-suggest-sheet',
   standalone: true,
-  imports: [AppIcon, AiSheet, AiLoading, AiErrorBox, MnTranslatePipe, RepeatWeeksPicker],
+  imports: [AppIcon, AiSheet, AiLoading, AiErrorBox, MnTranslatePipe, RepeatWeeksPicker, PlanFocusPicker],
   template: `
     @let week = mode() === 'week';
     <app-ai-sheet
@@ -42,7 +51,8 @@ const TEMPLATE_NAME_MAX = 100;
       [wide]="week && showsPlans() && plans().length > 1"
       (closed)="closed.emit()"
     >
-      @if (choosingDays()) {
+      @if (asking()) {
+        @if (week) {
         <p id="suggest-days-label" class="mb-4 font-display text-[1.5rem] font-extrabold leading-[1.2] tracking-tight text-on-surface">{{ 'suggest.days.question' | mnTranslate }}</p>
         <div
           role="group"
@@ -68,12 +78,20 @@ const TEMPLATE_NAME_MAX = 100;
             {{ 'suggest.days.noPreferred' | mnTranslate }}
           }
         </p>
+        }
+        <app-plan-focus-picker
+          idPrefix="suggest"
+          [class]="week ? 'mt-5' : ''"
+          [scope]="mode()"
+          [value]="request()"
+          (valueChange)="request.set($event)"
+        />
         <button
           type="button"
           (click)="load(false)"
-          class="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
+          class="mt-4 flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-lg font-bold text-on-primary-container transition-transform active:scale-[0.98]"
         >
-          {{ 'suggest.days.go' | mnTranslate }}
+          {{ (week ? 'suggest.days.go' : 'suggest.focus.go') | mnTranslate }}
         </button>
         <p class="mt-3 px-1 text-xs leading-relaxed text-on-surface-variant">{{ 'coach.disclosure' | mnTranslate }}</p>
       } @else if (loading()) {
@@ -88,6 +106,9 @@ const TEMPLATE_NAME_MAX = 100;
               <p class="mt-0.5 text-sm leading-relaxed text-on-surface-variant">{{ 'suggest.general.body' | mnTranslate }}</p>
             </div>
           </div>
+        }
+        @if (askedText(); as asked) {
+          <p class="mb-3 px-1 text-sm text-on-surface-variant">{{ 'suggest.focus.asked' | mnTranslate: { asked: asked } }}</p>
         }
         @if (summary(); as text) {
           <p class="mb-4 hyphens-auto px-1 leading-relaxed text-on-surface-variant">{{ text }}</p>
@@ -247,16 +268,14 @@ const TEMPLATE_NAME_MAX = 100;
             <app-icon [data]="{ name: 'rotate-ccw', size: 16 }" />
             {{ (week ? 'suggest.again.week' : 'suggest.again') | mnTranslate }}
           </button>
-          @if (week) {
-            <button
-              type="button"
-              (click)="choosingDays.set(true)"
-              class="flex min-h-11 items-center gap-2 rounded-lg text-sm font-semibold text-primary"
-            >
-              <app-icon [data]="{ name: 'calendar-days', size: 16 }" />
-              {{ 'suggest.days.change' | mnTranslate }}
-            </button>
-          }
+          <button
+            type="button"
+            (click)="asking.set(true)"
+            class="flex min-h-11 items-center gap-2 rounded-lg text-sm font-semibold text-primary"
+          >
+            <app-icon [data]="{ name: week ? 'calendar-days' : 'target', size: 16 }" />
+            {{ (week ? 'suggest.days.change' : 'suggest.focus.change') | mnTranslate }}
+          </button>
         </div>
       }
     </app-ai-sheet>
@@ -278,8 +297,15 @@ export class SuggestSheet implements OnInit {
   readonly days = signal(3);
   /** The user's preferred weekdays from Profile (1 = Monday ... 7 = Sunday). */
   readonly preferredDays = signal<number[]>([]);
-  /** Week mode starts with the question how many days to train. */
-  readonly choosingDays = signal(false);
+  /**
+   * The questions before a plan: how many days (week mode) and what to focus
+   * on. Shown first, unless a plan was already made today.
+   */
+  readonly asking = signal(false);
+  /** What the user asked this plan to focus on. */
+  readonly request = signal<PlanRequest>(NO_PLAN_REQUEST);
+  /** The ask of the plan on screen, as "Push, short session"; empty when nothing was asked. */
+  readonly askedText = signal('');
 
   readonly loading = signal(false);
   /** The answer on screen; the service keeps the same object, with what was saved from it. */
@@ -294,7 +320,7 @@ export class SuggestSheet implements OnInit {
   /** False: nothing is logged yet, so this is a general starting plan. */
   readonly basedOnHistory = computed(() => this.suggestion()?.basedOnHistory !== false);
   readonly error = signal<AiError | null>(null);
-  readonly showsPlans = computed(() => !this.choosingDays() && !this.loading() && !this.error());
+  readonly showsPlans = computed(() => !this.asking() && !this.loading() && !this.error());
 
   /** Which button is working ("start0", "save1", "saveAll"), so nothing is pressed twice. */
   readonly busy = signal<string | null>(null);
@@ -334,7 +360,7 @@ export class SuggestSheet implements OnInit {
 
   /** What a screen reader hears when the state changes. */
   readonly announce = computed(() => {
-    if (this.choosingDays()) return '';
+    if (this.asking()) return '';
     if (this.loading()) return this.lang.t('suggest.loading');
     const e = this.error();
     if (e) return this.lang.t(e.title);
@@ -355,40 +381,43 @@ export class SuggestSheet implements OnInit {
   }
 
   ngOnInit(): void {
-    if (this.mode() !== 'week') {
-      this.load(false);
-      return;
-    }
-    this.schedule.load();
-    // A weekly plan made (or being made) earlier today is shown right away.
-    const known = this.service.knownWeekDays(this.lang.locale);
-    if (known && this.dayOptions.includes(known)) {
-      this.days.set(known);
+    const week = this.mode() === 'week';
+    // A plan made (or being made) earlier today is shown right away, with what was asked for it.
+    const known = this.service.knownPlan(week ? 'week' : 'workout', this.lang.locale);
+    if (known && (!week || (known.days != null && this.dayOptions.includes(known.days)))) {
+      if (known.days != null) this.days.set(known.days);
+      this.request.set(known.request);
       this.load(false);
     } else {
-      this.choosingDays.set(true);
+      this.asking.set(true);
     }
+    if (!week) return;
+    this.schedule.load();
     // Start from the number of days the user said they like to train; the
     // days themselves place a plan on dates when the coach gave none.
     this.service.coachPreferences().subscribe({
       next: (p) => {
         this.preferredDays.set(p.trainingDays);
         const n = p.trainingDays.length;
-        if (this.choosingDays() && this.dayOptions.includes(n)) this.days.set(n);
+        if (this.asking() && this.dayOptions.includes(n)) this.days.set(n);
       },
       error: () => undefined,
     });
   }
 
   load(fresh: boolean): void {
-    this.choosingDays.set(false);
+    this.asking.set(false);
     this.loading.set(true);
     this.error.set(null);
     const locale = this.lang.locale;
+    const asked = this.request();
+    this.askedText.set(
+      [asked.focus ? this.lang.t('suggest.focus.' + asked.focus) : '', asked.note.trim()].filter(Boolean).join(', '),
+    );
     const request =
       this.mode() === 'week'
-        ? this.service.suggestWeek(this.days(), locale, fresh)
-        : this.service.suggestWorkout(locale, fresh);
+        ? this.service.suggestWeek(this.days(), locale, fresh, asked)
+        : this.service.suggestWorkout(locale, fresh, undefined, asked);
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (r) => {
         this.suggestion.set(r);

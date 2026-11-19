@@ -15,7 +15,8 @@ import { TemplateService } from '../templates/data-access/template.service';
 import { WorkoutTemplate } from '../templates/models/template.model';
 import { ScheduleService } from './schedule.service';
 import { AuthService } from '../auth/data-access/auth.service';
-import { AnalysisService } from '../analysis/analysis.service';
+import { AnalysisService, NO_PLAN_REQUEST, PlanRequest } from '../analysis/analysis.service';
+import { PlanFocusPicker } from '../analysis/plan-focus-picker';
 import { aiError } from '../analysis/ai-error';
 import { scheduleDay } from './schedule-format';
 import { ScheduleItem, repeatWeeks } from './schedule.model';
@@ -32,7 +33,7 @@ const COACH = 'coach';
 @Component({
   selector: 'app-plan-template-sheet',
   standalone: true,
-  imports: [FormsModule, RouterLink, MnBottomSheet, MnButton, MnInputField, MnTranslatePipe, AppIcon, RepeatWeeksPicker],
+  imports: [FormsModule, RouterLink, MnBottomSheet, MnButton, MnInputField, MnTranslatePipe, AppIcon, RepeatWeeksPicker, PlanFocusPicker],
   template: `
     <mn-bottom-sheet [maxHeightVh]="90" [ariaLabel]="'schedule.plan.title' | mnTranslate" (dismiss)="closed.emit()">
       <div class="mx-auto max-h-[80dvh] w-full max-w-xl overflow-y-auto overscroll-contain px-5 pt-2">
@@ -102,6 +103,15 @@ const COACH = 'coach';
               </li>
             }
           </ul>
+          @if (chosenId() === coach) {
+            <!-- What the coach's workout should focus on -->
+            <app-plan-focus-picker
+              idPrefix="plan-day"
+              class="mb-2 mt-3 rounded-xl bg-surface-container p-3"
+              [value]="request()"
+              (valueChange)="request.set($event)"
+            />
+          }
           @if (showCoach()) {
             <button type="button" (click)="planWeek.emit()" class="mb-4 inline-flex min-h-11 items-center gap-1 px-1 text-sm font-semibold text-primary">
               <app-icon [data]="{ name: 'calendar-days', size: 16 }" />
@@ -168,6 +178,8 @@ export class PlanTemplateSheet implements OnInit {
   readonly templates = signal<WorkoutTemplate[]>([]);
   readonly loaded = signal(false);
   readonly chosenId = signal<string | null>(null);
+  /** What the coach's workout should focus on, when the coach writes it. */
+  readonly request = signal<PlanRequest>(NO_PLAN_REQUEST);
   readonly date = signal(todayIso());
   readonly saving = signal(false);
   /** The same day every week, for this many weeks. */
@@ -265,7 +277,7 @@ export class PlanTemplateSheet implements OnInit {
     if (!this.canSave() || this.saving()) return;
     const date = this.date();
     this.saving.set(true);
-    this.analysis.suggestWorkout(this.lang.locale, false, date).subscribe({
+    this.analysis.suggestWorkout(this.lang.locale, false, date, this.request()).subscribe({
       next: (s) => {
         const plan = s.plan;
         if (!plan?.exercises.length) {
