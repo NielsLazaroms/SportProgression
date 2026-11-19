@@ -14,9 +14,21 @@ function devFallback(config: ConfigService): string {
     : (undefined as unknown as string);
 }
 
+/**
+ * The public path of the sign-in routes, from the callback URL: the browser
+ * may reach them under a prefix (/api/auth/google behind the frontend nginx)
+ * that the API never sees.
+ */
+function signInPath(callbackURL: string): string {
+  return new URL(callbackURL).pathname.replace(/\/callback\/?$/, '') || '/';
+}
+
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(config: ConfigService) {
+    const callbackURL =
+      config.get<string>('GOOGLE_CALLBACK_URL') ||
+      'http://localhost:3001/auth/google/callback';
     super({
       // In local development the app may boot without Google credentials
       // (Google sign-in then simply won't work). Anywhere else a missing
@@ -24,13 +36,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientID: config.get<string>('GOOGLE_CLIENT_ID') || devFallback(config),
       clientSecret:
         config.get<string>('GOOGLE_CLIENT_SECRET') || devFallback(config),
-      callbackURL:
-        config.get<string>('GOOGLE_CALLBACK_URL') ||
-        'http://localhost:3001/auth/google/callback',
+      callbackURL,
       scope: ['email', 'profile'],
       // The typings only know the session-based store; ours is cookie-based.
       store: new CookieStateStore(
         config.get<string>('NODE_ENV') === 'production',
+        signInPath(callbackURL),
       ) as unknown as StrategyOptions['store'],
     });
   }
