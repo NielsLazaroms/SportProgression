@@ -8,11 +8,9 @@ data:
   # Time zone of the API (week boundaries, timestamps), e.g. Europe/Amsterdam.
   TZ: UTC
 
-  # The PostgreSQL database that the VM provides.
-  # DB_HOST is the "postgres" Service from postgres-external.yaml. If the
-  # database runs inside the cluster, put its Service name here instead
-  # (for another namespace: <service>.<namespace>.svc.cluster.local).
-  DB_HOST: postgres
+  # The platform's shared PostgreSQL. User and password come from the
+  # Secret "database" that the platform made (see backend.yaml).
+  DB_HOST: postgres.platform-db.svc
   DB_PORT: "5432"
   DB_NAME: sportprogression
   DB_SSL: "false"
@@ -22,14 +20,14 @@ data:
   DB_MIGRATIONS_RUN: "true"
 
   # Public address of the app, exactly as people type it (no trailing slash).
-  FRONTEND_URL: https://sportprogression.example.com
+  FRONTEND_URL: https://sportprogression.mn-platform.tech
   # Must also be listed under "Authorised redirect URIs" in Google Cloud.
-  GOOGLE_CALLBACK_URL: https://sportprogression.example.com/api/auth/google/callback
+  GOOGLE_CALLBACK_URL: https://sportprogression.mn-platform.tech/api/auth/google/callback
 
   JWT_EXPIRES_IN: 15m
   JWT_REFRESH_EXPIRES_IN: 7d
 
-  # Proxy hops in front of the API: ingress controller + frontend nginx = 2.
+  # Proxy hops in front of the API: Traefik + frontend nginx = 2.
   # Use 1 when people reach the frontend directly (NodePort, no ingress).
   # Too high lets clients fake their address and dodge the rate limits.
   TRUST_PROXY: "2"

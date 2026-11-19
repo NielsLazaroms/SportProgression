@@ -8,17 +8,17 @@ kind: Ingress
 metadata:
   name: sportprogression
   annotations:
-    # With cert-manager installed, this requests a certificate automatically:
-    # cert-manager.io/cluster-issuer: letsencrypt
+    # The platform's cert-manager gets a Let's Encrypt certificate for the host.
+    cert-manager.io/cluster-issuer: letsencrypt
 spec:
-  # The ingress controller on the VM, e.g. "nginx" or "traefik" (k3s).
-  # ingressClassName: nginx
+  # k3s's Traefik, which the platform uses.
+  ingressClassName: traefik
   tls:
     - hosts:
-        - sportprogression.example.com
+        - sportprogression.mn-platform.tech
       secretName: sportprogression-tls
   rules:
-    - host: sportprogression.example.com
+    - host: sportprogression.mn-platform.tech
       http:
         paths:
           - path: /

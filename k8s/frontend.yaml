@@ -22,7 +22,7 @@ spec:
         runAsGroup: 101
       containers:
         - name: frontend
-          image: sportprogression-frontend:1.0.0
+          image: sportprogression-frontend
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

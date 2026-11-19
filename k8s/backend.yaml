@@ -26,7 +26,7 @@ spec:
         runAsGroup: 1000
       containers:
         - name: backend
-          image: sportprogression-backend:1.0.0
+          image: sportprogression-backend
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -36,6 +36,19 @@ spec:
                 name: backend-config
             - secretRef:
                 name: backend-secrets
+          env:
+            # The platform's Secret "database" (made by platform-manager's
+            # tools/new-app.ps1) holds the credentials for the shared Postgres.
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: database
+                  key: PGUSER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: database
+                  key: PGPASSWORD
           startupProbe:
             httpGet:
               path: /health

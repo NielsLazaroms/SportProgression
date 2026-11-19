@@ -1,22 +1,24 @@
-# Apply everything:  kubectl apply -k k8s/
-# Preview first:     kubectl kustomize k8s/
+# SportProgression on the shared platform (github.com/Mxndarijn/platform-manager).
+# The platform owns the namespace, its quota and network rules, and the
+# Secret "database" with the credentials for the shared PostgreSQL.
+#
+# Deploy:   ./k8s/deploy.sh            (builds, loads the images, applies)
+# Preview:  kubectl kustomize k8s/
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: sportprogression
+namespace: app-sportprogression
 
 resources:
-  - namespace.yaml
   - configmap.yaml
   # Create secret.yaml from secret.example.yaml first (it is not committed).
   - secret.yaml
-  - postgres-external.yaml
   - backend.yaml
   - frontend.yaml
   - ingress.yaml
 
-# Change the tag here when you build a new version of the images.
+# deploy.sh replaces COMMIT with the git commit the images were built from.
 images:
   - name: sportprogression-backend
-    newTag: 1.0.0
+    newTag: COMMIT
   - name: sportprogression-frontend
-    newTag: 1.0.0
+    newTag: COMMIT
