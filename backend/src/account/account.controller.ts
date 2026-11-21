@@ -6,6 +6,7 @@ import { AccountService } from './account.service';
 import { CoachPreferencesDto } from './coach-preferences.dto';
 import { IgnoredMuscleGroupsDto } from './ignored-muscle-groups.dto';
 import { GymEquipmentDto } from './gym-equipment.dto';
+import { WeightStepDto } from './weight-step.dto';
 
 @ApiTags('Account')
 @ApiBearerAuth()
@@ -42,6 +43,12 @@ export class AccountController {
   @Put('coach-preferences')
   setCoachPreferences(@Req() req, @Body() dto: CoachPreferencesDto) {
     return this.account.setCoachPreferences(req.user.userId, dto.trainingDays, dto.note);
+  }
+
+  @ApiOperation({ summary: 'Set how much the weight + and - buttons change the weight' })
+  @Put('weight-step')
+  setWeightStep(@Req() req, @Body() dto: WeightStepDto) {
+    return this.account.setWeightStep(req.user.userId, dto.weightStepKg);
   }
 
   @ApiOperation({ summary: 'Equipment and machines the user\'s gym has, for the AI coach' })

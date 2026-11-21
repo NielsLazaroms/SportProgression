@@ -80,6 +80,10 @@ export class User {
   @Column({ type: 'varchar', length: 60, nullable: true })
   gymName?: string | null;
 
+  /** How much the weight + and - buttons add or take off, in kg. */
+  @Column({ type: 'double precision', default: 1 })
+  weightStepKg: number;
+
   @OneToMany(() => Workout, (workout) => workout.user)
   workouts: Workout[];
 

@@ -117,6 +117,8 @@ export class AuthService {
       aiAccess: hasAiAccess(user),
       // When the account was made: Home only shows its first steps to new accounts.
       createdAt: user.createdAt,
+      // How much the weight + and - buttons change the weight, in kg.
+      weightStepKg: user.weightStepKg ?? 1,
     };
   }
 

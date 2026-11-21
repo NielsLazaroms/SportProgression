@@ -12,9 +12,11 @@ import {
 } from 'mn-angular-lib';
 import { AppIcon } from '../../../shared/app-icon';
 import { AppHeader } from '../../../layout/app-header';
-import { AuthService } from '../../../auth/data-access/auth.service';
+import { AuthService, WEIGHT_STEPS, WEIGHT_STEP_MAX, WEIGHT_STEP_MIN } from '../../../auth/data-access/auth.service';
+import { FormsModule } from '@angular/forms';
+import { DecimalInput } from '../../../workouts/components/decimal-input';
 import { ProgressService } from '../../../progress/data-access/progress.service';
-import { compactKg, errorHintKey, formatNumber, todayIso } from '../../../shared/format';
+import { compactKg, errorHintKey, formatKg, formatNumber, todayIso } from '../../../shared/format';
 import { AnalysisService, MuscleGroupChoice } from '../../../analysis/analysis.service';
 import { ThemeChoice, ThemeService } from '../../../shared/theme.service';
 import { AccountExport, exportToCsv, exportToPdf } from '../../export-formats';
@@ -25,7 +27,7 @@ type ExportFormat = 'csv' | 'pdf';
 @Component({
   selector: 'app-profile-page',
   standalone: true,
-  imports: [AppHeader, RouterLink, AppIcon, MnTranslatePipe],
+  imports: [AppHeader, RouterLink, AppIcon, MnTranslatePipe, FormsModule, DecimalInput],
   templateUrl: './profile-page.html',
 })
 export class ProfilePage implements OnInit {
@@ -195,6 +197,67 @@ export class ProfilePage implements OnInit {
 
   setTheme(choice: ThemeChoice): void {
     this.theme.setChoice(choice);
+  }
+
+  readonly weightSteps = WEIGHT_STEPS;
+  readonly weightStep = this.auth.weightStep;
+  /** The saved step is none of the presets. */
+  readonly customStep = computed(() => !WEIGHT_STEPS.includes(this.weightStep()));
+  /** The custom field is shown: the user tapped Custom, or a custom step is saved. */
+  readonly customOpen = signal(false);
+  readonly showCustom = computed(() => this.customOpen() || this.customStep());
+  /** What is typed in the custom field; null while empty or not a number. */
+  readonly customDraft = signal<number | null>(null);
+  readonly stepMin = WEIGHT_STEP_MIN;
+  readonly stepMax = WEIGHT_STEP_MAX;
+
+  pickPreset(kg: number): void {
+    this.customOpen.set(false);
+    this.setWeightStep(kg);
+  }
+
+  /** The saved step when it is a custom one; null (an empty field) while a preset is chosen. */
+  readonly savedCustom = computed(() => (this.customStep() ? this.weightStep() : null));
+  readonly customPlaceholder = computed(() => formatNumber(1.25, this.lang.locale, 2));
+
+  /** Opens the field empty (or with the saved custom step) and puts the cursor in it. */
+  openCustom(): void {
+    this.customDraft.set(this.savedCustom());
+    this.customOpen.set(true);
+    setTimeout(() => document.getElementById('step-custom')?.focus());
+  }
+
+  /** Saves the typed step when it is a valid one; otherwise says what is allowed. */
+  saveCustom(): void {
+    const raw = this.customDraft();
+    if (raw == null) return;
+    const kg = Math.round(raw * 100) / 100;
+    if (kg < WEIGHT_STEP_MIN || kg > WEIGHT_STEP_MAX) {
+      this.alerts.error(
+        this.lang.t('profile.weightStep.err'),
+        this.lang.t('profile.weightStep.range', {
+          min: formatKg(WEIGHT_STEP_MIN, this.lang.locale),
+          max: formatKg(WEIGHT_STEP_MAX, this.lang.locale),
+        }),
+      );
+      this.customDraft.set(this.savedCustom());
+      return;
+    }
+    this.customDraft.set(kg);
+    this.setWeightStep(kg);
+  }
+
+  /** "0.5" / "0,5": a step as the user's language writes it. */
+  stepLabel(kg: number): string {
+    return formatKg(kg, this.lang.locale);
+  }
+
+  setWeightStep(kg: number): void {
+    if (this.weightStep() === kg) return;
+    this.auth.setWeightStep(kg).subscribe({
+      error: (err: unknown) =>
+        this.alerts.error(this.lang.t('profile.weightStep.err'), this.lang.t(errorHintKey(err))),
+    });
   }
 
   readonly exportFormats: ExportFormat[] = ['csv', 'pdf'];

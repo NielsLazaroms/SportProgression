@@ -124,6 +124,14 @@ export class AccountService {
     return this.gymEquipment(userId);
   }
 
+  async setWeightStep(userId: string, weightStepKg: number) {
+    const result = await this.dataSource
+      .getRepository(User)
+      .update({ id: userId }, { weightStepKg });
+    if (!result.affected) throw new NotFoundException();
+    return { weightStepKg };
+  }
+
   /** Everything the app stores about this user, as one portable document. */
   async export(userId: string) {
     const user = await this.dataSource
@@ -171,6 +179,7 @@ export class AccountService {
         trainingDays: user.trainingDays ?? [],
         coachNote: user.coachNote ?? null,
         gymName: user.gymName ?? null,
+        weightStepKg: user.weightStepKg ?? 1,
         gymEquipment: describeEquipment(user.gymEquipment) ?? [],
       },
       myExercises: exercises.map((e) => ({

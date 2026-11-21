@@ -162,6 +162,59 @@
           }
         </div>
       </div>
+      <!-- Weight step: what the + and - buttons next to the weight add or take off -->
+      <div class="glass-card flex flex-col gap-2 rounded-2xl px-4 py-2.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-4">
+        <div class="min-w-0">
+          <span id="step-label" class="block font-bold text-on-surface">{{ 'profile.weightStep' | mnTranslate }}</span>
+          <span id="step-hint" class="block text-xs text-on-surface-variant">{{ 'profile.weightStep.hint' | mnTranslate }}</span>
+        </div>
+        <div role="group" aria-labelledby="step-label" aria-describedby="step-hint" class="grid min-w-0 flex-1 grid-cols-5 gap-1 rounded-xl bg-surface-container-high p-1 sm:max-w-80">
+          @for (kg of weightSteps; track kg) {
+            <button
+              type="button"
+              (click)="pickPreset(kg)"
+              [attr.aria-pressed]="!showCustom() && weightStep() === kg"
+              class="tnum min-h-10 min-w-0 rounded-lg px-0.5 text-sm font-semibold transition-colors"
+              [class]="!showCustom() && weightStep() === kg ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant'"
+            >
+              {{ stepLabel(kg) }} <span class="text-xs">{{ 'unit.kg' | mnTranslate }}</span>
+            </button>
+          }
+          <button
+            type="button"
+            (click)="openCustom()"
+            [attr.aria-pressed]="showCustom()"
+            aria-controls="step-custom"
+            class="min-h-10 min-w-0 rounded-lg px-0.5 text-sm font-semibold transition-colors"
+            [class]="showCustom() ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant'"
+          >
+            {{ 'profile.weightStep.custom' | mnTranslate }}
+          </button>
+        </div>
+      </div>
+      @if (showCustom()) {
+        <div class="glass-card -mt-1 flex items-center gap-3 rounded-2xl px-4 py-2.5">
+          <label for="step-custom" class="flex-1 text-sm font-semibold text-on-surface">{{ 'profile.weightStep.customLabel' | mnTranslate }}</label>
+          <div class="flex items-center overflow-hidden rounded-lg border border-control bg-surface-container focus-within:border-primary">
+            <input
+              id="step-custom"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              maxlength="5"
+              appDecimalInput
+              [ngModel]="customDraft() ?? savedCustom()"
+              [placeholder]="customPlaceholder()"
+              (ngModelChange)="customDraft.set($event)"
+              [ngModelOptions]="{ standalone: true }"
+              (blur)="saveCustom()"
+              (keydown.enter)="$any($event.target).blur()"
+              class="tnum h-11 w-20 bg-transparent px-2 text-center text-base font-bold text-on-surface outline-none"
+            />
+            <span class="pr-3 text-sm text-on-surface-variant">{{ 'unit.kg' | mnTranslate }}</span>
+          </div>
+        </div>
+      }
       <a
         routerLink="/exercise-definitions"
         class="glass-card flex min-h-14 items-center gap-3 rounded-2xl px-4 py-2.5 transition-colors active:bg-surface-variant/30"

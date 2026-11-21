@@ -199,6 +199,8 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   private readonly modal = inject(MnModalService);
   /** AI entry points ("Analyse workout") are only shown to users who may use them. */
   readonly canUseAi = inject(AuthService).canUseAi;
+  /** What the weight + and - buttons add or take off, set in Settings. */
+  readonly weightStep = inject(AuthService).weightStep;
 
   private workoutId = '';
   private readonly previousTitle = this.title.getTitle();

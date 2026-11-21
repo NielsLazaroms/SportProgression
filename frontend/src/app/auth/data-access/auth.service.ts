@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, catchError, map, Observable, of, finalize, shareReplay, switchMap } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, finalize, shareReplay, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface UserProfile {
@@ -15,7 +15,15 @@ export interface UserProfile {
   aiAccess?: boolean;
   /** When the account was made (ISO date and time). */
   createdAt?: string;
+  /** How much the weight + and - buttons change the weight, in kg. */
+  weightStepKg?: number;
 }
+
+/** The steps Settings offers for the weight + and - buttons, in kg; "Custom" allows any other. */
+export const WEIGHT_STEPS: readonly number[] = [1, 2, 2.5, 5];
+/** What a custom step may be, in kg (the server checks the same). */
+export const WEIGHT_STEP_MIN = 0.1;
+export const WEIGHT_STEP_MAX = 50;
 
 export interface AuthConfig {
   /** True when the backend exposes GET /auth/dev-login (demo user). */
@@ -42,6 +50,22 @@ export class AuthService {
 
   /** Current user profile, populated by checkAuth()/loadProfile(). */
   readonly profile = signal<UserProfile | null>(null);
+
+  /** How much the weight + and - buttons change the weight, in kg; 1 until the user picks another. */
+  readonly weightStep = computed(() => this.profile()?.weightStepKg ?? 1);
+
+  /** Saves the weight step; the buttons use it at once and go back when saving fails. */
+  setWeightStep(weightStepKg: number): Observable<unknown> {
+    const before = this.profile();
+    if (before) this.profile.set({ ...before, weightStepKg });
+    return this.http.put(`${this.BACKEND_URL}/account/weight-step`, { weightStepKg }).pipe(
+      catchError((err: unknown) => {
+        const now = this.profile();
+        if (before && now) this.profile.set({ ...now, weightStepKg: before.weightStepKg });
+        return throwError(() => err);
+      }),
+    );
+  }
 
   /** True when this user may use the AI features (buttons are hidden otherwise). */
   readonly canUseAi = computed(() => this.profile()?.aiAccess === true);
