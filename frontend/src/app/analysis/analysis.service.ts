@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, finalize, map, of, shareReplay, tap } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../auth/data-access/auth.service';
 import { todayIso } from '../shared/format';
@@ -131,6 +131,8 @@ export interface AnalysisResult {
   from?: string;
   to?: string;
   workouts?: number;
+  /** Workout only: when the saved analysis was written. */
+  createdAt?: string;
   analysis: Analysis;
 }
 
@@ -159,6 +161,10 @@ const STORAGE_KEY = 'ironpulse.ai.v1';
 
 /**
  * AI analysis and plans. Every request is a paid call on the server, so:
+ *  - a workout is analysed once: the server saves it, and opening it again
+ *    reads the saved one (never paid twice, also on another device);
+ *  - a week analysis is saved the same way, but "Analyse again" writes a new
+ *    one over it, because a week changes while it is trained;
  *  - a result is kept for the rest of the day (in memory and in
  *    sessionStorage, so a page reload does not ask again);
  *  - while a request is running, asking the same thing again attaches to that
@@ -216,11 +222,33 @@ export class AnalysisService {
 
   week(locale: string, fresh = false): Observable<AnalysisResult> {
     const today = todayIso();
-    return this.run<AnalysisResult>('a', `week|${today}|${locale}`, `${this.baseUrl}/week`, { today, locale }, fresh);
+    const url = `${this.baseUrl}/week`;
+    // "Analyse again" writes a new one; otherwise the saved one, if any.
+    const send = fresh
+      ? this.post<AnalysisResult>(url, { today, locale })
+      : () => this.savedOr<AnalysisResult>(this.http.get<AnalysisResult>(url, { params: { today } }), url, { today, locale });
+    return this.run<AnalysisResult>('a', `week|${today}`, send, fresh);
   }
 
-  workout(id: string, locale: string, fresh = false): Observable<AnalysisResult> {
-    return this.run<AnalysisResult>('a', `workout|${id}|${locale}`, `${this.baseUrl}/workouts/${id}`, { locale }, fresh);
+  /**
+   * The analysis of one workout: the saved one when there is one, otherwise
+   * it is written (once) and saved. There is no "again" for a workout.
+   */
+  workout(id: string, locale: string): Observable<AnalysisResult> {
+    const url = `${this.baseUrl}/workouts/${id}`;
+    const send = () => this.savedOr<AnalysisResult>(this.http.get<AnalysisResult>(url), url, { locale });
+    return this.run<AnalysisResult>('a', `workout|${id}`, send, false);
+  }
+
+  /** The saved result from `saved`, or, when there is none yet, a new one asked with a POST. */
+  private savedOr<T>(saved: Observable<T>, url: string, body: object): Observable<T> {
+    return saved.pipe(
+      catchError((err: unknown) =>
+        err instanceof HttpErrorResponse && err.status === 404 && err.error?.code === 'not_analysed'
+          ? this.http.post<T>(url, body)
+          : throwError(() => err),
+      ),
+    );
   }
 
   /**
@@ -233,7 +261,7 @@ export class AnalysisService {
     const ahead = date && date > today ? date : null;
     const key = (ahead ? `workout|${today}|${locale}|for ${ahead}` : `workout|${today}|${locale}`) + requestKey(request);
     const body = { today, locale, ...(ahead ? { date: ahead } : {}), ...requestBody(request) };
-    return this.run<Suggestion>('s', key, url, body, fresh);
+    return this.run<Suggestion>('s', key, this.post(url, body), fresh);
   }
 
   /** A proposal for a week with `days` training days. */
@@ -241,7 +269,7 @@ export class AnalysisService {
     const today = todayIso();
     const url = `${this.baseUrl}/suggest/week`;
     const key = `week|${days}|${today}|${locale}` + requestKey(request);
-    return this.run<Suggestion>('s', key, url, { today, locale, days, ...requestBody(request) }, fresh);
+    return this.run<Suggestion>('s', key, this.post(url, { today, locale, days, ...requestBody(request) }), fresh);
   }
 
   /**
@@ -295,23 +323,30 @@ export class AnalysisService {
     return this.http.post<Workout>(`${environment.backendUrl}/workouts/planned`, plan);
   }
 
-  /** Forget a stored analysis, e.g. after the workout changed. */
-  forgetWorkout(id: string): void {
+  /**
+   * A workout changed: drop the week analysis kept here, so the next open
+   * reads the server's again. The workout's own analysis stays: it is saved
+   * once and never written again.
+   */
+  forgetWorkout(): void {
     this.sync();
     for (const key of [...this.analyses.keys()]) {
-      if (key.startsWith(`workout|${id}|`) || key.startsWith('week|')) this.analyses.delete(key);
+      if (key.startsWith('week|')) this.analyses.delete(key);
     }
     for (const key of [...this.inFlight.keys()]) {
-      if (key.startsWith(`a:workout|${id}|`) || key.startsWith('a:week|')) this.inFlight.delete(key);
+      if (key.startsWith('a:week|')) this.inFlight.delete(key);
     }
     this.persist();
+  }
+
+  private post<T>(url: string, body: object): () => Observable<T> {
+    return () => this.http.post<T>(url, body);
   }
 
   private run<T extends AnalysisResult | Suggestion>(
     kind: 'a' | 's',
     key: string,
-    url: string,
-    body: object,
+    send: () => Observable<T>,
     fresh: boolean,
   ): Observable<T> {
     this.sync();
@@ -326,7 +361,7 @@ export class AnalysisService {
     const owner = this.user;
     // refCount false: the request keeps running when the sheet that asked is
     // closed, and a sheet opened later gets the same answer.
-    const request: Observable<T> = this.http.post<T>(url, body).pipe(
+    const request: Observable<T> = send().pipe(
       tap((result) => {
         if (this.inFlight.get(flightKey) !== request) return; // forgotten meanwhile
         this.sync();

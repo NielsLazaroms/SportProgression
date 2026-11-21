@@ -25,6 +25,9 @@ export function aiError(err: unknown, failedKey: string, nothingKey: string): Ai
   if (code === 'analysis_forbidden' || status === 403) {
     return { icon: 'sparkles', title: 'analysis.err.forbidden', hint: 'analysis.err.forbidden.hint', retry: false };
   }
+  if (code === 'workout_not_finished') {
+    return { icon: 'dumbbell', title: 'analysis.err.notFinished', hint: null, retry: false };
+  }
   if (code === 'nothing_to_analyse' || status === 422) {
     return { icon: 'dumbbell', title: nothingKey, hint: null, retry: false };
   }

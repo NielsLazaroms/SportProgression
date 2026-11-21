@@ -9,10 +9,12 @@ import { AnalysisController } from './analysis.controller';
 import { AnalysisService } from './analysis.service';
 import { GoalsModule } from '../goals/goals.module';
 import { ScheduledWorkout } from '../schedule/scheduled-workout.entity';
+import { WorkoutAnalysis } from './workout-analysis.entity';
+import { WeekAnalysis } from './week-analysis.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Workout, WorkoutExercise, User, ExerciseDefinition, ScheduledWorkout]),
+    TypeOrmModule.forFeature([Workout, WorkoutExercise, User, ExerciseDefinition, ScheduledWorkout, WorkoutAnalysis, WeekAnalysis]),
     GoalsModule,
   ],
   controllers: [AnalysisController],

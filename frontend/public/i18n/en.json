@@ -421,6 +421,8 @@
   "analysis.workouts": "workouts",
   "analysis.workouts.one": "workout",
   "analysis.again": "Analyse again",
+  "analysis.savedOn": "Analysed on",
+  "analysis.err.notFinished": "Finish this workout first. It is analysed once, when it is done.",
   "analysis.disclaimer": "Written by Bolt (AI) from your workouts, exercises, sets and notes, which are sent to Anthropic for this. It is advice, not a medical opinion.",
   "analysis.err.notConfigured": "Not available right now",
   "analysis.err.notConfigured.hint": "AI features are not available on this server right now.",

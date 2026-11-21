@@ -1772,8 +1772,8 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     this.workoutService.reopenWorkout(this.workoutId).subscribe({
       next: () => {
         this.reopening.set(false);
-        // The workout can change now, so a stored analysis is out of date.
-        this.analysisService.forgetWorkout(this.workoutId);
+        // The workout can change now, so the kept week analysis is out of date.
+        this.analysisService.forgetWorkout();
         const current = this.workout();
         if (current) {
           const open: Workout = { ...current, completedAt: null };

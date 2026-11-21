@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -29,14 +31,34 @@ import { AnalysisService } from './analysis.service';
 export class AnalysisController {
   constructor(private readonly analysis: AnalysisService) {}
 
-  @ApiOperation({ summary: "Analyse this week's workouts" })
+  // Only reads what was saved, so it gets a far looser limit than the paid calls.
+  @ApiOperation({ summary: "The saved analysis of this week (404 when none)" })
+  @Throttle({ default: { limit: 300, ttl: 60 * 60 * 1000 } })
+  @Get('week')
+  savedWeek(@Req() req, @Query() dto: AnalyseDto) {
+    return this.analysis.savedWeekAnalysis(req.user.userId, dto.today);
+  }
+
+  @ApiOperation({
+    summary: "Analyse this week's workouts and save it over the earlier one",
+  })
   @HttpCode(200)
   @Post('week')
   week(@Req() req, @Body() dto: AnalyseDto) {
     return this.analysis.analyseWeek(req.user.userId, dto.today, dto.locale);
   }
 
-  @ApiOperation({ summary: 'Analyse one workout' })
+  // Only reads what was saved, so it gets a far looser limit than the paid calls.
+  @ApiOperation({ summary: 'The saved analysis of one workout (404 when none)' })
+  @Throttle({ default: { limit: 300, ttl: 60 * 60 * 1000 } })
+  @Get('workouts/:id')
+  savedWorkout(@Req() req, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.analysis.savedWorkoutAnalysis(req.user.userId, id);
+  }
+
+  @ApiOperation({
+    summary: 'Analyse one workout, once: later calls return the saved analysis',
+  })
   @HttpCode(200)
   @Post('workouts/:id')
   workout(

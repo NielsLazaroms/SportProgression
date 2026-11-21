@@ -97,9 +97,8 @@ export function formatKg(kg: number, locale = 'en'): string {
   return formatNumber(kg, locale, 1);
 }
 
-/** Today's date in the user's own timezone as yyyy-mm-dd (not UTC). */
-export function todayIso(): string {
-  const d = new Date();
+/** Today's date (or `d`) in the user's own timezone as yyyy-mm-dd (not UTC). */
+export function todayIso(d = new Date()): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${m}-${day}`;

@@ -421,6 +421,8 @@
   "analysis.workouts": "workouts",
   "analysis.workouts.one": "workout",
   "analysis.again": "Opnieuw analyseren",
+  "analysis.savedOn": "Geanalyseerd op",
+  "analysis.err.notFinished": "Rond deze workout eerst af. Hij wordt één keer geanalyseerd, als hij klaar is.",
   "analysis.disclaimer": "Geschreven door Bolt (AI) op basis van je workouts, oefeningen, sets en notities, die hiervoor naar Anthropic worden gestuurd. Het is advies, geen medisch oordeel.",
   "analysis.err.notConfigured": "Nu niet beschikbaar",
   "analysis.err.notConfigured.hint": "AI-functies zijn op deze server nu niet beschikbaar.",

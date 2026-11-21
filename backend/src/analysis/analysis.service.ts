@@ -28,6 +28,8 @@ import { GoalKind } from '../goals/goal.entity';
 import { ScheduledWorkout } from '../schedule/scheduled-workout.entity';
 import { customMachines, describeEquipment } from '../account/gym-equipment';
 import { PlanFocus } from './analysis.dto';
+import { WorkoutAnalysis } from './workout-analysis.entity';
+import { WeekAnalysis } from './week-analysis.entity';
 
 const MODEL = 'claude-opus-5-5';
 /** Earlier weeks sent along with "this week" so trends can be judged. */
@@ -65,6 +67,46 @@ A week analysis may also carry "goals": targets the lifter set themselves, with 
 Write for the lifter on a phone screen: direct, plain and short, without flattery and without medical advice. One idea per list item; never pack a list of exercises into one item. Suggestions must be things they can do in their next session, with a concrete exercise and number where possible. A suggested weight follows one step: when every working set reached the target reps, add one load step (2.5 kg on a barbell lift, the next dumbbell or machine setting); when the target was missed, keep the weight. Comment on the training, not on how the lifter uses the app or fills in notes, and do not scold. Workouts or exercises that are clearly test input (keyboard mashing, names like "test") are ignored without mentioning them. Do not use dashes as punctuation.`;
 
 type Scope = 'week' | 'workout';
+
+/** A saved workout analysis as the app gets it. */
+export interface WorkoutAnalysisView {
+  scope: 'workout';
+  workoutId: string;
+  /** When it was written. */
+  createdAt: string;
+  analysis: Analysis;
+}
+
+/** A saved week analysis as the app gets it. */
+export interface WeekAnalysisView {
+  scope: 'week';
+  from: string;
+  to: string;
+  workouts: number;
+  /** When it was (last) written. */
+  createdAt: string;
+  analysis: Analysis;
+}
+
+function toWeekView(row: WeekAnalysis): WeekAnalysisView {
+  return {
+    scope: 'week',
+    from: row.weekStart,
+    to: addDays(row.weekStart, 6),
+    workouts: row.workouts,
+    createdAt: row.analysedAt.toISOString(),
+    analysis: row.analysis as Analysis,
+  };
+}
+
+function toView(row: WorkoutAnalysis): WorkoutAnalysisView {
+  return {
+    scope: 'workout',
+    workoutId: row.workoutId,
+    createdAt: row.createdAt.toISOString(),
+    analysis: row.analysis as Analysis,
+  };
+}
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -158,10 +200,32 @@ export class AnalysisService {
     private readonly goals: GoalsService,
     @InjectRepository(ScheduledWorkout)
     private readonly scheduled: Repository<ScheduledWorkout>,
+    @InjectRepository(WorkoutAnalysis)
+    private readonly saved: Repository<WorkoutAnalysis>,
+    @InjectRepository(WeekAnalysis)
+    private readonly savedWeeks: Repository<WeekAnalysis>,
   ) {}
 
-  /** All workouts of the week (Monday to Sunday) that contains `today`. */
-  async analyseWeek(userId: string, today?: string, locale: 'en' | 'nl' = 'en') {
+  /** The saved analysis of the week that contains `today`. 404 when it has none. */
+  async savedWeekAnalysis(userId: string, today?: string): Promise<WeekAnalysisView> {
+    const monday = mondayOf(today ?? new Date().toISOString().slice(0, 10));
+    const row = await this.savedWeeks.findOneBy({ userId, weekStart: monday });
+    if (!row) throw new NotFoundException({ code: 'not_analysed' });
+    return toWeekView(row);
+  }
+
+  /** Workout analyses being written right now, so a second ask waits for the first. */
+  private readonly writing = new Map<string, Promise<WorkoutAnalysisView>>();
+
+  /**
+   * All workouts of the week (Monday to Sunday) that contains `today`. Always
+   * written anew, and saved over the week's earlier analysis.
+   */
+  async analyseWeek(
+    userId: string,
+    today?: string,
+    locale: 'en' | 'nl' = 'en',
+  ): Promise<WeekAnalysisView> {
     const day = today ?? new Date().toISOString().slice(0, 10);
     const monday = mondayOf(day);
     const sunday = addDays(monday, 6);
@@ -185,11 +249,58 @@ export class AnalysisService {
         .filter((w) => w.date < monday && hasSets(w))
         .map(describeWorkout),
     });
-    return { scope: 'week' as Scope, from: monday, to: sunday, workouts: week.length, analysis };
+    await this.savedWeeks
+      .createQueryBuilder()
+      .insert()
+      .values({
+        userId,
+        weekStart: monday,
+        workouts: week.length,
+        locale,
+        analysis,
+        analysedAt: new Date(),
+      })
+      .orUpdate(['workouts', 'locale', 'analysis', 'analysedAt'], ['userId', 'weekStart'])
+      .execute();
+    return toWeekView(
+      await this.savedWeeks.findOneByOrFail({ userId, weekStart: monday }),
+    );
   }
 
-  /** One workout, compared with the previous sessions of the same exercises. */
-  async analyseWorkout(userId: string, id: string, locale: 'en' | 'nl' = 'en') {
+  /** The saved analysis of one of the user's workouts. 404 when it has none yet. */
+  async savedWorkoutAnalysis(userId: string, id: string): Promise<WorkoutAnalysisView> {
+    const row = await this.saved.findOneBy({ workoutId: id, userId });
+    if (!row) throw new NotFoundException({ code: 'not_analysed' });
+    return toView(row);
+  }
+
+  /**
+   * One workout, compared with the previous sessions of the same exercises.
+   * A workout is analysed once: the result is saved, and every later ask gets
+   * that saved analysis back without calling Claude again.
+   */
+  async analyseWorkout(
+    userId: string,
+    id: string,
+    locale: 'en' | 'nl' = 'en',
+  ): Promise<WorkoutAnalysisView> {
+    const existing = await this.saved.findOneBy({ workoutId: id, userId });
+    if (existing) return toView(existing);
+    const key = `${userId}:${id}`;
+    const running = this.writing.get(key);
+    if (running) return running;
+    const job = this.writeWorkoutAnalysis(userId, id, locale).finally(() =>
+      this.writing.delete(key),
+    );
+    this.writing.set(key, job);
+    return job;
+  }
+
+  private async writeWorkoutAnalysis(
+    userId: string,
+    id: string,
+    locale: 'en' | 'nl',
+  ): Promise<WorkoutAnalysisView> {
     const workout = await this.workouts.findOne({
       where: { id, userId },
       relations: { exercises: { sets: true } },
@@ -197,6 +308,10 @@ export class AnalysisService {
     if (!workout) throw new NotFoundException('Workout not found');
     if (!hasSets(workout)) {
       throw new UnprocessableEntityException({ code: 'nothing_to_analyse' });
+    }
+    // It is analysed only once, so a half logged session would stay half analysed.
+    if (!workout.completedAt) {
+      throw new UnprocessableEntityException({ code: 'workout_not_finished' });
     }
     const definitionIds = [
       ...new Set(
@@ -243,7 +358,15 @@ export class AnalysisService {
         .filter(hasSets)
         .map((w) => describeWorkout(w as Workout)),
     });
-    return { scope: 'workout' as Scope, workoutId: workout.id, analysis };
+    // The primary key keeps it at one per workout, also when another server
+    // wrote one at the same moment: then that one wins and is returned.
+    await this.saved
+      .createQueryBuilder()
+      .insert()
+      .values({ workoutId: workout.id, userId, locale, analysis })
+      .orIgnore()
+      .execute();
+    return toView(await this.saved.findOneByOrFail({ workoutId: workout.id }));
   }
 
   /** A proposal for the next workout, ready to start or to save as a template. */

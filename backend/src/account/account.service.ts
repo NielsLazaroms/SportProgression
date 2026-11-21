@@ -9,6 +9,8 @@ import {
 } from './gym-equipment';
 import { User } from '../users/user.entity';
 import { Workout } from '../workouts/workouts.entity';
+import { WorkoutAnalysis } from '../analysis/workout-analysis.entity';
+import { WeekAnalysis } from '../analysis/week-analysis.entity';
 import { WorkoutExercise } from '../exercises/workout-exercise.entity';
 import { ExerciseSet } from '../sets/set.entity';
 import { ExerciseDefinition } from '../exercise-definitions/exercise-definition.entity';
@@ -148,6 +150,16 @@ export class AccountService {
       order: { name: 'ASC', exercises: { orderInTemplate: 'ASC' } },
     });
 
+    const analyses = new Map(
+      (
+        await this.dataSource.getRepository(WorkoutAnalysis).findBy({ userId })
+      ).map((a) => [a.workoutId, a]),
+    );
+
+    const weekAnalyses = await this.dataSource
+      .getRepository(WeekAnalysis)
+      .find({ where: { userId }, order: { weekStart: 'ASC' } });
+
     return {
       exportedAt: new Date().toISOString(),
       profile: {
@@ -178,6 +190,12 @@ export class AccountService {
         name: w.name,
         notes: w.description ?? null,
         finishedAt: w.completedAt ?? null,
+        analysis: analyses.has(w.id)
+          ? {
+              writtenAt: analyses.get(w.id)!.createdAt,
+              ...analyses.get(w.id)!.analysis,
+            }
+          : null,
         exercises: (w.exercises ?? []).map((e) => ({
           name: e.name,
           muscleGroup: e.muscleGroup ?? null,
@@ -189,6 +207,11 @@ export class AccountService {
             warmUp: !!s.isWarmup,
           })),
         })),
+      })),
+      weekAnalyses: weekAnalyses.map((a) => ({
+        weekStart: a.weekStart,
+        writtenAt: a.analysedAt,
+        ...a.analysis,
       })),
     };
   }

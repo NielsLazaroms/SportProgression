@@ -2,7 +2,7 @@ import { Component, DestroyRef, OnInit, computed, inject, input, output, signal 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MnLanguageService, MnTranslatePipe } from 'mn-angular-lib';
 import { AppIcon } from '../shared/app-icon';
-import { plural, shortDate } from '../shared/format';
+import { plural, shortDate, todayIso } from '../shared/format';
 import { AiError, aiError } from './ai-error';
 import { AiSheet } from './ai-sheet';
 import { AiErrorBox, AiLoading } from './ai-states';
@@ -52,14 +52,17 @@ import { AnalysisResult, AnalysisService } from './analysis.service';
         }
 
         <p class="mt-6 px-1 text-xs leading-relaxed text-on-surface-variant">{{ 'analysis.disclaimer' | mnTranslate }}</p>
-        <button
-          type="button"
-          (click)="load(true)"
-          class="mt-1 flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-semibold text-primary"
-        >
-          <app-icon [data]="{ name: 'rotate-ccw', size: 16 }" />
-          {{ 'analysis.again' | mnTranslate }}
-        </button>
+        <!-- A workout is analysed once and saved, so only the week can be asked again -->
+        @if (!workoutId()) {
+          <button
+            type="button"
+            (click)="load(true)"
+            class="mt-1 flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-semibold text-primary"
+          >
+            <app-icon [data]="{ name: 'rotate-ccw', size: 16 }" />
+            {{ 'analysis.again' | mnTranslate }}
+          </button>
+        }
       }
     </app-ai-sheet>
   `,
@@ -87,13 +90,22 @@ export class AnalysisSheet implements OnInit {
     return this.result() ? this.lang.t('analysis.ready') : '';
   });
 
-  /** "9 - 15 Nov · 3 workouts" for a week; nothing for a single workout. */
+  /**
+   * "9 - 15 Nov · 3 workouts" for a week (with "· Analysed on 12 Nov" when
+   * that was not today); "Analysed on 21 Nov" for a workout.
+   */
   readonly subtitle = computed(() => {
     const r = this.loading() ? null : this.result();
-    if (!r?.from || !r.to) return '';
+    if (!r) return '';
+    const day = r.createdAt ? todayIso(new Date(r.createdAt)) : '';
+    const savedOn = day
+      ? `${this.lang.t('analysis.savedOn')} ${shortDate(day, this.lang.locale, day.slice(0, 4) !== todayIso().slice(0, 4))}`
+      : '';
+    if (!r.from || !r.to) return savedOn;
     const range = `${shortDate(r.from, this.lang.locale)} - ${shortDate(r.to, this.lang.locale)}`;
     const n = r.workouts ?? 0;
-    return `${range} · ${n} ${this.lang.t(plural(n, 'analysis.workouts'))}`;
+    const week = `${range} · ${n} ${this.lang.t(plural(n, 'analysis.workouts'))}`;
+    return savedOn && day !== todayIso() ? `${week} · ${savedOn}` : week;
   });
 
   ngOnInit(): void {
@@ -105,7 +117,7 @@ export class AnalysisSheet implements OnInit {
     this.error.set(null);
     const id = this.workoutId();
     const locale = this.lang.locale;
-    (id ? this.service.workout(id, locale, fresh) : this.service.week(locale, fresh))
+    (id ? this.service.workout(id, locale) : this.service.week(locale, fresh))
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => {
