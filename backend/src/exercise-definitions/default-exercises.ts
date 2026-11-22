@@ -58,20 +58,9 @@ export const DEFAULT_EXERCISES: {
   { name: 'Reverse Curl', muscleGroup: 'Forearms' },
 ];
 
-/** Every muscle group of the starter catalog. */
-export const KNOWN_MUSCLE_GROUPS: string[] = [
+/** The muscle groups of the starter catalog: the ones everyone is judged on. */
+export const STANDARD_MUSCLE_GROUPS: string[] = [
   ...new Set(
     DEFAULT_EXERCISES.map((e) => e.muscleGroup).filter((g): g is string => !!g),
   ),
 ];
-
-/**
- * Groups that get plenty of indirect work (rows, curls and deadlifts train the
- * forearms), so they only count for a lifter who trains them on purpose.
- */
-export const OPTIONAL_MUSCLE_GROUPS: string[] = ['Forearms'];
-
-/** The muscle groups everyone is judged on. */
-export const STANDARD_MUSCLE_GROUPS: string[] = KNOWN_MUSCLE_GROUPS.filter(
-  (g) => !OPTIONAL_MUSCLE_GROUPS.includes(g),
-);

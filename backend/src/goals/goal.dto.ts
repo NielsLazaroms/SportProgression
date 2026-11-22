@@ -12,7 +12,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { Trim } from '../common/trim';
-import { KNOWN_MUSCLE_GROUPS } from '../exercise-definitions/default-exercises';
+import { STANDARD_MUSCLE_GROUPS } from '../exercise-definitions/default-exercises';
 import { GoalKind } from './goal.entity';
 
 const DATE = /^(19|20)\d{2}-\d{2}-\d{2}$/;
@@ -42,7 +42,7 @@ export class SaveGoalDto {
   targetReps?: number;
 
   @ValidateIf(isMuscle)
-  @IsIn(KNOWN_MUSCLE_GROUPS)
+  @IsIn(STANDARD_MUSCLE_GROUPS)
   muscleGroup?: string;
 
   @ValidateIf(isMuscle)
