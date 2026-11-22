@@ -22,7 +22,10 @@ import {
   ExerciseType,
 } from '../exercise-definitions/exercise-definition.entity';
 import { WorkoutExercise } from '../exercises/workout-exercise.entity';
-import { STANDARD_MUSCLE_GROUPS } from '../exercise-definitions/default-exercises';
+import {
+  KNOWN_MUSCLE_GROUPS,
+  STANDARD_MUSCLE_GROUPS,
+} from '../exercise-definitions/default-exercises';
 import { GoalView, GoalsService } from '../goals/goals.service';
 import { GoalKind } from '../goals/goal.entity';
 import { ScheduledWorkout } from '../schedule/scheduled-workout.entity';
@@ -53,7 +56,7 @@ You get the log as JSON. Sets are written as "reps x kg"; a set starting with "W
 A week analysis also carries "muscleGroups": for every muscle group, the exact number of working sets this week ("setsThisWeek"), in each of the earlier weeks from oldest to newest ("setsEarlierWeeks"), and the last date it was trained at all ("lastTrained", null when never). Use these totals as given instead of counting sets yourself. Each exercise counts for its main muscle group only, so pressing also works triceps and shoulders, and rows and pull-ups also work biceps: keep that in mind before calling a small group neglected. A group with 0 sets this week was not trained. A group marked "skippedOnPurpose" is one the lifter has chosen not to train: never report it as missing or behind and never suggest exercises for it. For the other groups, always say which groups were skipped or are clearly behind the rest, once and plainly, telling a one-week gap apart from a group that has been missing for weeks, and include a concrete exercise for the most important missing group in the suggestions.
 
 How to judge the training. Use these yardsticks from strength research, and name only the gaps that matter most, not every one:
-Volume: about 10 to 16 working sets a week per muscle group is the productive range, 6 to 10 for a beginner; under 6 is low, and more than 20 is rarely needed. A press also gives the triceps and shoulders about half a set per set, and a row or pull-up gives the biceps about half a set. A week that is still under way is not finished: judge it against the days left after "today", and use the earlier weeks for the trend.
+Volume: about 10 to 16 working sets a week per muscle group is the productive range, 6 to 10 for a beginner; under 6 is low, and more than 20 is rarely needed. A press also gives the triceps and shoulders about half a set per set, and a row or pull-up gives the biceps about half a set; rows, curls and deadlifts also work the forearms, so forearms only need direct work when the lifter trains them on purpose, about 4 to 8 sets a week. A week that is still under way is not finished: judge it against the days left after "today", and use the earlier weeks for the trend.
 Frequency: training each large group twice a week is the default; once a week keeps what the lifter has but builds less.
 Progress: an exercise progresses when its weight, or its reps at the same weight, go up over its sessions. It has stalled when neither went up over its last three sessions, which is worth one watch out item with the numbers. A first session back after a break of two weeks or more is usually a little weaker: that is normal, not a step back.
 Effort: reps that fall steeply from set to set mean the sets were close to failure; the same reps on every set at one weight, or reps well above the "target", mean the weight can go up. Sets that end 1 to 3 reps short of failure build muscle about as well as sets to failure, with less fatigue, so never push for failure on squats or deadlifts.
@@ -112,7 +115,7 @@ const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 
 /** Keeps the model's Dutch in line with the words the app itself uses. */
 const DUTCH =
-  'Dutch, as spoken in a Dutch gym, addressing the lifter as "je". Use the words the app uses: workout, sets, herhalingen (not "reps"), warming-up, schema (a saved template). Name muscle groups as the app does: Chest = Borst, Back = Rug, Shoulders = Schouders, Biceps = Biceps, Triceps = Triceps, Legs = Benen, Glutes = Bilspieren, Abs = Buikspieren. Keep exercise names exactly as they are in the log';
+  'Dutch, as spoken in a Dutch gym, addressing the lifter as "je". Use the words the app uses: workout, sets, herhalingen (not "reps"), warming-up, schema (a saved template). Name muscle groups as the app does: Chest = Borst, Back = Rug, Shoulders = Schouders, Biceps = Biceps, Triceps = Triceps, Legs = Benen, Glutes = Bilspieren, Abs = Buikspieren, Forearms = Onderarmen. Keep exercise names exactly as they are in the log';
 
 const WEEK_TASK =
   'Analyse the training of this week ("week"). Look at what was trained and how often, how the weekly sets per muscle group compare with the yardsticks and which groups were skipped or fall behind ("muscleGroups"), and progress against the earlier weeks.';
@@ -124,7 +127,7 @@ const PlannedExerciseSchema = z.object({
   muscleGroup: z
     .string()
     .nullable()
-    .describe('Only for a catalog entry marked "newMachine": the one muscle group it trains most, as the catalog names them (Chest, Back, Shoulders, Biceps, Triceps, Legs, Glutes or Abs). Null for every other exercise.'),
+    .describe('Only for a catalog entry marked "newMachine": the one muscle group it trains most, as the catalog names them (Chest, Back, Shoulders, Biceps, Triceps, Legs, Glutes, Abs or Forearms). Null for every other exercise.'),
   sets: z.number().describe('Working sets, usually 2 to 5.'),
   reps: z.number().describe('Target reps per set.'),
   weightKg: z
@@ -611,7 +614,7 @@ export class AnalysisService {
   ): Promise<ExerciseDefinition | null> {
     const name = ctx.newMachines.get(id);
     if (!name) return null;
-    const group = STANDARD_MUSCLE_GROUPS.find(
+    const group = KNOWN_MUSCLE_GROUPS.find(
       (g) => g.toLowerCase() === muscleGroup?.trim().toLowerCase(),
     );
     // Names are unique across the catalog; one made meanwhile is used as it is.

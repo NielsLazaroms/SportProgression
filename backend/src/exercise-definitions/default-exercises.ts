@@ -53,11 +53,25 @@ export const DEFAULT_EXERCISES: {
   { name: 'Hip Abduction', muscleGroup: 'Glutes' },
   { name: 'Hip Adduction', muscleGroup: 'Legs' },
   { name: 'Back Extension', muscleGroup: 'Back', bodyweight: true },
+  { name: 'Wrist Curl', muscleGroup: 'Forearms' },
+  { name: 'Reverse Wrist Curl', muscleGroup: 'Forearms' },
+  { name: 'Reverse Curl', muscleGroup: 'Forearms' },
 ];
 
-/** The muscle groups of the starter catalog: the ones everyone is judged on. */
-export const STANDARD_MUSCLE_GROUPS: string[] = [
+/** Every muscle group of the starter catalog. */
+export const KNOWN_MUSCLE_GROUPS: string[] = [
   ...new Set(
     DEFAULT_EXERCISES.map((e) => e.muscleGroup).filter((g): g is string => !!g),
   ),
 ];
+
+/**
+ * Groups that get plenty of indirect work (rows, curls and deadlifts train the
+ * forearms), so they only count for a lifter who trains them on purpose.
+ */
+export const OPTIONAL_MUSCLE_GROUPS: string[] = ['Forearms'];
+
+/** The muscle groups everyone is judged on. */
+export const STANDARD_MUSCLE_GROUPS: string[] = KNOWN_MUSCLE_GROUPS.filter(
+  (g) => !OPTIONAL_MUSCLE_GROUPS.includes(g),
+);

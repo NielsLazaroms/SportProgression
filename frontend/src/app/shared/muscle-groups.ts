@@ -12,4 +12,5 @@ export const MUSCLE_GROUPS = [
   'Legs',
   'Glutes',
   'Abs',
+  'Forearms',
 ] as const;
