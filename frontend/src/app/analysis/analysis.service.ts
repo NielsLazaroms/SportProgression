@@ -92,6 +92,10 @@ export interface Suggestion {
   savedIndexes?: number[];
   /** Week plans only: muscle groups the lifter trains that the week leaves out. */
   uncovered?: string[];
+  /** Week plans only: large muscle groups that get too few sets, with their count. */
+  thin?: { group: string; sets: number; target?: number }[];
+  /** Week plans only: exercises of open lift goals that the week leaves out. */
+  missingGoals?: string[];
   /** Client side only: the week was put on the schedule, so it is not scheduled twice. */
   scheduled?: boolean;
 }

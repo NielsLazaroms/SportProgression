@@ -127,9 +127,20 @@ const TEMPLATE_NAME_MAX = 100;
           <p class="mb-4 hyphens-auto px-1 leading-relaxed text-on-surface-variant">{{ text }}</p>
         }
         <!-- Checked by the app, not by the coach: a week should train everything the lifter trains -->
-        @if (week && uncovered().length) {
+        @if (week && (uncovered().length || thin().length || missingGoals().length)) {
           <div class="mb-4 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3" role="status">
-            <p class="text-sm font-bold text-on-surface">{{ 'suggest.uncovered.title' | mnTranslate: { groups: uncoveredText() } }}</p>
+            @if (uncovered().length) {
+              <p class="text-sm font-bold text-on-surface">{{ 'suggest.uncovered.title' | mnTranslate: { groups: uncoveredText() } }}</p>
+            }
+            @if (thinText(); as text) {
+              <p class="text-sm font-bold text-on-surface">{{ 'suggest.thin.title' | mnTranslate: { groups: text } }}</p>
+            }
+            @if (goalText(); as text) {
+              <p class="text-sm font-bold text-on-surface">{{ 'suggest.goalShort.title' | mnTranslate: { groups: text } }}</p>
+            }
+            @if (missingGoals().length) {
+              <p class="text-sm font-bold text-on-surface">{{ 'suggest.goalMissing.title' | mnTranslate: { exercises: missingGoals().join(', ') } }}</p>
+            }
             <button type="button" (click)="load(true)" class="mt-1 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary">
               <app-icon [data]="{ name: 'rotate-ccw', size: 16 }" />
               {{ 'suggest.again.week' | mnTranslate }}
@@ -348,6 +359,10 @@ export class SuggestSheet implements OnInit {
   readonly replace = signal(true);
   /** Muscle groups the lifter trains that this week leaves out (checked by the server). */
   readonly uncovered = computed(() => this.suggestion()?.uncovered ?? []);
+  /** Large groups this week gives too few sets (checked by the server). */
+  readonly thin = computed(() => this.suggestion()?.thin ?? []);
+  /** Lift goal exercises this week leaves out (checked by the server). */
+  readonly missingGoals = computed(() => this.suggestion()?.missingGoals ?? []);
   /** Planned workouts, not started yet, in the weeks this plan would fill. */
   readonly overlapping = computed(() => {
     const first = this.dates()[0];
@@ -482,6 +497,26 @@ export class SuggestSheet implements OnInit {
     return this.uncovered()
       .map((g) => this.lang.translateIfPresent('muscle.' + g) ?? g)
       .join(', ');
+  }
+
+  /** "Chest (6 sets)" in the user's language: large groups under the usual minimum. */
+  thinText(): string {
+    return this.thin()
+      .filter((g) => g.target == null)
+      .map((g) => this.lang.t('suggest.thin.group', { group: this.groupName(g.group), n: g.sets }))
+      .join(', ');
+  }
+
+  /** "Back (10 of 14 sets)": groups with a muscle focus goal under their target. */
+  goalText(): string {
+    return this.thin()
+      .filter((g) => g.target != null)
+      .map((g) => this.lang.t('suggest.goalShort.group', { group: this.groupName(g.group), n: g.sets, target: g.target ?? 0 }))
+      .join(', ');
+  }
+
+  private groupName(group: string): string {
+    return this.lang.translateIfPresent('muscle.' + group) ?? group;
   }
 
   /**

@@ -160,7 +160,7 @@ You get JSON. "recent" is their training of the last weeks, oldest first: sets a
 
 Session structure. A full session has 5 to 6 exercises and about 15 to 20 working sets. Give the session's main muscle group about 3 exercises (a heavy compound first, then a second compound or another angle, then an isolation) and each secondary group about 2. For example: a pull day has 3 back exercises and 2 biceps exercises; a push day has 2 or 3 chest, 2 shoulder and 1 or 2 triceps exercises; a leg day has 3 or 4 leg exercises plus glutes or calves, and abs can close any day. Put the exercise of a "lift" goal first when it fits the session; otherwise start with the main group's heaviest compound, then other compounds, then isolations. Compounds usually get 3 or 4 sets of 5 to 10 reps, isolations 3 sets of 10 to 15. A full body session is built differently: 5 to 7 exercises, about one per large group (a squat or leg press or a hinge, a press, a row or pulldown) plus one or two for small groups, at 2 or 3 sets each.
 
-Weekly volume. Aim for about 10 to 16 working sets per week for each muscle group the lifter trains, about 6 to 10 when they are clearly a beginner (the weights on most of their lifts still go up almost every session), and rarely more than 20. A group with a "muscleFocus" goal gets its target instead. Use "muscleGroups" to see where each group stands: raising a group from under 6 sets towards 10 matters far more than raising one that already has 15. A single workout gives each of its groups their share of the week. The counts in "muscleGroups" count each exercise for its main group only: a press also gives the triceps and shoulders about half a set per set, and a row or pull-up gives the biceps about half a set, so take that into account before adding many sets for a small group. Do not give one muscle group more than about 10 working sets in one session; when it needs more in the week, spread it over another session. Legs covers several muscles: over the week give it a squat or leg press, a hip hinge such as a Romanian deadlift, and a leg curl, not only squats and presses.
+Weekly volume. Aim for about 10 to 16 working sets per week for each muscle group the lifter trains, about 6 to 10 when they are clearly a beginner (the weights on most of their lifts still go up almost every session), and rarely more than 20. A group with a "muscleFocus" goal gets its target instead. Use "muscleGroups" to see where each group stands: raising a group from under 6 sets towards 10 matters far more than raising one that already has 15. A single workout gives each of its groups their share of the week. The counts in "muscleGroups" count each exercise for its main group only: a press also gives the triceps and shoulders about half a set per set, and a row or pull-up gives the biceps about half a set, so take that into account before adding many sets for a small group. Do not give one muscle group more than about 10 working sets in one session; when it needs more in the week, spread it over another session. Legs covers several muscles, and the totals in "muscleGroups" lump them together: judge the quads (squats, leg presses, leg extensions) and the hamstrings (leg curls and hip hinges such as a Romanian deadlift, also when the catalog files the hinge under Glutes) each on their own, using "legPart" in the catalog where it is given; calves are optional. Over the week give legs a squat or leg press, a hip hinge and a leg curl, not only squats and presses. Back is one group, but over the week give it both a row and a pulldown or pull-up.
 
 Effort. Plan the working sets to end with about 1 to 3 reps left in the tank: 2 to 3 on heavy barbell lifts such as squats, deadlifts and presses, 1 to 2 on machines and isolation exercises. Never plan sets to failure on squats or deadlifts. Choose the weight so the target reps land at that effort.
 
@@ -418,7 +418,7 @@ export class AnalysisService {
       'week suggestion',
       PLAN_SYSTEM,
       PlannedWeekSchema,
-      `Propose the lifter's next training week with exactly ${days} training days. ${weekSplit(days)} When "preferences.note" names a split of their own, use that one instead. Spread the muscle groups over the days so each one gets enough work and enough rest, and fix what "muscleGroups" shows as skipped or behind. Put the workouts on the lifter's preferred weekdays when "preferences.trainingDays" is given: with more preferred days than training days pick the ones that spread the load best, with fewer use them all and add the best remaining days. This plan is the lifter's complete week and replaces what was planned before: every muscle group in "muscleGroups" that is not skipped on purpose gets work within these ${days} days, the small ones (such as abs, biceps and triceps) too, and the large ones (back, chest, legs, shoulders) preferably twice.${request?.focus ? ` ${focusTask(request.focus, 'week')}` : ''}`,
+      `Propose the lifter's next training week with exactly ${days} training days. ${weekSplit(days)} When "preferences.note" names a split of their own, use that one instead. Spread the muscle groups over the days so each one gets enough work and enough rest, and fix what "muscleGroups" shows as skipped or behind. Put the workouts on the lifter's preferred weekdays when "preferences.trainingDays" is given: with more preferred days than training days pick the ones that spread the load best, with fewer use them all and add the best remaining days. This plan is the lifter's complete week and replaces what was planned before: every muscle group in "muscleGroups" that is not skipped on purpose gets work within these ${days} days, the small ones (such as abs, biceps and triceps) too, and the large ones (back, chest, legs, shoulders) preferably twice. ${WEEK_SET_PRIORITY}${request?.focus ? ` ${focusTask(request.focus, 'week')}` : ''}`,
       locale,
       // The week replaces the schedule, so the old plans must not count as already covering a group.
       {
@@ -448,6 +448,26 @@ export class AnalysisService {
       days: plans,
       // Checked here, not trusted to the model: groups the lifter trains that this week leaves out.
       uncovered: uncoveredGroups(log.muscleGroups, plans),
+      // Also checked here: large groups that get too few sets to grow.
+      thin: thinGroups(
+        log.muscleGroups,
+        plans,
+        ctx.goals.flatMap((g) =>
+          g.kind === GoalKind.MUSCLE && g.targetSetsPerWeek
+            ? [{ muscleGroup: g.muscleGroup, targetSetsPerWeek: g.targetSetsPerWeek }]
+            : [],
+        ),
+        days,
+      ),
+      // Open lift goals whose exercise the week leaves out.
+      missingGoals: missingGoalLifts(
+        ctx.goals.flatMap((g) =>
+          g.kind === GoalKind.LIFT && !g.progress.achieved
+            ? [{ exerciseDefinitionId: g.exerciseDefinitionId, exerciseName: g.exerciseName }]
+            : [],
+        ),
+        plans,
+      ),
     };
   }
 
@@ -521,6 +541,7 @@ export class AnalysisService {
       catalog,
       recentIds,
       newMachines,
+      goals,
       log: {
         today: day,
         weekday: new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' }),
@@ -544,6 +565,7 @@ export class AnalysisService {
             name: d.name,
             muscleGroup: d.muscleGroup || undefined,
             bodyweight: d.type === ExerciseType.BODYWEIGHT || undefined,
+            legPart: legPart(d.name),
           })),
           ...[...newMachines].map(([id, name]) => ({
             id,
@@ -865,6 +887,101 @@ export function weekSplit(days: number): string {
     6: 'Use push, pull, legs, push, pull, legs, with different main exercises or rep ranges in the second round.',
   };
   return `${split[days] ?? split[3]} This trains every large group about twice a week, which works better than one group per day. Never train the same group hard on two days in a row: chest, front shoulders and triceps go together, as do back, biceps and rear shoulders, and legs and glutes; small groups such as abs, calves and side shoulders may follow on a next day at low volume.`;
+}
+
+/**
+ * How a week spends its sets when the days cannot hold the full range for
+ * every group: the biggest gain is moving a group from few sets to about 10
+ * (Pelland et al., see volume_frequency_splits.md), so large groups come first.
+ */
+const WEEK_SET_PRIORITY =
+  'Count the working sets per muscle over the whole week before you answer. A few days rarely hold 10 to 16 sets for every muscle, so spend them in this order. First chest, back, quads and hamstrings each reach about 6 to 8 direct sets, with shoulders about 4 (presses add the rest) and biceps, triceps and abs about 3 each, because presses and rows already train the arms. Then bring chest, back, quads and hamstrings towards 10, then the rest. Only after that may any muscle go above 16, and never while one of those four is under 10. A group with a "muscleFocus" goal comes first with its own target. When a muscle needs more, move sets from one that has more than it needs rather than making sessions longer.';
+
+/**
+ * Leg muscles of the starter exercises, counted on their own when planning:
+ * the visible group "Legs" holds quads, hamstrings and calves together, and a
+ * hip hinge counts for the hamstrings even where the catalog files it under
+ * Glutes (volume_frequency_splits.md, counting rule).
+ */
+const LEG_PARTS: Record<string, 'quads' | 'hamstrings' | 'calves'> = {
+  squat: 'quads',
+  'smith machine squat': 'quads',
+  'hack squat': 'quads',
+  'leg press': 'quads',
+  'leg extension': 'quads',
+  'leg curl': 'hamstrings',
+  'romanian deadlift': 'hamstrings',
+  'calf raise': 'calves',
+};
+
+/** The leg muscle an exercise trains most, for the starter exercises; undefined otherwise. */
+export function legPart(name: string): 'quads' | 'hamstrings' | 'calves' | undefined {
+  return LEG_PARTS[name.trim().toLowerCase()];
+}
+
+/**
+ * The fewest direct sets a large muscle should get in a week before the app
+ * warns. The target is about 10; two days cannot hold that for chest, back,
+ * quads and hamstrings together, so the floor follows the number of days
+ * (about 5 to 10 sets is the most efficient range, Pelland et al.).
+ */
+export function thinFloor(trainingDays: number): number {
+  return trainingDays <= 2 ? 6 : 8;
+}
+
+/**
+ * Muscles the lifter trains that get some work in this week, but too little:
+ * a group with a "muscleFocus" goal under its own target; otherwise chest,
+ * back, quads or hamstrings under thinFloor. `target` is set for a goal.
+ * Quads and hamstrings are only judged when every leg exercise of the week is
+ * a known one, since a lifter's own leg exercise may cover either. Groups with
+ * no work at all are reported by uncoveredGroups instead.
+ */
+export function thinGroups(
+  groups: { group: string; skippedOnPurpose?: boolean }[],
+  days: { exercises: { name: string; muscleGroup: string | null; sets: number }[] }[],
+  focus: { muscleGroup: string; targetSetsPerWeek: number }[] = [],
+  trainingDays = 3,
+): { group: string; sets: number; target?: number }[] {
+  const exercises = days.flatMap((d) => d.exercises);
+  const sets = new Map<string, number>();
+  const add = (key: string, n: number) => sets.set(key, (sets.get(key) ?? 0) + n);
+  let unknownLegs = false;
+  for (const e of exercises) {
+    if (e.muscleGroup) add(e.muscleGroup, e.sets);
+    const part = legPart(e.name);
+    if (part) add(part, e.sets);
+    else if (e.muscleGroup === 'Legs') unknownLegs = true;
+  }
+  const floor = thinFloor(trainingDays);
+  const targets = new Map(focus.map((f) => [f.muscleGroup, f.targetSetsPerWeek]));
+  const trained = groups.filter((g) => !g.skippedOnPurpose || targets.has(g.group));
+  const out: { group: string; sets: number; target?: number }[] = [];
+  for (const g of trained) {
+    const done = sets.get(g.group) ?? 0;
+    const target = targets.get(g.group);
+    if (done === 0) continue;
+    if (target != null) {
+      if (done < target) out.push({ group: g.group, sets: done, target });
+    } else if ((g.group === 'Chest' || g.group === 'Back') && done < floor) {
+      out.push({ group: g.group, sets: done });
+    } else if (g.group === 'Legs' && !unknownLegs) {
+      for (const part of ['Quads', 'Hamstrings']) {
+        const n = sets.get(part.toLowerCase()) ?? 0;
+        if (n < floor) out.push({ group: part, sets: n });
+      }
+    }
+  }
+  return out;
+}
+
+/** Exercises of open lift goals that no day of this week plans. */
+export function missingGoalLifts(
+  goals: { exerciseDefinitionId: number; exerciseName: string }[],
+  days: { exercises: { exerciseDefinitionId: number }[] }[],
+): string[] {
+  const planned = new Set(days.flatMap((d) => d.exercises.map((e) => e.exerciseDefinitionId)));
+  return [...new Set(goals.filter((g) => !planned.has(g.exerciseDefinitionId)).map((g) => g.exerciseName))];
 }
 
 /** The "request" the coach gets; undefined when the lifter asked for nothing in particular. */
