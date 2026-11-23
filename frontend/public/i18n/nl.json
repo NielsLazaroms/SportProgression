@@ -464,7 +464,7 @@
   "analysis.err.forbidden": "AI-functies staan niet aan voor jouw account",
   "analysis.err.forbidden.hint": "Vraag de beheerder van deze app om toegang.",
   "analysis.err.failed.hint": "Er ging iets mis onderweg naar Bolt. Probeer het opnieuw.",
-  "suggest.days.change": "Dagen of focus aanpassen",
+  "suggest.days.change": "Dagen aanpassen",
   "suggest.focus.question": "Waar ligt de focus van deze workout?",
   "suggest.focus.question.week": "Een focus voor deze week?",
   "suggest.focus.auto": "Bolt kiest",

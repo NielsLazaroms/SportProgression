@@ -14,6 +14,7 @@ import { PLAN_FOCUSES, PLAN_NOTE_MAX, PlanFocus, PlanRequest } from './analysis.
   imports: [MnTranslatePipe],
   host: { class: 'block' },
   template: `
+    @if (showFocus()) {
     <p
       [id]="idPrefix() + '-focus-label'"
       class="mb-1.5 text-sm font-semibold text-on-surface-variant"
@@ -45,10 +46,12 @@ import { PLAN_FOCUSES, PLAN_NOTE_MAX, PlanFocus, PlanRequest } from './analysis.
         </button>
       }
     </div>
+    }
 
     <label
       [for]="idPrefix() + '-focus-note'"
-      class="mb-1.5 mt-4 block text-sm font-semibold text-on-surface-variant"
+      class="mb-1.5 block text-sm font-semibold text-on-surface-variant"
+      [class.mt-4]="showFocus()"
     >
       {{ 'suggest.focus.note' | mnTranslate }}
     </label>
@@ -75,6 +78,8 @@ export class PlanFocusPicker {
   readonly value = input.required<PlanRequest>();
   /** Week plans ask for an emphasis, a single workout for its type. */
   readonly scope = input<'workout' | 'week'>('workout');
+  /** False: only the note, without the session type chips (a week plan picks its own split). */
+  readonly showFocus = input(true);
   /** Keeps the ids apart when two pickers are on one page. */
   readonly idPrefix = input('plan');
   readonly valueChange = output<PlanRequest>();

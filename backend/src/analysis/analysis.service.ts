@@ -139,10 +139,10 @@ const PlannedExerciseSchema = z.object({
 const PlannedWorkoutSchema = z.object({
   title: z.string().describe('Short workout name, like "Pull Day" or "Legs and abs".'),
   reason: z.string().describe('Why this session and these choices, in at most 20 words. Name only the most important change. Never say on which day to do it.'),
-  exercises: z.array(PlannedExerciseSchema).describe('Five or six exercises in the order to do them, following the session structure.'),
+  exercises: z.array(PlannedExerciseSchema).describe('Five to seven exercises in the order to do them, following the session structure.'),
 });
 const PlannedWeekSchema = z.object({
-  summary: z.string().describe('Two or three sentences on how the week is put together and why.'),
+  summary: z.string().describe('Two or three sentences on how the week is put together and why. Start by naming the split you chose (for example upper and lower body, twice).'),
   days: z
     .array(
       PlannedWorkoutSchema.extend({
@@ -158,13 +158,13 @@ const PLAN_SYSTEM = `You are an experienced strength coach writing the next trai
 
 You get JSON. "recent" is their training of the last weeks, oldest first: sets are written as "reps x kg", a set starting with "W" is a warm-up and does not count, and for bodyweight exercises the kg is extra weight on top of body weight. "muscleGroups" gives the exact number of working sets per muscle group this week ("setsThisWeek"), in each earlier week from oldest to newest ("setsEarlierWeeks") and the last date each was trained; a group marked "skippedOnPurpose" must not be planned at all. "catalog" lists the only exercises you may use.
 
-Session structure. A full session has 5 to 6 exercises and about 15 to 20 working sets. Give the session's main muscle group about 3 exercises (a heavy compound first, then a second compound or another angle, then an isolation) and each secondary group about 2. For example: a pull day has 3 back exercises and 2 biceps exercises; a push day has 2 or 3 chest, 2 shoulder and 1 or 2 triceps exercises; a leg day has 3 or 4 leg exercises plus glutes or calves, and abs can close any day. Put the exercise of a "lift" goal first when it fits the session; otherwise start with the main group's heaviest compound, then other compounds, then isolations. Compounds usually get 3 or 4 sets of 5 to 10 reps, isolations 3 sets of 10 to 15.
+Session structure. A full session has 5 to 6 exercises and about 15 to 20 working sets. Give the session's main muscle group about 3 exercises (a heavy compound first, then a second compound or another angle, then an isolation) and each secondary group about 2. For example: a pull day has 3 back exercises and 2 biceps exercises; a push day has 2 or 3 chest, 2 shoulder and 1 or 2 triceps exercises; a leg day has 3 or 4 leg exercises plus glutes or calves, and abs can close any day. Put the exercise of a "lift" goal first when it fits the session; otherwise start with the main group's heaviest compound, then other compounds, then isolations. Compounds usually get 3 or 4 sets of 5 to 10 reps, isolations 3 sets of 10 to 15. A full body session is built differently: 5 to 7 exercises, about one per large group (a squat or leg press or a hinge, a press, a row or pulldown) plus one or two for small groups, at 2 or 3 sets each.
 
 Weekly volume. Aim for about 10 to 16 working sets per week for each muscle group the lifter trains, about 6 to 10 when they are clearly a beginner (the weights on most of their lifts still go up almost every session), and rarely more than 20. A group with a "muscleFocus" goal gets its target instead. Use "muscleGroups" to see where each group stands: raising a group from under 6 sets towards 10 matters far more than raising one that already has 15. A single workout gives each of its groups their share of the week. The counts in "muscleGroups" count each exercise for its main group only: a press also gives the triceps and shoulders about half a set per set, and a row or pull-up gives the biceps about half a set, so take that into account before adding many sets for a small group. Do not give one muscle group more than about 10 working sets in one session; when it needs more in the week, spread it over another session. Legs covers several muscles: over the week give it a squat or leg press, a hip hinge such as a Romanian deadlift, and a leg curl, not only squats and presses.
 
 Effort. Plan the working sets to end with about 1 to 3 reps left in the tank: 2 to 3 on heavy barbell lifts such as squats, deadlifts and presses, 1 to 2 on machines and isolation exercises. Never plan sets to failure on squats or deadlifts. Choose the weight so the target reps land at that effort.
 
-Build on what the lifter already does: keep their usual exercises in their usual order, with their sets and reps. When their own sessions in "recent" are thinner than the structure above, keep what they do and add exercises from the catalog until the session is full, and name the main addition in the reason. Also change what the log gives a reason for, such as a muscle group that gets no or little work, or an exercise that has stalled.
+For a single workout, build on what the lifter already does: keep their usual exercises in their usual order, with their sets and reps. For a whole week, the split comes from the number of training days (see the task), not from how their recent sessions were split, so do not copy earlier sessions as whole workouts. What carries over into the new days are their main lifts (the compounds they train regularly), with the weights and progression from the log: keeping main lifts stable for several weeks gives the best strength progress. Accessories may change to fit the split; when you change one, pick a clearly different angle or muscle length (for example a pushdown to an overhead extension), not a near duplicate. When their own sessions in "recent" are thinner than the structure above, keep what they do and add exercises from the catalog until the session is full, and name the main addition in the reason. Also change what the log gives a reason for, such as a muscle group that gets no or little work, or an exercise that has stalled.
 
 Supersets. A superset is two (at most three) exercises done back to back, shown in "recent" by a shared "superset" number. When the lifter's sessions in "recent" or their note show supersets, use them the way they do. Otherwise a superset is your call: add one only where you judge it clearly helps this session, for example two light isolation exercises for unrelated or opposing muscles at the end of a long session. It is not a default: a session without supersets is normal, and most sessions need none. Never put a heavy compound lift (squat, deadlift, bench press, overhead press, rows) in a superset unless the lifter does so themselves. Superset members must be next to each other in the list and have the same number of sets.
 
@@ -418,7 +418,7 @@ export class AnalysisService {
       'week suggestion',
       PLAN_SYSTEM,
       PlannedWeekSchema,
-      `Propose the lifter's next training week with exactly ${days} training days. Spread the muscle groups over the days so each one gets enough work and enough rest, and fix what "muscleGroups" shows as skipped or behind. Put the workouts on the lifter's preferred weekdays when "preferences.trainingDays" is given: with more preferred days than training days pick the ones that spread the load best, with fewer use them all and add the best remaining days. This plan is the lifter's complete week and replaces what was planned before: every muscle group in "muscleGroups" that is not skipped on purpose gets work within these ${days} days, the small ones (such as abs, biceps and triceps) too, and the large ones (back, chest, legs, shoulders) preferably twice.${request?.focus ? ` ${focusTask(request.focus, 'week')}` : ''}`,
+      `Propose the lifter's next training week with exactly ${days} training days. ${weekSplit(days)} When "preferences.note" names a split of their own, use that one instead. Spread the muscle groups over the days so each one gets enough work and enough rest, and fix what "muscleGroups" shows as skipped or behind. Put the workouts on the lifter's preferred weekdays when "preferences.trainingDays" is given: with more preferred days than training days pick the ones that spread the load best, with fewer use them all and add the best remaining days. This plan is the lifter's complete week and replaces what was planned before: every muscle group in "muscleGroups" that is not skipped on purpose gets work within these ${days} days, the small ones (such as abs, biceps and triceps) too, and the large ones (back, chest, legs, shoulders) preferably twice.${request?.focus ? ` ${focusTask(request.focus, 'week')}` : ''}`,
       locale,
       // The week replaces the schedule, so the old plans must not count as already covering a group.
       {
@@ -849,6 +849,22 @@ export function focusTask(focus: PlanFocus, scope: 'workout' | 'week'): string {
   return scope === 'workout'
     ? `The lifter asked for a ${f.name} session: train ${f.groups}. This decides the session, not which session is due.`
     : `The lifter asked for a week with extra focus on ${f.name} work (${f.groups}): give those groups more exercises and sets than usual, and still give the other groups enough to stay covered.`;
+}
+
+/**
+ * The split a week of `days` sessions uses, so every large group is trained
+ * about twice (ACSM 2009 and coach templates, collected in
+ * research_notes/Training plan design research/volume_frequency_splits.md).
+ */
+export function weekSplit(days: number): string {
+  const split: Record<number, string> = {
+    2: 'Use two full body sessions (A and B, with different exercises for the same groups) with at least two rest days between them.',
+    3: 'Use three full body sessions (A, B and C) on days that are not next to each other. For a lifter who is clearly past the beginner stage, upper body, lower body and full body is also fine.',
+    4: 'Use upper body, lower body, upper body, lower body. The two upper days differ in emphasis (one leads with a horizontal press and row, the other with an overhead press and pulldown or pull-up); one lower day leads with a squat or leg press, the other with a hip hinge.',
+    5: 'Use upper body, lower body, push, pull, legs, with the rest days placed so legs never follow the lower body day directly.',
+    6: 'Use push, pull, legs, push, pull, legs, with different main exercises or rep ranges in the second round.',
+  };
+  return `${split[days] ?? split[3]} This trains every large group about twice a week, which works better than one group per day. Never train the same group hard on two days in a row: chest, front shoulders and triceps go together, as do back, biceps and rear shoulders, and legs and glutes; small groups such as abs, calves and side shoulders may follow on a next day at low volume.`;
 }
 
 /** The "request" the coach gets; undefined when the lifter asked for nothing in particular. */

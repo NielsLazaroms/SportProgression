@@ -84,6 +84,7 @@ const TEMPLATE_NAME_MAX = 100;
           idPrefix="suggest"
           [class]="week ? 'mt-5' : ''"
           [scope]="mode()"
+          [showFocus]="!week"
           [value]="request()"
           (valueChange)="request.set($event)"
         />
@@ -400,7 +401,9 @@ export class SuggestSheet implements OnInit {
     // a plan is made. A plan made earlier today fills them in; one that is
     // still being made is waited for instead of asked again.
     const known = this.service.knownPlan(week ? 'week' : 'workout', this.lang.locale);
-    const usable = known && (!week || (known.days != null && this.dayOptions.includes(known.days)));
+    // A week picks its own split, so a week plan made with a focus (as could be asked before) is not reused.
+    const usable =
+      known && (!week || (known.days != null && this.dayOptions.includes(known.days) && !known.request.focus));
     if (usable) {
       if (known.days != null) this.days.set(known.days);
       this.request.set(known.request);
@@ -430,7 +433,8 @@ export class SuggestSheet implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     const locale = this.lang.locale;
-    const asked = this.request();
+    // A week has no focus to pick; only the note goes along.
+    const asked = this.mode() === 'week' ? { ...this.request(), focus: null } : this.request();
     this.askedText.set(
       [asked.focus ? this.lang.t('suggest.focus.' + asked.focus) : '', asked.note.trim()].filter(Boolean).join(', '),
     );

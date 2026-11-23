@@ -464,7 +464,7 @@
   "analysis.err.forbidden": "AI features are not switched on for your account",
   "analysis.err.forbidden.hint": "Ask the owner of this app to give you access.",
   "analysis.err.failed.hint": "Something went wrong on the way to Bolt. Try again.",
-  "suggest.days.change": "Change days or focus",
+  "suggest.days.change": "Change days",
   "suggest.focus.question": "What should this workout focus on?",
   "suggest.focus.question.week": "Any focus for this week?",
   "suggest.focus.auto": "Bolt decides",
