@@ -12,7 +12,8 @@ import {
 } from 'mn-angular-lib';
 import { AppIcon } from '../../../shared/app-icon';
 import { AppHeader } from '../../../layout/app-header';
-import { AuthService, WEIGHT_STEPS, WEIGHT_STEP_MAX, WEIGHT_STEP_MIN } from '../../../auth/data-access/auth.service';
+import { formatClock } from '../../../workouts/components/rest-timer';
+import { AuthService, REST_TIMER_CHOICES, WEIGHT_STEPS, WEIGHT_STEP_MAX, WEIGHT_STEP_MIN } from '../../../auth/data-access/auth.service';
 import { FormsModule } from '@angular/forms';
 import { DecimalInput } from '../../../workouts/components/decimal-input';
 import { ProgressService } from '../../../progress/data-access/progress.service';
@@ -257,6 +258,22 @@ export class ProfilePage implements OnInit {
     this.auth.setWeightStep(kg).subscribe({
       error: (err: unknown) =>
         this.alerts.error(this.lang.t('profile.weightStep.err'), this.lang.t(errorHintKey(err))),
+    });
+  }
+
+  readonly restChoices = REST_TIMER_CHOICES;
+  readonly restTimer = this.auth.restTimer;
+
+  /** "1:30", "3:00": a rest length as minutes and seconds. */
+  restLabel(seconds: number): string {
+    return formatClock(seconds);
+  }
+
+  setRestTimer(seconds: number): void {
+    if (this.restTimer() === seconds) return;
+    this.auth.setRestTimer(seconds).subscribe({
+      error: (err: unknown) =>
+        this.alerts.error(this.lang.t('profile.restTimer.err'), this.lang.t(errorHintKey(err))),
     });
   }
 

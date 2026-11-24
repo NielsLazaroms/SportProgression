@@ -17,7 +17,15 @@ export interface UserProfile {
   createdAt?: string;
   /** How much the weight + and - buttons change the weight, in kg. */
   weightStepKg?: number;
+  /** Rest countdown after a logged set, in seconds; 0 (or missing) means off. */
+  restTimerSeconds?: number;
 }
+
+/**
+ * The rest lengths Settings offers, in seconds; 0 turns the timer off.
+ * Research favours 2 to 3 minutes for most lifting, longer for heavy compound lifts.
+ */
+export const REST_TIMER_CHOICES: readonly number[] = [0, 90, 120, 180, 300];
 
 /** The steps Settings offers for the weight + and - buttons, in kg; "Custom" allows any other. */
 export const WEIGHT_STEPS: readonly number[] = [1, 2, 2.5, 5];
@@ -62,6 +70,22 @@ export class AuthService {
       catchError((err: unknown) => {
         const now = this.profile();
         if (before && now) this.profile.set({ ...now, weightStepKg: before.weightStepKg });
+        return throwError(() => err);
+      }),
+    );
+  }
+
+  /** Rest countdown after a logged set, in seconds; 0 while the timer is off (the default). */
+  readonly restTimer = computed(() => this.profile()?.restTimerSeconds ?? 0);
+
+  /** Saves the rest timer; the workout screen uses it at once and goes back when saving fails. */
+  setRestTimer(restTimerSeconds: number): Observable<unknown> {
+    const before = this.profile();
+    if (before) this.profile.set({ ...before, restTimerSeconds });
+    return this.http.put(`${this.BACKEND_URL}/account/rest-timer`, { restTimerSeconds }).pipe(
+      catchError((err: unknown) => {
+        const now = this.profile();
+        if (before && now) this.profile.set({ ...now, restTimerSeconds: before.restTimerSeconds });
         return throwError(() => err);
       }),
     );

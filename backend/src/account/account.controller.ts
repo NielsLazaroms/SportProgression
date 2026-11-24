@@ -7,6 +7,7 @@ import { CoachPreferencesDto } from './coach-preferences.dto';
 import { IgnoredMuscleGroupsDto } from './ignored-muscle-groups.dto';
 import { GymEquipmentDto } from './gym-equipment.dto';
 import { WeightStepDto } from './weight-step.dto';
+import { RestTimerDto } from './rest-timer.dto';
 
 @ApiTags('Account')
 @ApiBearerAuth()
@@ -49,6 +50,12 @@ export class AccountController {
   @Put('weight-step')
   setWeightStep(@Req() req, @Body() dto: WeightStepDto) {
     return this.account.setWeightStep(req.user.userId, dto.weightStepKg);
+  }
+
+  @ApiOperation({ summary: 'Set the rest countdown after a logged set (0 turns it off)' })
+  @Put('rest-timer')
+  setRestTimer(@Req() req, @Body() dto: RestTimerDto) {
+    return this.account.setRestTimer(req.user.userId, dto.restTimerSeconds);
   }
 
   @ApiOperation({ summary: 'Equipment and machines the user\'s gym has, for the AI coach' })

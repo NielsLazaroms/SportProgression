@@ -119,6 +119,8 @@ export class AuthService {
       createdAt: user.createdAt,
       // How much the weight + and - buttons change the weight, in kg.
       weightStepKg: user.weightStepKg ?? 1,
+      // Rest countdown after a logged set, in seconds; 0 means off.
+      restTimerSeconds: user.restTimerSeconds ?? 0,
     };
   }
 

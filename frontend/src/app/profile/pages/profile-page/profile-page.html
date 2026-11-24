@@ -215,6 +215,26 @@
           </div>
         </div>
       }
+      <!-- Rest timer: off by default; when on, logging a set starts the countdown -->
+      <div class="glass-card flex flex-col gap-2 rounded-2xl px-4 py-2.5 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between min-[380px]:gap-4">
+        <div class="min-w-0">
+          <span id="rest-label" class="block font-bold text-on-surface">{{ 'profile.restTimer' | mnTranslate }}</span>
+          <span id="rest-hint" class="block text-xs text-on-surface-variant">{{ 'profile.restTimer.hint' | mnTranslate }}</span>
+        </div>
+        <div role="group" aria-labelledby="rest-label" aria-describedby="rest-hint" class="grid min-w-0 flex-1 grid-cols-5 gap-1 rounded-xl bg-surface-container-high p-1 sm:max-w-80">
+          @for (s of restChoices; track s) {
+            <button
+              type="button"
+              (click)="setRestTimer(s)"
+              [attr.aria-pressed]="restTimer() === s"
+              class="tnum min-h-10 min-w-0 rounded-lg px-0.5 text-sm font-semibold transition-colors"
+              [class]="restTimer() === s ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant'"
+            >
+              {{ s === 0 ? ('profile.restTimer.off' | mnTranslate) : restLabel(s) }}
+            </button>
+          }
+        </div>
+      </div>
       <a
         routerLink="/exercise-definitions"
         class="glass-card flex min-h-14 items-center gap-3 rounded-2xl px-4 py-2.5 transition-colors active:bg-surface-variant/30"

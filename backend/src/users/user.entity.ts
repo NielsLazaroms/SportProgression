@@ -84,6 +84,10 @@ export class User {
   @Column({ type: 'double precision', default: 1 })
   weightStepKg: number;
 
+  /** Rest countdown after a logged set, in seconds; 0 means the timer is off. */
+  @Column({ type: 'integer', default: 0 })
+  restTimerSeconds: number;
+
   @OneToMany(() => Workout, (workout) => workout.user)
   workouts: Workout[];
 

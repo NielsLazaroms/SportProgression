@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { Location } from '@angular/common';
@@ -31,6 +32,7 @@ import {
 } from 'mn-angular-lib';
 import { AuthService } from '../../../auth/data-access/auth.service';
 import { DecimalInput } from '../../components/decimal-input';
+import { RestTimer } from '../../components/rest-timer';
 import { AnalysisSheet } from '../../../analysis/analysis-sheet';
 import { AnalysisService } from '../../../analysis/analysis.service';
 import { AppIcon } from '../../../shared/app-icon';
@@ -177,6 +179,7 @@ const letterAt = (i: number) => String.fromCharCode(65 + (i % 26));
     MnTranslatePipe,
     AnalysisSheet,
     DecimalInput,
+    RestTimer,
   ],
   templateUrl: './workout-detail-page.html',
   host: { '(document:keydown.escape)': 'onEscape()' },
@@ -199,8 +202,12 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
   private readonly modal = inject(MnModalService);
   /** AI entry points ("Analyse workout") are only shown to users who may use them. */
   readonly canUseAi = inject(AuthService).canUseAi;
+  private readonly auth = inject(AuthService);
   /** What the weight + and - buttons add or take off, set in Settings. */
-  readonly weightStep = inject(AuthService).weightStep;
+  readonly weightStep = this.auth.weightStep;
+  /** Rest after a logged set, in seconds; 0 while the rest timer is off in Settings. */
+  readonly restSeconds = this.auth.restTimer;
+  private readonly restTimer = viewChild(RestTimer);
 
   private workoutId = '';
   private readonly previousTitle = this.title.getTitle();
@@ -1548,6 +1555,8 @@ export class WorkoutDetailPage implements OnInit, OnDestroy {
     this.lastLogged.set({ exerciseId: ex.id, setId, text });
     if (this.loggedTimer) clearTimeout(this.loggedTimer);
     this.loggedTimer = setTimeout(() => this.lastLogged.set(null), LOGGED_MS);
+    // Rest timer (when on in Settings): every logged set starts a fresh countdown.
+    if (this.restSeconds() > 0) this.restTimer()?.start(this.restSeconds());
     if (!warmup && this.targetSets(ex) && this.showTargetHint()) {
       this.showTargetHint.set(false);
       try {

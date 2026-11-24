@@ -132,6 +132,14 @@ export class AccountService {
     return { weightStepKg };
   }
 
+  async setRestTimer(userId: string, restTimerSeconds: number) {
+    const result = await this.dataSource
+      .getRepository(User)
+      .update({ id: userId }, { restTimerSeconds });
+    if (!result.affected) throw new NotFoundException();
+    return { restTimerSeconds };
+  }
+
   /** Everything the app stores about this user, as one portable document. */
   async export(userId: string) {
     const user = await this.dataSource
@@ -180,6 +188,7 @@ export class AccountService {
         coachNote: user.coachNote ?? null,
         gymName: user.gymName ?? null,
         weightStepKg: user.weightStepKg ?? 1,
+        restTimerSeconds: user.restTimerSeconds ?? 0,
         gymEquipment: describeEquipment(user.gymEquipment) ?? [],
       },
       myExercises: exercises.map((e) => ({

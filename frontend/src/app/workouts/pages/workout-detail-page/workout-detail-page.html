@@ -1095,3 +1095,7 @@
 @if (showAnalysis() && workout(); as w) {
   <app-analysis-sheet [workoutId]="w.id" (closed)="showAnalysis.set(false)" />
 }
+
+@if (restSeconds() > 0) {
+  <app-rest-timer />
+}
